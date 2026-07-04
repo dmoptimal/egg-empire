@@ -4,7 +4,17 @@
 import { describe, expect, it } from "vitest";
 import { COUNTER_BASE_CAP, PANTRY_BASE_CAP, STATIONS } from "../config/kitchen";
 import { drainEvents } from "./events";
-import { chefCost, chefSlots, hireChef, routeToPantry, updateKitchen } from "./kitchen";
+import {
+  chefCost,
+  chefSlots,
+  cookTime,
+  counterCap,
+  dishValueMult,
+  hireChef,
+  pantryCap,
+  routeToPantry,
+  updateKitchen,
+} from "./kitchen";
 import { restore, serialize } from "./save";
 import { createSim } from "./state";
 import { constHooks, step } from "./test-helpers";
@@ -143,6 +153,36 @@ describe("the kitchen truck", () => {
     expect(s.kitchen.truck.truckState).toBe("idle");
     step(s, 3, constHooks(0.5));
     expect(s.money).toBe(30);
+  });
+});
+
+describe("Phase 6 support nodes", () => {
+  it("wire their effects: pantry, counter, ckspd, ckval, chefs2", () => {
+    const s = kitchenSim();
+    expect(pantryCap(s)).toBe(PANTRY_BASE_CAP);
+    expect(counterCap(s)).toBe(COUNTER_BASE_CAP);
+    expect(cookTime(s, 0)).toBe(4);
+    expect(dishValueMult(s, 0)).toBe(3);
+    expect(chefSlots(s, 0)).toBe(3);
+    s.n.pantry = 5;
+    s.n.counter = 3;
+    s.n.ckspd = 2;
+    s.n.ckval = 5;
+    s.n.chefs2 = 2;
+    expect(pantryCap(s)).toBe(180); // 30 + 30×5
+    expect(counterCap(s)).toBe(80); // 20 + 20×3
+    expect(cookTime(s, 0)).toBeCloseTo(4 * 0.81, 10);
+    expect(dishValueMult(s, 0)).toBeCloseTo(4.5, 10); // 3 × 1.5
+    expect(chefSlots(s, 0)).toBe(5);
+  });
+
+  it("seasoned faster pans change live dish output", () => {
+    const s = kitchenSim();
+    s.n.ckspd = 5; // 4s → 2.36s
+    s.n.ckval = 5; // ×1.5
+    s.kitchen.pantry.push(egg(10));
+    step(s, 2.5, constHooks(0.5));
+    expect(s.kitchen.counter).toEqual([{ station: 0, value: 45, feathers: 1, golden: false }]);
   });
 });
 

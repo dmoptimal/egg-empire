@@ -121,6 +121,18 @@ export const NODES: NodeDef[] = [
   { id: "st_oml",  nm: "Omelette station",  x: -390, y: 530, max: 1, par: "st_poa",  cur: "money",
     cost: () => STATION_COSTS[4], dsc: `Unlock ${STATIONS[4].name}: 3 eggs, ×${STATIONS[4].valueMult}.` },
 
+  // Kitchen support nodes (Phase 6) — the sub-tree filling out the cluster.
+  { id: "pantry",  nm: "Bigger pantry",     x: -120, y: 350, max: 5, par: "kitchen", cur: "feathers",
+    cost: farmCost("pantry"), dsc: "The pantry holds +30 more eggs per level." },
+  { id: "counter", nm: "Long counter",      x: -120, y: 440, max: 3, par: "pantry",  cur: "feathers",
+    cost: farmCost("counter"), dsc: "The counter holds +20 more dishes per level." },
+  { id: "ckspd",   nm: "Faster pans",       x: -300, y: 350, max: 5, par: "st_boil", cur: "feathers",
+    cost: farmCost("ckspd"), dsc: "Chefs cook 10% faster per level." },
+  { id: "ckval",   nm: "Secret seasoning",  x: -450, y: 530, max: 5, par: "st_fry",  cur: "feathers",
+    cost: farmCost("ckval"), dsc: "Dishes are worth +10% per level." },
+  { id: "chefs2",  nm: "Sous chefs",        x: -330, y: 530, max: 2, par: "st_scr",  cur: "feathers",
+    cost: farmCost("chefs2"), dsc: "+1 chef slot at every station per level." },
+
   // Flock economics off Geese (Phase 3).
   { id: "birdlot", nm: "Bulk deals",     x: 90,  y: 720, max: 3, par: "sp3",   cur: "feathers", edge: "straight",
     cost: farmCost("birdlot"), dsc: "Bird cost growth −0.02 per level, all species." },

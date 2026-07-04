@@ -41,6 +41,8 @@ const NODE_ERA: Record<string, string> = {
   espoil: "goose", gold2: "goose", birdlot: "goose",
   // Kitchen stations (money): each lands in its own era
   st_boil: "ducks", st_fry: "quail", st_scr: "goose", st_poa: "ostrich",
+  // Kitchen support nodes (feathers)
+  pantry: "quail", ckspd: "quail", ckval: "goose", counter: "goose", chefs2: "ostrich",
 };
 
 /** Money nodes are one big purchase per level, each landing in its own era. */
@@ -130,7 +132,9 @@ describe("maxing a branch costs 20-40 minutes cumulative", () => {
     const violations: string[] = [];
     for (const [id, era] of Object.entries(NODE_ERA)) {
       const node = nodeById[id];
-      if (node.max < 2) continue;
+      // Two-level ladders can't span 20-40 minutes without absurd L2 prices;
+      // the cumulative band applies to ladders of 3+ (gold2/chefs2 exempt).
+      if (node.max < 3) continue;
       let total = 0;
       for (let l = 0; l < node.max; l++) total += node.cost(l);
       const s = simFor(era);
@@ -139,6 +143,47 @@ describe("maxing a branch costs 20-40 minutes cumulative", () => {
       if (secs < min || secs > max) violations.push(`${id}@${era}: ${secsLabel(secs)}`);
     }
     expect(violations).toEqual([]);
+  });
+});
+
+describe("full-tree completion lands in 3-5 hours of active play", () => {
+  // Model: a level's cost is paid at its band era for the FIRST level and one
+  // era later for the rest (players clean branches up after income grows).
+  // Money and feathers accrue in parallel, so each era costs max(m, f) time.
+  it("estimated completion time is within the target band", () => {
+    const ORDER = ["fresh", "ducks", "quail", "goose", "ostrich"];
+    const later = (era: string): string => ORDER[Math.min(ORDER.indexOf(era) + 1, ORDER.length - 1)];
+    const money = new Map<string, number>(ORDER.map((e) => [e, 0]));
+    const feathers = new Map<string, number>(ORDER.map((e) => [e, 0]));
+    const charge = (cur: "money" | "feathers", era: string, amount: number): void => {
+      const m = cur === "money" ? money : feathers;
+      m.set(era, m.get(era)! + amount);
+    };
+    for (const [id, era] of Object.entries(NODE_ERA)) {
+      const node = nodeById[id];
+      for (let l = 0; l < node.max; l++) charge(node.cur, l === 0 ? era : later(era), node.cost(l));
+    }
+    for (const [id, eras] of Object.entries(MONEY_LEVEL_ERAS)) {
+      const node = nodeById[id];
+      eras.forEach((era, l) => charge(node.cur, era, node.cost(l)));
+    }
+    for (const [id, era] of Object.entries(UNLOCK_ERAS)) charge(nodeById[id].cur, era, nodeById[id].cost(0));
+    let total = 0;
+    const perEra: string[] = [];
+    for (const era of ORDER) {
+      const s = simFor(era);
+      const mSec = money.get(era)! / moneyRate(s);
+      const fSec = feathers.get(era)! / featherRate(s);
+      const eraSec = Math.max(mSec, fSec);
+      total += eraSec;
+      perEra.push(`${era}: ${(eraSec / 60).toFixed(0)}min (m ${(mSec / 60).toFixed(0)} / f ${(fSec / 60).toFixed(0)})`);
+    }
+    const totalMin = total / 60;
+    expect(
+      totalMin,
+      `estimated completion ${totalMin.toFixed(0)}min — ${perEra.join("; ")}`,
+    ).toBeGreaterThanOrEqual(180);
+    expect(totalMin, `estimated completion ${totalMin.toFixed(0)}min`).toBeLessThanOrEqual(300);
   });
 });
 

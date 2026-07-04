@@ -52,6 +52,12 @@ export const FARM_NODE_COSTS = {
   combo: { base: 16000, growth: 2.6 },
   gold2: { base: 100000, growth: 1 },
   birdlot: { base: 90000, growth: 3.0 },
+  // Phase 6 kitchen support nodes (feathers, era-indexed)
+  pantry: { base: 10000, growth: 1.8 },
+  ckspd: { base: 11000, growth: 1.8 },
+  ckval: { base: 90000, growth: 1.8 },
+  chefs2: { base: 900000, growth: 2.2 },
+  counter: { base: 100000, growth: 3 },
 } as const;
 
 /** Extra basket prices (money), one per bextra level (duck/quail/goose era). */
@@ -145,6 +151,7 @@ export const CHECKPOINTS: Checkpoint[] = [
       coll: 1, hire: 3, cspd: 3, cbag: 2, cval: 1, fth: 1,
       ecap: 3, espoil: 1, sweep: 2, combo: 2, gold2: 1, birdlot: 1, kitchen: 1,
       st_boil: 1, st_fry: 1, st_scr: 1,
+      pantry: 2, ckspd: 2, ckval: 1, counter: 1,
     },
   },
   {
@@ -164,6 +171,7 @@ export const CHECKPOINTS: Checkpoint[] = [
       coll: 1, hire: 5, cspd: 5, cbag: 5, cval: 5, fth: 5,
       ecap: 4, espoil: 4, sweep: 3, combo: 3, gold2: 1, birdlot: 3, kitchen: 1,
       st_boil: 1, st_fry: 1, st_scr: 1, st_poa: 1, st_oml: 1,
+      pantry: 5, ckspd: 5, ckval: 5, chefs2: 2, counter: 3,
     },
   },
 ];
