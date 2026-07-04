@@ -12,6 +12,7 @@ import {
   estimateOfflineIncome,
   resize,
   restore,
+  savedTreeView,
   serialize,
   sweepCollect,
   tick,
@@ -70,7 +71,7 @@ async function boot(): Promise<void> {
   // the target with the current sim mid-reload.
   let persistEnabled = true;
   const persist = (): void => {
-    if (persistEnabled) writeSave(serialize(sim, Date.now()));
+    if (persistEnabled) writeSave(serialize(sim, Date.now(), tree.getView()));
   };
   const loadState = (save: SaveData | null): void => {
     persistEnabled = false;
@@ -104,7 +105,13 @@ async function boot(): Promise<void> {
     hud.refresh();
     bar.refresh();
   };
-  const tree = createTree({ overlay: layers.tree, sim, textures, refreshHud: refreshAll });
+  const tree = createTree({
+    overlay: layers.tree,
+    sim,
+    textures,
+    refreshHud: refreshAll,
+    initialView: saved ? savedTreeView(saved) : null,
+  });
 
   const hooks: SimHooks = { rng: Math.random, spawnPoint: (i) => birds.spawnPoint(i) };
 

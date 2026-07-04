@@ -43,9 +43,11 @@ export {
 export {
   serialize,
   restore,
+  savedTreeView,
   estimateOfflineIncome,
   SAVE_VERSION,
   type SaveData,
   type OfflineIncome,
+  type TreeView,
 } from "./save";
 export { checkpointToSave, checkpointSim, moneyRate, featherRate } from "./pacing";

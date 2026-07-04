@@ -24,6 +24,13 @@ import type { SimState } from "./types";
 
 export const SAVE_VERSION = 1;
 
+/** Persisted skill-tree camera (PLAN Phase 2: the tree remembers your view). */
+export interface TreeView {
+  x: number;
+  y: number;
+  s: number;
+}
+
 export interface SaveData {
   v: number;
   money: number;
@@ -34,10 +41,12 @@ export interface SaveData {
   won: boolean;
   /** Epoch ms, stamped by the storage layer at write time. */
   lastSeen: number;
+  /** Optional UI state — absent on old saves (first open centres the root). */
+  treeView?: TreeView;
 }
 
-export function serialize(state: SimState, lastSeen: number): SaveData {
-  return {
+export function serialize(state: SimState, lastSeen: number, treeView?: TreeView): SaveData {
+  const save: SaveData = {
     v: SAVE_VERSION,
     money: state.money,
     feathers: state.feathers,
@@ -47,6 +56,16 @@ export function serialize(state: SimState, lastSeen: number): SaveData {
     won: state.won,
     lastSeen,
   };
+  if (treeView) save.treeView = { ...treeView };
+  return save;
+}
+
+/** The save's tree view if well-formed, else null (malformed is ignored). */
+export function savedTreeView(save: SaveData): TreeView | null {
+  const tv = save.treeView;
+  if (!tv || typeof tv !== "object") return null;
+  if (!finiteNumber(tv.x) || !finiteNumber(tv.y) || !finiteNumber(tv.s)) return null;
+  return { x: tv.x, y: tv.y, s: tv.s };
 }
 
 const finiteNumber = (x: unknown): x is number => typeof x === "number" && Number.isFinite(x);

@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import { OFFLINE_CAP_SECONDS } from "../config/constants";
-import { estimateOfflineIncome, restore, serialize, SAVE_VERSION } from "./save";
+import { estimateOfflineIncome, restore, savedTreeView, serialize, SAVE_VERSION } from "./save";
 import { createSim } from "./state";
 
 function playedState() {
@@ -46,6 +46,19 @@ describe("serialize / restore round-trip", () => {
     s.n.w0 = 5;
     expect(saved.counts[0]).toBe(4);
     expect(saved.n.w0).toBe(3);
+  });
+
+  it("round-trips the tree camera and drops malformed ones", () => {
+    const withView = serialize(playedState(), 0, { x: -12.5, y: 40, s: 0.8 });
+    expect(savedTreeView(withView)).toEqual({ x: -12.5, y: 40, s: 0.8 });
+    expect(restore(withView)).not.toBeNull(); // extra field never breaks restore
+
+    const withoutView = serialize(playedState(), 0);
+    expect(withoutView.treeView).toBeUndefined();
+    expect(savedTreeView(withoutView)).toBeNull();
+
+    const mangled = { ...withView, treeView: { x: NaN, y: 0, s: 1 } };
+    expect(savedTreeView(mangled)).toBeNull();
   });
 
   it("rejects other versions and malformed shapes", () => {
