@@ -33,6 +33,7 @@ import { createStartScreen, createWinScreen } from "./render/screens";
 import { makeTextures } from "./render/textures";
 import { createDevPanel } from "./ui/devpanel";
 import { createHud } from "./ui/hud";
+import { loadPixelFont } from "./ui/kit";
 import { createTree } from "./ui/tree";
 
 async function boot(): Promise<void> {
@@ -47,6 +48,7 @@ async function boot(): Promise<void> {
     autoDensity: true,
   });
   gameDiv.appendChild(app.canvas);
+  await loadPixelFont(); // before any Text is created — one typeface everywhere
 
   // Restore a saved game if one exists; credit capped offline income.
   const dims = { width: app.screen.width, height: app.screen.height };
@@ -88,6 +90,7 @@ async function boot(): Promise<void> {
 
   const hud = createHud({
     sim,
+    layer: layers.uiTop,
     onBuyBird(species) {
       if (buyBird(sim, species)) hud.refresh();
     },
@@ -117,6 +120,7 @@ async function boot(): Promise<void> {
     drawBackground(layers.bg, sim.layout);
     basketViews.layout(sim);
     birds.clamp(sim.layout);
+    hud.layout();
     if (startScreen.visible) startScreen.position(sim.layout);
   }
 
@@ -246,6 +250,7 @@ async function boot(): Promise<void> {
       if (tree.isOpen()) tree.open(); // re-layout the overlay in place
     }
     const now = performance.now() / 1000;
+    hud.update(dt); // hint/toast fades run on every screen
 
     if (!started) {
       startScreen.update(now);

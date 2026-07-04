@@ -1,6 +1,7 @@
 // The layer stack. Order is a CLAUDE.md gotcha — back to front:
 // bg, birds, eggs, baskets, collectors, trucks+labels, fx/popups,
-// tree overlay, win screen, start screen.
+// tree overlay, win screen, start screen, then the HUD chips on very top
+// (they stay visible on every screen, like the DOM chips they replaced).
 
 import { Container, Graphics } from "pixi.js";
 
@@ -15,6 +16,7 @@ export interface Layers {
   tree: Container;
   win: Container;
   start: Container;
+  uiTop: Container;
 }
 
 export function createLayers(stage: Container): Layers {
@@ -29,6 +31,7 @@ export function createLayers(stage: Container): Layers {
     tree: new Container(),
     win: new Container(),
     start: new Container(),
+    uiTop: new Container(),
   };
   layers.tree.visible = false;
   layers.win.visible = false;
@@ -43,6 +46,7 @@ export function createLayers(stage: Container): Layers {
     layers.tree,
     layers.win,
     layers.start,
+    layers.uiTop,
   );
   return layers;
 }

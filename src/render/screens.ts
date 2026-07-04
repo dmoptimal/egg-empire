@@ -2,6 +2,7 @@
 
 import { Graphics, Sprite, Text, type Container } from "pixi.js";
 import type { Layout } from "../sim";
+import { FONT } from "../ui/kit";
 import type { Textures } from "./textures";
 
 export interface StartScreen {
@@ -16,7 +17,7 @@ export function createStartScreen(layer: Container, textures: Textures): StartSc
   layer.addChild(bg);
   const title = new Text({
     text: "EGG EMPIRE",
-    style: { fill: "#ffd24a", fontSize: 10, fontWeight: "900", stroke: { color: "#000", width: 6 } },
+    style: { fontFamily: FONT, fill: "#ffd24a", fontSize: 10, fontWeight: "700", stroke: { color: "#000", width: 6 } },
   });
   title.anchor.set(0.5);
   layer.addChild(title);
@@ -27,7 +28,7 @@ export function createStartScreen(layer: Container, textures: Textures): StartSc
     layer.addChild(s);
     birds.push(s);
   }
-  const tap = new Text({ text: "Tap to start", style: { fill: "#8fe3d0", fontSize: 16, fontWeight: "800" } });
+  const tap = new Text({ text: "Tap to start", style: { fontFamily: FONT, fill: "#8fe3d0", fontSize: 16, fontWeight: "700" } });
   tap.anchor.set(0.5);
   layer.addChild(tap);
 
@@ -79,9 +80,10 @@ export function createWinScreen(layer: Container): WinScreen {
       const t1 = new Text({
         text: "🏆 SKILL TREE COMPLETE!",
         style: {
+          fontFamily: FONT,
           fill: "#ffd24a",
           fontSize: 26,
-          fontWeight: "900",
+          fontWeight: "700",
           stroke: { color: "#000", width: 5 },
           align: "center",
           wordWrap: true,
@@ -92,7 +94,7 @@ export function createWinScreen(layer: Container): WinScreen {
       t1.position.set(W / 2, H * 0.4);
       const t2 = new Text({
         text: "You built the Egg Empire.\nTap to keep farming forever.",
-        style: { fill: "#fff", fontSize: 15, fontWeight: "700", align: "center" },
+        style: { fontFamily: FONT, fill: "#fff", fontSize: 15, fontWeight: "700", align: "center" },
       });
       t2.anchor.set(0.5);
       t2.position.set(W / 2, H * 0.52);

@@ -17,6 +17,7 @@ import {
   type SimState,
 } from "../sim";
 import type { Textures } from "../render/textures";
+import { FONT } from "./kit";
 
 // View geometry (prototype values) — not balance, so it lives with the UI.
 const COLS = [55, 135, 215, 295];
@@ -51,9 +52,9 @@ export function createTree(deps: TreeDeps): TreeUI {
   const pan = new Container();
   const header = new Text({
     text: "SKILL TREE",
-    style: { fill: "#ffd24a", fontSize: 20, fontWeight: "900", stroke: { color: "#000", width: 4 } },
+    style: { fontFamily: FONT, fill: "#ffd24a", fontSize: 20, fontWeight: "700", stroke: { color: "#000", width: 4 } },
   });
-  const close = new Text({ text: "✕", style: { fill: "#fff", fontSize: 24, fontWeight: "900" } });
+  const close = new Text({ text: "✕", style: { fontFamily: FONT, fill: "#fff", fontSize: 24, fontWeight: "700" } });
   const infoCard = new Container();
   overlay.addChild(treeBg, pan, header, close, infoCard);
 
@@ -169,9 +170,10 @@ export function createTree(deps: TreeDeps): TreeUI {
       const lt = new Text({
         text: l >= n.max ? "MAX" : `${l}/${n.max}`,
         style: {
+          fontFamily: FONT,
           fill: l >= n.max ? "#ffd24a" : l > 0 ? "#fff" : "#999",
           fontSize: 11,
-          fontWeight: "800",
+          fontWeight: "700",
           stroke: { color: "#000", width: 3 },
         },
       });
@@ -197,11 +199,11 @@ export function createTree(deps: TreeDeps): TreeUI {
       .fill({ color: 0x1c2b1c, alpha: 0.98 })
       .stroke({ width: 2, color: 0x3fd06c, alpha: 0.6 });
     infoCard.addChild(g);
-    const t1 = new Text({ text: n.nm, style: { fill: "#fff", fontSize: 17, fontWeight: "900" } });
+    const t1 = new Text({ text: n.nm, style: { fontFamily: FONT, fill: "#fff", fontSize: 17, fontWeight: "700" } });
     t1.position.set(24, cy + 12);
     const t2 = new Text({
       text: n.dsc,
-      style: { fill: "#cfd8cf", fontSize: 12, wordWrap: true, wordWrapWidth: W() - 48 },
+      style: { fontFamily: FONT, fill: "#cfd8cf", fontSize: 12, wordWrap: true, wordWrapWidth: W() - 48 },
     });
     t2.position.set(24, cy + 38);
     const isSpecies = n.id.startsWith("sp");
@@ -211,7 +213,7 @@ export function createTree(deps: TreeDeps): TreeUI {
           ? `Owned: ${sim.counts[Number(n.id.slice(2))]}`
           : "MAXED"
         : `Level ${l}/${n.max}`,
-      style: { fill: maxed ? "#ffd24a" : "#8fe3d0", fontSize: 13, fontWeight: "800" },
+      style: { fontFamily: FONT, fill: maxed ? "#ffd24a" : "#8fe3d0", fontSize: 13, fontWeight: "700" },
     });
     t3.position.set(24, cy + ch - 38);
     infoCard.addChild(t1, t2, t3);
@@ -238,7 +240,7 @@ export function createTree(deps: TreeDeps): TreeUI {
       bg2
         .roundRect(bx, by, bw, bh, 10)
         .fill(afford ? (cur === "money" ? 0x2f9d5c : 0x1f8a76) : 0x4a4a4a);
-      const bt = centeredText(label, { fill: afford ? "#fff" : "#999", fontSize: 14, fontWeight: "900" });
+      const bt = centeredText(label, { fill: afford ? "#fff" : "#999", fontSize: 14, fontWeight: "700" });
       bt.position.set(bx + bw / 2, by + bh / 2);
       infoCard.addChild(bg2, bt);
       buyRect = { x: bx, y: by, w: bw, h: bh };

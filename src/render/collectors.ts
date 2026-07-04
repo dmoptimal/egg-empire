@@ -4,6 +4,7 @@
 import { Container, Sprite, Text } from "pixi.js";
 import { SPECIES } from "../config/species";
 import type { SimState } from "../sim";
+import { FONT } from "../ui/kit";
 import { eggSpriteScale, type Textures } from "./textures";
 
 interface CollectorView {
@@ -42,7 +43,13 @@ export function createCollectorViews(layer: Container, textures: Textures): Coll
     root.addChild(carry);
     const bagTxt = new Text({
       text: "",
-      style: { fill: "#fff", fontSize: 8, fontWeight: "800", stroke: { color: "#000", width: 2 } },
+      style: {
+        fontFamily: FONT,
+        fill: "#fff",
+        fontSize: 8,
+        fontWeight: "700",
+        stroke: { color: "#000", width: 2 },
+      },
     });
     bagTxt.anchor.set(0, 0.5);
     bagTxt.position.set(2, -14);

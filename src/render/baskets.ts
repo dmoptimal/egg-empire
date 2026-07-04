@@ -4,8 +4,9 @@
 // Fill/label redraw when the count or cap changes; the countdown text only
 // rewrites when the displayed second changes (shownT pattern).
 
-import { Container, Graphics, Sprite, Text } from "pixi.js";
+import { BitmapText, Container, Graphics, Sprite, Text } from "pixi.js";
 import { basketCap, truckCountdown, type SimState } from "../sim";
+import { FONT, HOT_FONT } from "../ui/kit";
 import type { Textures } from "./textures";
 
 interface BasketView {
@@ -17,7 +18,7 @@ interface BasketView {
   root: Container;
   fill: Graphics;
   topEggs: Sprite[];
-  label: Text;
+  label: BitmapText;
   timer: Text;
   truck: Sprite;
   wiggle: number;
@@ -59,14 +60,20 @@ export function createBasketViews(
       root.addChild(eg);
       topEggs.push(eg);
     }
-    const label = new Text({
+    const label = new BitmapText({
       text: "0/12",
-      style: { fill: "#fff", fontSize: 14, fontWeight: "800", stroke: { color: "#000", width: 3 } },
+      style: { fontFamily: HOT_FONT, fontSize: 14 },
     });
     label.anchor.set(0.5, 1);
     const timer = new Text({
       text: "",
-      style: { fill: "#8fe3d0", fontSize: 11, fontWeight: "800", stroke: { color: "#000", width: 3 } },
+      style: {
+        fontFamily: FONT,
+        fill: "#8fe3d0",
+        fontSize: 11,
+        fontWeight: "700",
+        stroke: { color: "#000", width: 3 },
+      },
     });
     timer.anchor.set(0.5, 1);
     const truck = new Sprite(textures.truck);

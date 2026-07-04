@@ -1,10 +1,12 @@
 // Floating text popups — fixed pool of 60, oldest silently recycled
-// (ring buffer), exactly like the prototype.
+// (ring buffer). Hot text: BitmapText on the baked Pixelify font, tinted
+// per spawn (the black baked stroke stays black under tint).
 
-import { Text, type Container } from "pixi.js";
+import { BitmapText, type Container } from "pixi.js";
+import { HOT_FONT } from "../ui/kit";
 
 interface Popup {
-  t: Text;
+  t: BitmapText;
   vy: number;
   life: number;
   active: boolean;
@@ -20,10 +22,7 @@ const POPUP_POOL = 60;
 export function createPopups(layer: Container): Popups {
   const pool: Popup[] = [];
   for (let i = 0; i < POPUP_POOL; i++) {
-    const t = new Text({
-      text: "",
-      style: { fill: "#fff", fontSize: 14, fontWeight: "800", stroke: { color: "#000", width: 4 } },
-    });
+    const t = new BitmapText({ text: "", style: { fontFamily: HOT_FONT, fontSize: 14 } });
     t.anchor.set(0.5);
     t.visible = false;
     layer.addChild(t);
@@ -36,7 +35,7 @@ export function createPopups(layer: Container): Popups {
       const p = pool[cur];
       cur = (cur + 1) % pool.length;
       p.t.text = txt;
-      p.t.style.fill = color;
+      p.t.tint = color;
       p.t.style.fontSize = size;
       p.t.position.set(x, y);
       p.t.alpha = 1;
