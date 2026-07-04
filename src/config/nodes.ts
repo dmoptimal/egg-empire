@@ -14,7 +14,7 @@ import {
   HIRE_COSTS,
   SPECIES_NODE_COSTS,
 } from "./economy";
-import { KITCHEN_UNLOCK_COST } from "./kitchen";
+import { KITCHEN_UNLOCK_COST, STATION_COSTS, STATIONS } from "./kitchen";
 import { SPECIES } from "./species";
 
 export type Currency = "money" | "feathers";
@@ -107,6 +107,19 @@ export const NODES: NodeDef[] = [
   // The Kitchen gate (PLAN Phase 4) — the kitchen sub-tree hangs here in Phase 6.
   { id: "kitchen", nm: "The Kitchen",   x: -120, y: 260, max: 1, par: "sp1",  cur: "money", edge: "straight",
     cost: () => KITCHEN_UNLOCK_COST, dsc: "Unlock the kitchen: route eggs to chefs and sell dishes." },
+
+  // Kitchen stations (Phase 6 sub-tree, unlocks pulled forward for Phase 5) —
+  // a chain hanging off the gate, each unlocking the next pan.
+  { id: "st_boil", nm: "Boiled station",    x: -210, y: 350, max: 1, par: "kitchen", cur: "money", edge: "straight",
+    cost: () => STATION_COSTS[0], dsc: `Unlock ${STATIONS[0].name}: 1 egg, ×${STATIONS[0].valueMult}.` },
+  { id: "st_fry",  nm: "Fried station",     x: -210, y: 440, max: 1, par: "st_boil", cur: "money",
+    cost: () => STATION_COSTS[1], dsc: `Unlock ${STATIONS[1].name}: 1 egg, ×${STATIONS[1].valueMult}.` },
+  { id: "st_scr",  nm: "Scrambled station", x: -300, y: 440, max: 1, par: "st_fry",  cur: "money",
+    cost: () => STATION_COSTS[2], dsc: `Unlock ${STATIONS[2].name}: 2 eggs, ×${STATIONS[2].valueMult}.` },
+  { id: "st_poa",  nm: "Poached station",   x: -390, y: 440, max: 1, par: "st_scr",  cur: "money",
+    cost: () => STATION_COSTS[3], dsc: `Unlock ${STATIONS[3].name}: 1 egg, ×${STATIONS[3].valueMult}.` },
+  { id: "st_oml",  nm: "Omelette station",  x: -390, y: 530, max: 1, par: "st_poa",  cur: "money",
+    cost: () => STATION_COSTS[4], dsc: `Unlock ${STATIONS[4].name}: 3 eggs, ×${STATIONS[4].valueMult}.` },
 
   // Flock economics off Geese (Phase 3).
   { id: "birdlot", nm: "Bulk deals",     x: 90,  y: 720, max: 3, par: "sp3",   cur: "feathers", edge: "straight",

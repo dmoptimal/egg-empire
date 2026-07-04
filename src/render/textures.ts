@@ -14,6 +14,11 @@ export interface Textures {
   basket: Texture;
   truck: Texture;
   coll: Texture;
+  chef: Texture;
+  pan: Texture;
+  crate: Texture;
+  /** One plated dish per station (boiled → omelette). */
+  dish: Texture[];
 }
 
 export function makeTextures(renderer: Renderer): Textures {
@@ -51,6 +56,22 @@ export function makeTextures(renderer: Renderer): Textures {
     basket: tex([[0, 2, 18, 10, 0x8a5a2b], [1, 3, 16, 8, 0xa06c36], [0, 2, 18, 2, 0x6e4520], [4, 4, 1, 7, 0x8a5a2b], [9, 4, 1, 7, 0x8a5a2b], [14, 4, 1, 7, 0x8a5a2b]]),
     truck: tex([[0, 4, 16, 8, 0x3a7bd5], [1, 5, 14, 6, 0x4a8be5], [16, 5, 8, 7, 0x2c5fa8], [18, 6, 4, 3, 0xbfe3ff], [3, 12, 4, 4, 0x1a1a1a], [4, 13, 2, 2, 0x666666], [18, 12, 4, 4, 0x1a1a1a], [19, 13, 2, 2, 0x666666]]),
     coll: tex([[3, 0, 4, 2, 0xe8c531], [2, 1, 6, 1, 0xe8c531], [3, 2, 4, 3, 0xe8b48a], [4, 3, 1, 1, 0x111111], [2, 5, 6, 5, 0x3a6bb5], [1, 5, 2, 4, 0xe8b48a], [7, 5, 2, 4, 0xe8b48a], [3, 10, 1, 3, 0x2b3a5a], [6, 10, 1, 3, 0x2b3a5a]]),
+    // The chef is the collector in whites: toque, apron, grey trousers.
+    chef: tex([[3, -1, 4, 1, 0xf5f5f0], [3, 0, 4, 2, 0xf5f5f0], [2, 1, 6, 1, 0xe8e8e0], [3, 2, 4, 3, 0xe8b48a], [4, 3, 1, 1, 0x111111], [2, 5, 6, 5, 0xe8e8e0], [1, 5, 2, 4, 0xe8b48a], [7, 5, 2, 4, 0xe8b48a], [3, 10, 1, 3, 0x3a3a3a], [6, 10, 1, 3, 0x3a3a3a]]),
+    pan: tex([[2, 2, 8, 2, 0x2b2b2b], [3, 3, 6, 2, 0x3d3d3d], [2, 4, 8, 1, 0x2b2b2b], [10, 2, 4, 2, 0x6b4a2b]]),
+    crate: tex([[0, 0, 14, 12, 0x6e4520], [1, 1, 12, 10, 0xa06c36], [1, 4, 12, 1, 0x8a5a2b], [1, 8, 12, 1, 0x8a5a2b], [6, 1, 2, 10, 0x8a5a2b]]),
+    dish: [
+      // boiled — white egg on a plate
+      tex([[0, 5, 10, 2, 0xd8d8e0], [3, 2, 4, 3, 0xfff6e0], [4, 1, 2, 1, 0xfff6e0]]),
+      // fried — white with a yolk
+      tex([[0, 5, 10, 2, 0xd8d8e0], [1, 3, 8, 2, 0xfff8f0], [2, 2, 6, 1, 0xfff8f0], [4, 3, 2, 2, 0xf2b53d]]),
+      // scrambled — a yellow pile
+      tex([[0, 5, 10, 2, 0xd8d8e0], [2, 3, 6, 2, 0xf2cf5d], [3, 2, 4, 1, 0xf2cf5d]]),
+      // poached — a pale cup
+      tex([[0, 5, 10, 2, 0xd8d8e0], [3, 2, 4, 3, 0xe8e8f0], [2, 4, 6, 1, 0xc8c8d8]]),
+      // omelette — a folded crescent
+      tex([[0, 5, 10, 2, 0xd8d8e0], [1, 3, 8, 2, 0xf2c04d], [2, 2, 5, 1, 0xf2c04d], [6, 2, 3, 1, 0xe8a53d]]),
+    ],
   };
 }
 

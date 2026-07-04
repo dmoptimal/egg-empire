@@ -49,14 +49,14 @@ export function createHud(deps: HudDeps): Hud {
 
   const moneyText = new BitmapText({
     text: "$0",
-    style: { fontFamily: HOT_FONT, fontSize: 16 },
+    style: { fontFamily: HOT_FONT, fontSize: 20 },
   });
   moneyText.tint = 0xffd94a;
   const moneyChip = makeChip([moneyText]);
 
   const featherText = new BitmapText({
     text: "0",
-    style: { fontFamily: HOT_FONT, fontSize: 16 },
+    style: { fontFamily: HOT_FONT, fontSize: 20 },
   });
   featherText.tint = 0x8fe3d0;
   const featherGlyph = new Text({ text: "🪶", style: { fontSize: 14 } });

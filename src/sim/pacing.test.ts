@@ -39,6 +39,8 @@ const NODE_ERA: Record<string, string> = {
   // Phase 3 support nodes
   ecap: "quail", sweep: "quail", combo: "quail",
   espoil: "goose", gold2: "goose", birdlot: "goose",
+  // Kitchen stations (money): each lands in its own era
+  st_boil: "ducks", st_fry: "quail", st_scr: "goose", st_poa: "ostrich",
 };
 
 /** Money nodes are one big purchase per level, each landing in its own era. */
@@ -51,6 +53,7 @@ const MONEY_LEVEL_ERAS: Record<string, string[]> = {
 const UNLOCK_ERAS: Record<string, string> = {
   sp1: "fresh", sp2: "ducks", sp3: "quail", sp4: "goose",
   kitchen: "ducks", // the gate should land like a species unlock (PLAN Phase 4)
+  st_oml: "ostrich", // the omelette spike lands like a species unlock too
 };
 
 const secsLabel = (s: number) => `${Math.round(s)}s (${(s / 60).toFixed(1)}min)`;

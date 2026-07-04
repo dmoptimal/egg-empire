@@ -6,23 +6,28 @@
 import { BitmapFont, Container, Graphics, type FederatedPointerEvent } from "pixi.js";
 
 export const FONT = "Pixelify Sans";
-/** BitmapFont family for hot text (HUD numbers, popups, basket labels). */
-export const HOT_FONT = "PixelifyHot";
+/**
+ * BitmapFont family for hot text (HUD numbers, popups, basket labels).
+ * Baked from VT323 rather than Pixelify: Pixelify's 6/8/9 are ambiguous at
+ * chip sizes, and numbers are what hot text mostly shows (Dan, 2026-07-04).
+ */
+export const HOT_FONT = "PixelHot";
 
 /**
- * Load the bundled font and bake the hot BitmapFont. Must complete before
+ * Load the bundled fonts and bake the hot BitmapFont. Must complete before
  * any Text is created, so boot awaits it right after app.init().
  */
 export async function loadPixelFont(): Promise<void> {
-  const face = new FontFace(FONT, "url(/fonts/PixelifySans.ttf)", { weight: "400 700" });
-  await face.load();
-  document.fonts.add(face);
+  const pixelify = new FontFace(FONT, "url(/fonts/PixelifySans.ttf)", { weight: "400 700" });
+  const vt323 = new FontFace("VT323", "url(/fonts/VT323.ttf)");
+  await Promise.all([pixelify.load(), vt323.load()]);
+  document.fonts.add(pixelify);
+  document.fonts.add(vt323);
   BitmapFont.install({
     name: HOT_FONT,
     style: {
-      fontFamily: FONT,
-      fontSize: 32,
-      fontWeight: "700",
+      fontFamily: "VT323",
+      fontSize: 40, // VT323 is condensed; bake large for crisp downscales
       fill: 0xffffff, // white glyphs — tint per instance; stroke stays black
       stroke: { color: "#000", width: 4 },
     },

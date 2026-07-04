@@ -8,7 +8,7 @@ import { Container, Graphics, Rectangle, Text, type FederatedPointerEvent } from
 import { audioInit } from "../audio/sfx";
 import { fmtMoney } from "../config/format";
 import { SPECIES } from "../config/species";
-import { birdCost, unlocked, type SimState } from "../sim";
+import { birdCost, kitchenUnlocked, unlocked, type SimState } from "../sim";
 import { FONT, pixelButton, pixelPanel } from "./kit";
 
 /** Bar content height (excludes the safe-area inset below it). */
@@ -35,6 +35,7 @@ interface ShopBtn {
 export interface Bar {
   refresh(): void;
   layout(w: number, h: number, safeBottom: number): void;
+  setScreen(screen: "farm" | "kitchen"): void;
 }
 
 export interface BarDeps {
@@ -42,6 +43,7 @@ export interface BarDeps {
   layer: Container;
   onBuyBird(species: number): void;
   onToggleTree(): void;
+  onScreen(screen: "farm" | "kitchen"): void;
 }
 
 const darken = (c: number, f: number): number => {
@@ -77,6 +79,35 @@ export function createBar(deps: BarDeps): Bar {
     },
   });
   layer.addChild(treeBtn.root);
+
+  // Farm/Kitchen tabs — hidden until the kitchen gate is bought.
+  const TAB_W = 44;
+  const makeTab = (emoji: string, screen: "farm" | "kitchen") => {
+    const label = new Text({ text: emoji, style: { fontSize: 18 } });
+    label.anchor.set(0.5);
+    const b = pixelButton({
+      w: TAB_W,
+      h: BTN_H,
+      face: 0x3a5a2f,
+      frame: FRAME,
+      content: label,
+      onTap: () => {
+        audioInit();
+        deps.onScreen(screen);
+      },
+    });
+    b.root.visible = false;
+    layer.addChild(b.root);
+    return b;
+  };
+  const tabFarm = makeTab("🐔", "farm");
+  const tabKitchen = makeTab("🍳", "kitchen");
+  let activeScreen: "farm" | "kitchen" = "farm";
+  let tabsShown = false;
+  const applyTabAlpha = (): void => {
+    tabFarm.root.alpha = activeScreen === "farm" ? 1 : 0.55;
+    tabKitchen.root.alpha = activeScreen === "kitchen" ? 1 : 0.55;
+  };
 
   const buttons: ShopBtn[] = [];
   let W = 390;
@@ -191,8 +222,41 @@ export function createBar(deps: BarDeps): Bar {
     }
   }
 
+  let lastH = 844;
+  let lastSafe = 0;
+  function relayout(): void {
+    layer.y = lastH - BAR_H - lastSafe;
+    const treeW = Math.max(96, Math.round(W * 0.26));
+    const tabsW = tabsShown ? 2 * (TAB_W + GAP) : 0;
+    stripW = W - PAD * 3 - treeW - tabsW;
+    face.clear();
+    face.rect(0, 0, W, BAR_H + lastSafe).fill(BAR_FACE);
+    treeBtn.resize(treeW, BTN_H);
+    treeBtn.root.position.set(W - PAD - treeW, PAD);
+    tabKitchen.root.position.set(W - PAD - treeW - GAP - TAB_W, PAD);
+    tabFarm.root.position.set(W - PAD - treeW - 2 * (GAP + TAB_W), PAD);
+    stripMask.clear();
+    stripMask.rect(PAD, PAD, stripW, BTN_H).fill(0xffffff);
+    stripHit.clear();
+    stripHit.rect(PAD, PAD, stripW, BTN_H).fill({ color: 0xffffff, alpha: 0.001 });
+    stripHit.hitArea = new Rectangle(PAD, PAD, stripW, BTN_H);
+    layoutStrip();
+  }
+
   return {
+    setScreen(screen: "farm" | "kitchen"): void {
+      activeScreen = screen;
+      applyTabAlpha();
+    },
     refresh(): void {
+      const showTabs = kitchenUnlocked(sim);
+      if (showTabs !== tabsShown) {
+        tabsShown = showTabs;
+        tabFarm.root.visible = showTabs;
+        tabKitchen.root.visible = showTabs;
+        relayout();
+        applyTabAlpha();
+      }
       ensureButtons();
       for (const b of buttons) {
         const c = birdCost(sim, b.species);
@@ -205,19 +269,9 @@ export function createBar(deps: BarDeps): Bar {
     },
     layout(w: number, h: number, safeBottom: number): void {
       W = w;
-      layer.y = h - BAR_H - safeBottom;
-      const treeW = Math.max(112, Math.round(W * 0.32));
-      stripW = W - PAD * 3 - treeW;
-      face.clear();
-      face.rect(0, 0, W, BAR_H + safeBottom).fill(BAR_FACE);
-      treeBtn.resize(treeW, BTN_H);
-      treeBtn.root.position.set(W - PAD - treeW, PAD);
-      stripMask.clear();
-      stripMask.rect(PAD, PAD, stripW, BTN_H).fill(0xffffff);
-      stripHit.clear();
-      stripHit.rect(PAD, PAD, stripW, BTN_H).fill({ color: 0xffffff, alpha: 0.001 });
-      stripHit.hitArea = new Rectangle(PAD, PAD, stripW, BTN_H);
-      layoutStrip();
+      lastH = h;
+      lastSafe = safeBottom;
+      relayout();
     },
   };
 }

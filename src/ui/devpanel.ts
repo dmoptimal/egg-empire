@@ -26,10 +26,34 @@ export function createDevPanel(deps: DevPanelDeps): void {
     "background:rgba(0,0,0,.75);border-radius:10px;padding:6px;display:flex;" +
     "flex-direction:column;gap:4px;font:11px/1.2 system-ui;color:#fff;max-width:170px";
 
+  // Collapsible: a slim header stays; everything else folds away.
+  const head = document.createElement("div");
+  head.style.cssText = "display:flex;justify-content:space-between;align-items:center;gap:6px";
+  const headTitle = document.createElement("span");
+  headTitle.textContent = "dev";
+  headTitle.style.cssText = "opacity:.7;font-weight:700";
+  const foldBtn = document.createElement("button");
+  foldBtn.id = "devfold";
+  foldBtn.textContent = "–";
+  foldBtn.style.cssText =
+    "font:inherit;color:#fff;background:#444;border:0;border-radius:6px;padding:1px 8px";
+  head.append(headTitle, foldBtn);
+  panel.appendChild(head);
+  const body = document.createElement("div");
+  body.style.cssText = "display:flex;flex-direction:column;gap:4px";
+  panel.appendChild(body);
+  let folded = false;
+  foldBtn.addEventListener("pointerdown", (e) => {
+    e.stopPropagation();
+    folded = !folded;
+    body.style.display = folded ? "none" : "flex";
+    foldBtn.textContent = folded ? "+" : "–";
+  });
+
   const row = (): HTMLDivElement => {
     const d = document.createElement("div");
     d.style.cssText = "display:flex;flex-wrap:wrap;gap:3px";
-    panel.appendChild(d);
+    body.appendChild(d);
     return d;
   };
 
@@ -49,7 +73,7 @@ export function createDevPanel(deps: DevPanelDeps): void {
     const t = document.createElement("div");
     t.textContent = text;
     t.style.cssText = "opacity:.7;font-weight:700;margin-top:2px";
-    panel.appendChild(t);
+    body.appendChild(t);
   };
 
   title("money");

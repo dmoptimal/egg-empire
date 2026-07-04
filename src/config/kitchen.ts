@@ -22,6 +22,13 @@ export const STATIONS: StationDef[] = [
 /** The Kitchen gate node price (money, duck era per the pacing bands). */
 export const KITCHEN_UNLOCK_COST = 250000;
 
+/**
+ * Station unlock prices (money), one per station in order — pulled forward
+ * from Phase 6 so the kitchen is playable the moment its screen exists.
+ * Omelette lands like a species unlock (PLAN: the late-game spike).
+ */
+export const STATION_COSTS = [50000, 3000000, 80000000, 800000000, 3000000000];
+
 export const PANTRY_BASE_CAP = 30;
 export const PANTRY_CAP_PER_LVL = 30; //  Phase 6 "Bigger pantry" (pantry node)
 export const COUNTER_BASE_CAP = 20;

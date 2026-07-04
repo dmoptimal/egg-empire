@@ -12,6 +12,8 @@ export interface Layers {
   baskets: Container;
   collectors: Container;
   trucks: Container;
+  /** The kitchen screen (own opaque bg) — shown instead of the farm layers. */
+  kitchen: Container;
   fx: Container;
   tree: Container;
   win: Container;
@@ -29,6 +31,7 @@ export function createLayers(stage: Container): Layers {
     baskets: new Container(),
     collectors: new Container(),
     trucks: new Container(),
+    kitchen: new Container(),
     fx: new Container(),
     tree: new Container(),
     win: new Container(),
@@ -38,6 +41,7 @@ export function createLayers(stage: Container): Layers {
   };
   layers.tree.visible = false;
   layers.win.visible = false;
+  layers.kitchen.visible = false;
   stage.addChild(
     layers.bg,
     layers.birds,
@@ -45,6 +49,7 @@ export function createLayers(stage: Container): Layers {
     layers.baskets,
     layers.collectors,
     layers.trucks,
+    layers.kitchen,
     layers.fx,
     layers.tree,
     layers.win,

@@ -10,6 +10,8 @@ import {
   buyBird,
   createSim,
   estimateOfflineIncome,
+  hireChef,
+  kitchenUnlocked,
   resize,
   restore,
   savedTreeView,
@@ -24,6 +26,7 @@ import {
 } from "./sim";
 import { clearSave, loadSave, writeSave } from "./storage";
 import { drawBackground } from "./render/background";
+import { createKitchenView } from "./render/kitchen";
 import { createBasketViews } from "./render/baskets";
 import { createBirds } from "./render/birds";
 import { createCollectorViews } from "./render/collectors";
@@ -100,11 +103,30 @@ async function boot(): Promise<void> {
     onToggleTree() {
       if (started) tree.toggle();
     },
+    onScreen(next) {
+      if (started) setScreen(next);
+    },
+  });
+  const kitchenView = createKitchenView(layers.kitchen, textures, {
+    onHireChef(station) {
+      if (hireChef(sim, station)) refreshAll();
+    },
   });
   const refreshAll = (): void => {
     hud.refresh();
     bar.refresh();
+    kitchenView.refresh(sim);
   };
+  // Screens are views over the always-running sims (PLAN Phase 5).
+  let screen: "farm" | "kitchen" = "farm";
+  const farmLayers = [layers.bg, layers.birds, layers.eggs, layers.baskets, layers.collectors, layers.trucks];
+  function setScreen(next: "farm" | "kitchen"): void {
+    if (next === "kitchen" && !kitchenUnlocked(sim)) return;
+    screen = next;
+    layers.kitchen.visible = next === "kitchen";
+    for (const l of farmLayers) l.visible = next === "farm";
+    bar.setScreen(next);
+  }
   const tree = createTree({
     overlay: layers.tree,
     sim,
@@ -138,6 +160,7 @@ async function boot(): Promise<void> {
     birds.clamp(sim.layout);
     hud.layout();
     bar.layout(W, H, safe.bottom);
+    kitchenView.layout(sim);
     if (startScreen.visible) startScreen.position(sim.layout);
   }
 
@@ -189,6 +212,8 @@ async function boot(): Promise<void> {
       case "payout":
         popups.spawn(ev.basket.x, sim.layout.basketY - 70, "+" + fmtMoney(ev.money), 0x7ef25d, 24);
         popups.spawn(ev.basket.x, sim.layout.basketY - 44, `+${fmt(ev.feathers)} 🪶`, 0x8fe3d0, 16);
+        if (ev.routed > 0)
+          popups.spawn(ev.basket.x, sim.layout.basketY - 96, `→ 🍳 ${ev.routed}`, 0xf2cf5d, 13);
         SFX.kaching();
         refreshAll();
         break;
@@ -205,16 +230,28 @@ async function boot(): Promise<void> {
       case "kitchen-truck-dispatched":
         SFX.honk();
         break;
-      case "kitchen-payout":
-        SFX.kaching();
+      case "kitchen-payout": {
+        SFX.kachingUp();
+        const stopX = sim.layout.w - 52;
+        if (screen === "kitchen") {
+          popups.spawn(stopX, sim.layout.roadY - 60, "+" + fmtMoney(ev.money), 0x7ef25d, 22);
+          popups.spawn(stopX, sim.layout.roadY - 36, `+${fmt(ev.feathers)} 🪶`, 0x8fe3d0, 15);
+        }
         refreshAll();
         break;
+      }
       case "chef-hired":
         SFX.buy();
         refreshAll();
         break;
-      case "dish-cooked":
-        break; // plate ding + popup arrive with the Phase 5 kitchen screen
+      case "dish-cooked": {
+        SFX.ding();
+        if (screen === "kitchen") {
+          const pos = kitchenView.stationPos(ev.dish.station);
+          popups.spawn(pos.x, pos.y - 10, "+" + fmtMoney(ev.dish.value), ev.dish.golden ? 0xffd24a : 0xfff3da, 12);
+        }
+        break;
+      }
       case "won":
         SFX.win();
         winScreen.show(sim.layout);
@@ -244,6 +281,7 @@ async function boot(): Promise<void> {
       tree.onDown(ev);
       return;
     }
+    if (screen !== "farm") return; // kitchen taps are buttons only
     const { x, y } = ev.global;
     pointers.set(ev.pointerId, { x, y });
     sweepCollect(sim, x, y, x, y);
@@ -254,7 +292,7 @@ async function boot(): Promise<void> {
       return;
     }
     const p = pointers.get(ev.pointerId);
-    if (!p) return;
+    if (!p || screen !== "farm") return;
     const { x, y } = ev.global;
     // Segment sweep: fast flicks collect everything along the path.
     sweepCollect(sim, p.x, p.y, x, y);
@@ -295,7 +333,7 @@ async function boot(): Promise<void> {
     }
 
     heldBuf.length = 0;
-    if (!tree.isOpen()) pointers.forEach((p) => heldBuf.push(p)); // hold = per-frame vacuum
+    if (!tree.isOpen() && screen === "farm") pointers.forEach((p) => heldBuf.push(p)); // hold = per-frame vacuum
     for (let i = 0; i < devSpeed; i++) tick(sim, dt, hooks, heldBuf);
 
     for (const ev of sim.events) dispatch(ev);
@@ -304,6 +342,11 @@ async function boot(): Promise<void> {
     birds.sync(sim);
     basketViews.sync(sim);
     collectorViews.sync(sim);
+
+    if (screen === "kitchen") {
+      kitchenView.update(sim, now);
+      if (sim.kitchen.cooking.length > 0) SFX.sizzle();
+    }
 
     eggSprites.update(sim, now, dt);
     basketViews.update(sim, dt);

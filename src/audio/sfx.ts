@@ -90,6 +90,7 @@ let comboN = 0;
 let lastPopT = 0;
 let lastLandT = 0;
 let lastSpoilT = 0;
+let lastSizzleT = 0;
 
 export const SFX = {
   pop(golden: boolean): void {
@@ -149,6 +150,25 @@ export const SFX = {
     const f = 750 + Math.random() * 500;
     noise(0.045, { freq: f + 400, vol: 0.05, q: 5 });
     noise(0.07, { freq: f, vol: 0.07, q: 4, delay: 0.07 });
+  },
+  /** Quiet pan noise while anything cooks — self-throttled. */
+  sizzle(): void {
+    const now = performance.now();
+    if (now - lastSizzleT < 400) return;
+    lastSizzleT = now;
+    noise(0.35, { freq: 5200, vol: 0.028, q: 1.4 });
+  },
+  /** Plate ding on dish completion. */
+  ding(): void {
+    tone(1568, 0.09, { type: "sine", vol: 0.12 });
+    tone(2093, 0.12, { type: "sine", vol: 0.08, delay: 0.05 });
+  },
+  /** The kitchen truck's cha-ching, pitched up from the farm one. */
+  kachingUp(): void {
+    tone(1555, 0.07, { type: "square", vol: 0.14 });
+    tone(2075, 0.2, { type: "square", vol: 0.14, delay: 0.07 });
+    noise(0.18, { freq: 8000, vol: 0.08, q: 2, delay: 0.05 });
+    tone(112, 0.1, { type: "sine", vol: 0.14 });
   },
   win(): void {
     [523, 659, 784, 1046, 1318].forEach((f, i) => tone(f, 0.16, { type: "square", vol: 0.18, delay: i * 0.12 }));
