@@ -4,11 +4,12 @@
 // can never purchase. Newest unlocked species sits leftmost, like the
 // prototype's insertBefore(firstChild).
 
-import { Container, Graphics, Rectangle, Text, type FederatedPointerEvent } from "pixi.js";
+import { Container, Graphics, Rectangle, Sprite, Text, type FederatedPointerEvent } from "pixi.js";
 import { audioInit } from "../audio/sfx";
 import { fmtMoney } from "../config/format";
 import { SPECIES } from "../config/species";
 import { birdCost, kitchenUnlocked, unlocked, type SimState } from "../sim";
+import type { Textures } from "../render/textures";
 import { FONT, pixelButton, pixelPanel } from "./kit";
 
 /** Bar content height (excludes the safe-area inset below it). */
@@ -41,6 +42,7 @@ export interface Bar {
 export interface BarDeps {
   sim: SimState;
   layer: Container;
+  textures: Textures;
   onBuyBird(species: number): void;
   onToggleTree(): void;
   onScreen(screen: "farm" | "kitchen"): void;
@@ -62,11 +64,18 @@ export function createBar(deps: BarDeps): Bar {
   const stripHit = new Graphics(); // transparent gesture surface over the strip
   layer.addChild(face, strip, stripMask, stripHit);
 
-  const treeLabel = new Text({
-    text: "Skill tree 🪶",
+  const treeText = new Text({
+    text: "Skill tree",
     style: { fontFamily: FONT, fontSize: 14, fontWeight: "700", fill: "#fff" },
   });
-  treeLabel.anchor.set(0.5);
+  treeText.anchor.set(0.5);
+  const treeFeather = new Sprite(deps.textures.icons.feather);
+  treeFeather.anchor.set(0, 0.5);
+  treeFeather.scale.set(1.8);
+  const treeLabel = new Container();
+  treeText.x = -Math.ceil(treeFeather.width / 2) - 2;
+  treeFeather.position.set(treeText.x + treeText.width / 2 + 4, 0);
+  treeLabel.addChild(treeText, treeFeather);
   const treeBtn = pixelButton({
     w: 112,
     h: BTN_H,
@@ -82,8 +91,8 @@ export function createBar(deps: BarDeps): Bar {
 
   // Farm/Kitchen tabs — hidden until the kitchen gate is bought.
   const TAB_W = 44;
-  const makeTab = (emoji: string, screen: "farm" | "kitchen") => {
-    const label = new Text({ text: emoji, style: { fontSize: 18 } });
+  const makeTab = (icon: Sprite, screen: "farm" | "kitchen") => {
+    const label = icon;
     label.anchor.set(0.5);
     const b = pixelButton({
       w: TAB_W,
@@ -100,8 +109,12 @@ export function createBar(deps: BarDeps): Bar {
     layer.addChild(b.root);
     return b;
   };
-  const tabFarm = makeTab("🐔", "farm");
-  const tabKitchen = makeTab("🍳", "kitchen");
+  const farmIcon = new Sprite(deps.textures.bird[0]);
+  farmIcon.scale.set(2);
+  const kitchenIcon = new Sprite(deps.textures.pan);
+  kitchenIcon.scale.set(2.2);
+  const tabFarm = makeTab(farmIcon, "farm");
+  const tabKitchen = makeTab(kitchenIcon, "kitchen");
   let activeScreen: "farm" | "kitchen" = "farm";
   let tabsShown = false;
   const applyTabAlpha = (): void => {

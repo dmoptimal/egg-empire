@@ -70,6 +70,7 @@ export function createCollectorViews(layer: Container, textures: Textures): Coll
         if (!c) continue;
         v.root.position.set(c.x, c.y);
         v.root.scale.x = 3 * c.facing;
+        v.bagTxt.scale.x = c.facing; // counter-flip so the count never mirrors
         const top = c.bag.length ? c.bag[c.bag.length - 1] : null;
         const topKey = top ? top.species * 2 + (top.golden ? 1 : 0) : -1;
         if (topKey !== v.lastTopKey) {

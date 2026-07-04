@@ -43,6 +43,12 @@ import { createTree } from "./ui/tree";
 
 async function boot(): Promise<void> {
   TextureSource.defaultOptions.scaleMode = "nearest";
+  if (new URLSearchParams(location.search).get("gfx") === "1") {
+    // Art-reference gallery instead of the game (see src/gfx.ts).
+    const { showGallery } = await import("./gfx");
+    await showGallery();
+    return;
+  }
   const gameDiv = document.getElementById("game")!;
   const app = new Application();
   await app.init({
@@ -66,7 +72,7 @@ async function boot(): Promise<void> {
     if (off.money > 0 || off.feathers > 0) {
       sim.money += off.money;
       sim.feathers += off.feathers;
-      offlineMsg = `Welcome back! +${fmtMoney(off.money)} · +${fmt(off.feathers)} 🪶 while away`;
+      offlineMsg = `Welcome back! +${fmtMoney(off.money)} and +${fmt(off.feathers)} feathers while away`;
     }
   }
   // State-jumps (era presets, reset) write their target save and reload;
@@ -91,12 +97,13 @@ async function boot(): Promise<void> {
   const collectorViews = createCollectorViews(layers.collectors, textures);
   const popups = createPopups(layers.fx);
   const startScreen = createStartScreen(layers.start, textures);
-  const winScreen = createWinScreen(layers.win);
+  const winScreen = createWinScreen(layers.win, textures);
 
-  const hud = createHud({ sim, layer: layers.uiTop });
+  const hud = createHud({ sim, layer: layers.uiTop, textures });
   const bar = createBar({
     sim,
     layer: layers.bar,
+    textures,
     onBuyBird(species) {
       if (buyBird(sim, species)) refreshAll();
     },
@@ -194,7 +201,7 @@ async function boot(): Promise<void> {
           ev.egg.sy - 14,
           "+" + fmtMoney(ev.egg.value),
           ev.egg.golden ? 0xffd24a : 0xfff3da,
-          ev.egg.golden ? 18 : 13,
+          ev.egg.golden ? 22 : 16,
         );
         if (!hinted) {
           hinted = true;
@@ -203,17 +210,21 @@ async function boot(): Promise<void> {
         break;
       case "baskets-full":
         basketViews.wiggleAll();
-        popups.spawn(sim.baskets[0].x, sim.layout.basketY - 70, "Baskets full!", 0xff8a8a, 14);
+        if (screen === "farm")
+          popups.spawn(sim.baskets[0].x, sim.layout.basketY - 70, "Baskets full!", 0xff8a8a, 15);
         SFX.donk();
         break;
       case "truck-dispatched":
         SFX.honk();
         break;
       case "payout":
-        popups.spawn(ev.basket.x, sim.layout.basketY - 70, "+" + fmtMoney(ev.money), 0x7ef25d, 24);
-        popups.spawn(ev.basket.x, sim.layout.basketY - 44, `+${fmt(ev.feathers)} 🪶`, 0x8fe3d0, 16);
-        if (ev.routed > 0)
-          popups.spawn(ev.basket.x, sim.layout.basketY - 96, `→ 🍳 ${ev.routed}`, 0xf2cf5d, 13);
+        // farm popups stay on the farm — the kitchen screen has its own
+        if (screen === "farm") {
+          popups.spawn(ev.basket.x, sim.layout.basketY - 70, "+" + fmtMoney(ev.money), 0x7ef25d, 24);
+          popups.spawn(ev.basket.x, sim.layout.basketY - 44, `+${fmt(ev.feathers)}`, 0x8fe3d0, 17, textures.icons.feather);
+          if (ev.routed > 0)
+            popups.spawn(ev.basket.x, sim.layout.basketY - 96, `→ ${ev.routed}`, 0xf2cf5d, 15, textures.pan);
+        }
         SFX.kaching();
         refreshAll();
         break;
@@ -235,7 +246,7 @@ async function boot(): Promise<void> {
         const stopX = sim.layout.w - 52;
         if (screen === "kitchen") {
           popups.spawn(stopX, sim.layout.roadY - 60, "+" + fmtMoney(ev.money), 0x7ef25d, 22);
-          popups.spawn(stopX, sim.layout.roadY - 36, `+${fmt(ev.feathers)} 🪶`, 0x8fe3d0, 15);
+          popups.spawn(stopX, sim.layout.roadY - 36, `+${fmt(ev.feathers)}`, 0x8fe3d0, 16, textures.icons.feather);
         }
         refreshAll();
         break;
@@ -257,7 +268,7 @@ async function boot(): Promise<void> {
         winScreen.show(sim.layout);
         for (let i = 0; i < 20; i++)
           setTimeout(
-            () => popups.spawn(Math.random() * W, H * 0.3 + Math.random() * H * 0.4, "🪶", 0x8fe3d0, 22),
+            () => popups.spawn(Math.random() * W, H * 0.3 + Math.random() * H * 0.4, "", 0x8fe3d0, 22, textures.icons.feather),
             i * 120,
           );
         break;
@@ -321,7 +332,7 @@ async function boot(): Promise<void> {
     hud.update(dt); // hint/toast fades run on every screen
 
     if (!started) {
-      startScreen.update(now);
+      startScreen.update(now, dt, sim.layout);
       return;
     }
 

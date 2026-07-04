@@ -31,7 +31,7 @@ export async function loadPixelFont(): Promise<void> {
       fill: 0xffffff, // white glyphs — tint per instance; stroke stays black
       stroke: { color: "#000", width: 4 },
     },
-    chars: [[" ", "~"], "×’🪶"],
+    chars: [[" ", "~"], "×’→"],
     resolution: 2,
   });
 }

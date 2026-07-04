@@ -153,7 +153,7 @@ export function createTree(deps: TreeDeps): TreeUI {
     } else if (id[0] === "w") {
       c.addChild(centeredText("$", { fill: "#ffd94a", fontSize: 24, fontWeight: "700" }));
     } else if (id[0] === "s") {
-      c.addChild(centeredText("⚡", { fontSize: 20 }));
+      c.addChild(spriteIcon(textures.icons.bolt, 2.2));
     } else if (id[0] === "g") {
       c.addChild(spriteIcon(textures.gold, 4));
     } else if (id === "bsize" || id === "bextra") {
@@ -161,32 +161,37 @@ export function createTree(deps: TreeDeps): TreeUI {
       if (id === "bextra") c.addChild(plus());
     } else if (id === "tspd" || id === "ttime") {
       c.addChild(spriteIcon(textures.truck, 1.5));
-      const t = centeredText(id === "tspd" ? "⚡" : "⏱", { fontSize: 14 });
-      t.position.set(13, -10);
-      c.addChild(t);
+      const badge = spriteIcon(id === "tspd" ? textures.icons.bolt : textures.icons.clock, 1.4);
+      badge.position.set(13, -10);
+      c.addChild(badge);
     } else if (id === "coll" || id === "hire") {
       c.addChild(spriteIcon(textures.coll, 2));
       if (id === "hire") c.addChild(plus());
     } else if (id === "cspd") {
-      c.addChild(centeredText("💨", { fontSize: 20 }));
+      c.addChild(spriteIcon(textures.icons.wind, 2.2));
     } else if (id === "cbag") {
-      c.addChild(centeredText("🎒", { fontSize: 20 }));
+      c.addChild(spriteIcon(textures.icons.bag, 2.4));
     } else if (id === "cval") {
-      c.addChild(centeredText("🤲", { fontSize: 20 }));
+      c.addChild(spriteIcon(textures.icons.hands, 2.4));
     } else if (id === "fth") {
-      c.addChild(centeredText("🪶", { fontSize: 20 }));
+      c.addChild(spriteIcon(textures.icons.feather, 2.6));
     } else if (id === "ecap") {
-      c.addChild(centeredText("🌾", { fontSize: 20 }));
+      c.addChild(spriteIcon(textures.icons.hay, 2.4));
     } else if (id === "espoil") {
-      c.addChild(centeredText("⏳", { fontSize: 20 }));
+      c.addChild(spriteIcon(textures.icons.hourglass, 2.4));
     } else if (id === "sweep") {
-      c.addChild(centeredText("🖐", { fontSize: 20 }));
+      c.addChild(spriteIcon(textures.icons.sweep, 2.4));
     } else if (id === "combo") {
-      c.addChild(centeredText("🔥", { fontSize: 20 }));
+      c.addChild(spriteIcon(textures.icons.flame, 2.4));
     } else if (id === "gold2") {
-      c.addChild(centeredText("🪙", { fontSize: 20 }));
+      c.addChild(spriteIcon(textures.icons.coin, 2.4));
     } else if (id === "birdlot") {
-      c.addChild(centeredText("🏷", { fontSize: 20 }));
+      c.addChild(spriteIcon(textures.icons.tag, 2.6));
+    } else if (id === "kitchen") {
+      c.addChild(spriteIcon(textures.pan, 2.2));
+    } else if (id.startsWith("st_")) {
+      const idx = ["st_boil", "st_fry", "st_scr", "st_poa", "st_oml"].indexOf(id);
+      c.addChild(spriteIcon(textures.dish[idx], 2.4));
     }
     return c;
   }
@@ -253,8 +258,10 @@ export function createTree(deps: TreeDeps): TreeUI {
     });
     let costLabel: string;
     let affordable: boolean;
+    let featherCost = false;
     if (!maxed) {
-      costLabel = n.cur === "money" ? fmtMoney(nodeCost(sim, n)) : `${fmt(nodeCost(sim, n))} 🪶`;
+      featherCost = n.cur === "feathers";
+      costLabel = n.cur === "money" ? fmtMoney(nodeCost(sim, n)) : fmt(nodeCost(sim, n));
       affordable = canAfford(sim, n);
     } else if (isSpecies) {
       const i = Number(n.id.slice(2));
@@ -296,6 +303,13 @@ export function createTree(deps: TreeDeps): TreeUI {
     popover.addChild(pips);
     cost.position.set(12, pipY + 12);
     popover.addChild(cost);
+    if (featherCost) {
+      const fIcon = new Sprite(textures.icons.feather);
+      fIcon.anchor.set(0, 0.5);
+      fIcon.scale.set(1.6);
+      fIcon.position.set(12 + Math.ceil(cost.width) + 5, pipY + 12 + cost.height / 2);
+      popover.addChild(fIcon);
+    }
 
     // placement: beside the node, flipped to stay on screen, never covering it
     const nsx = view.x + n.x * view.s;

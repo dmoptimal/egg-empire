@@ -26,4 +26,4 @@ export const EGG_CAP = 80;        // ground + falling eggs; oldest spoils beyond
 export const EGG_LIFE = 25;       // seconds before a ground egg spoils
 export const BIRD_VIEW_CAP = 22;  // rendered birds per species (sim count may exceed)
 export const BASKET_BASE_CAP = 12;
-export const TRUCK_SCHEDULE = [0, 30, 24, 18, 14, 10]; // seconds, by ttime level
+export const TRUCK_SCHEDULE = [0, 20, 14, 9, 6, 4]; // seconds, by ttime level (steepened: full baskets used to always preempt the countdown)

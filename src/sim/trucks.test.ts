@@ -30,15 +30,15 @@ describe("truck schedule gating", () => {
 
   it("the schedule timer only accumulates while the basket holds eggs", () => {
     const s = quietSim();
-    s.n.ttime = 1; // 30s schedule
-    step(s, 20, constHooks(0.5));
+    s.n.ttime = 1; // 20s schedule
+    step(s, 15, constHooks(0.5));
     expect(s.baskets[0].sched).toBe(0); // empty: no accumulation
 
     s.baskets[0].count = 1;
     s.baskets[0].value = 10;
     step(s, 10.5, constHooks(0.5));
     expect(s.baskets[0].sched).toBeCloseTo(10.5, 5);
-    expect(truckCountdown(s, s.baskets[0])).toBe(20); // ceil(30 - 10.5)
+    expect(truckCountdown(s, s.baskets[0])).toBe(10); // ceil(20 - 10.5)
 
     s.baskets[0].count = 0; // emptied again → timer resets
     tick(s, 1 / 60, constHooks(0.5));
@@ -48,10 +48,10 @@ describe("truck schedule gating", () => {
 
   it("dispatches a part-full basket once the schedule elapses", () => {
     const s = quietSim();
-    s.n.ttime = 5; // 10s schedule at max level
+    s.n.ttime = 5; // 4s schedule at max level
     s.baskets[0].count = 3;
     s.baskets[0].value = 30;
-    step(s, 9.9, constHooks(0.5));
+    step(s, 3.9, constHooks(0.5));
     expect(s.baskets[0].truckState).toBe("idle");
     step(s, 0.3, constHooks(0.5));
     expect(s.baskets[0].truckState).not.toBe("idle");
@@ -127,8 +127,8 @@ describe("end to end: lay → sweep → deposit → scheduled truck → payout",
     expect(s.baskets[0].count).toBe(1);
     expect(s.baskets[0].value).toBe(10);
 
-    s.n.ttime = 1; // 30s schedule
-    step(s, 33, hooks); // 30s gate + drive + load
+    s.n.ttime = 1; // 20s schedule
+    step(s, 23, hooks); // 20s gate + drive + load
     expect(s.money).toBe(10);
     expect(s.feathers).toBe(1);
     expect(s.totalDelivered).toBe(1);
@@ -141,9 +141,9 @@ describe("countdown display helper", () => {
     const s = quietSim();
     s.n.ttime = 1;
     s.baskets[0].count = 1;
-    expect(truckCountdown(s, s.baskets[0])).toBe(30);
+    expect(truckCountdown(s, s.baskets[0])).toBe(20);
     step(s, 12.5, constHooks(0.5));
-    expect(truckCountdown(s, s.baskets[0])).toBe(18); // ceil(30 - 12.5)
+    expect(truckCountdown(s, s.baskets[0])).toBe(8); // ceil(20 - 12.5)
     s.baskets[0].count = 12;
     expect(truckCountdown(s, s.baskets[0])).toBeNull(); // full → dispatching
   });

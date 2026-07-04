@@ -20,6 +20,7 @@ interface BasketView {
   topEggs: Sprite[];
   label: BitmapText;
   timer: Text;
+  timerIcon: Sprite;
   truck: Sprite;
   wiggle: number;
   shownT: number;
@@ -76,13 +77,17 @@ export function createBasketViews(
       },
     });
     timer.anchor.set(0.5, 1);
+    const timerIcon = new Sprite(textures.truck);
+    timerIcon.anchor.set(1, 1);
+    timerIcon.scale.set(0.9);
+    timerIcon.visible = false;
     const truck = new Sprite(textures.truck);
     truck.anchor.set(0.5, 1);
     truck.scale.set(3);
     truck.x = -120;
     basketLayer.addChild(root);
-    truckLayer.addChild(truck, label, timer);
-    views.push({ root, fill, topEggs, label, timer, truck, wiggle: 0, shownT: -1, lastCount: -1, lastCap: -1 });
+    truckLayer.addChild(truck, label, timer, timerIcon);
+    views.push({ root, fill, topEggs, label, timer, timerIcon, truck, wiggle: 0, shownT: -1, lastCount: -1, lastCap: -1 });
   }
 
   function redrawFill(sim: SimState, i: number): void {
@@ -139,7 +144,9 @@ export function createBasketViews(
         const shown = left ?? -1;
         if (shown !== v.shownT) {
           v.shownT = shown;
-          v.timer.text = left === null ? "" : `🚚 ${left}s`;
+          v.timer.text = left === null ? "" : `${left}s`;
+          v.timerIcon.visible = left !== null;
+          v.timerIcon.x = v.timer.x - v.timer.width / 2 - 4;
         }
         if (v.wiggle > 0) {
           v.wiggle -= dt * 3;

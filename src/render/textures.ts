@@ -19,6 +19,24 @@ export interface Textures {
   crate: Texture;
   /** One plated dish per station (boiled → omelette). */
   dish: Texture[];
+  /** Pixel icon set — the game uses no emoji glyphs anywhere. */
+  icons: {
+    feather: Texture;
+    speakerOn: Texture;
+    speakerOff: Texture;
+    bolt: Texture;
+    clock: Texture;
+    wind: Texture;
+    bag: Texture;
+    hands: Texture;
+    hay: Texture;
+    hourglass: Texture;
+    sweep: Texture;
+    flame: Texture;
+    coin: Texture;
+    tag: Texture;
+    trophy: Texture;
+  };
 }
 
 export function makeTextures(renderer: Renderer): Textures {
@@ -72,6 +90,23 @@ export function makeTextures(renderer: Renderer): Textures {
       // omelette — a folded crescent
       tex([[0, 5, 10, 2, 0xd8d8e0], [1, 3, 8, 2, 0xf2c04d], [2, 2, 5, 1, 0xf2c04d], [6, 2, 3, 1, 0xe8a53d]]),
     ],
+    icons: {
+      feather: tex([[5, 0, 2, 1, 0x8fe3d0], [4, 1, 3, 1, 0x8fe3d0], [3, 2, 4, 1, 0x8fe3d0], [2, 3, 4, 1, 0x8fe3d0], [1, 4, 4, 1, 0x8fe3d0], [0, 5, 4, 1, 0x8fe3d0], [0, 6, 2, 1, 0x8fe3d0], [5, 1, 1, 1, 0x5aa898], [4, 2, 1, 1, 0x5aa898], [3, 3, 1, 1, 0x5aa898], [2, 4, 1, 1, 0x5aa898], [1, 5, 1, 1, 0x5aa898]]),
+      speakerOn: tex([[0, 3, 2, 4, 0xe8e8e8], [2, 2, 2, 6, 0xe8e8e8], [4, 0, 2, 10, 0xe8e8e8], [7, 3, 1, 4, 0xbfe3ff], [8, 1, 1, 3, 0xbfe3ff], [8, 6, 1, 3, 0xbfe3ff]]),
+      speakerOff: tex([[0, 3, 2, 4, 0x9a9a9a], [2, 2, 2, 6, 0x9a9a9a], [4, 0, 2, 10, 0x9a9a9a], [7, 2, 1, 2, 0xff8a8a], [9, 2, 1, 2, 0xff8a8a], [8, 4, 1, 2, 0xff8a8a], [7, 6, 1, 2, 0xff8a8a], [9, 6, 1, 2, 0xff8a8a]]),
+      bolt: tex([[3, 0, 3, 1, 0xffd94a], [2, 1, 3, 1, 0xffd94a], [1, 2, 3, 1, 0xffd94a], [0, 3, 6, 1, 0xffd94a], [3, 4, 3, 1, 0xffd94a], [2, 5, 3, 1, 0xffd94a], [1, 6, 2, 1, 0xffd94a]]),
+      clock: tex([[2, 0, 4, 1, 0xdfefff], [1, 1, 1, 1, 0xdfefff], [6, 1, 1, 1, 0xdfefff], [0, 2, 1, 4, 0xdfefff], [7, 2, 1, 4, 0xdfefff], [1, 6, 1, 1, 0xdfefff], [6, 6, 1, 1, 0xdfefff], [2, 7, 4, 1, 0xdfefff], [4, 2, 1, 3, 0x8fe3d0], [4, 4, 2, 1, 0x8fe3d0]]),
+      wind: tex([[0, 1, 6, 1, 0xdfefff], [6, 0, 1, 1, 0xdfefff], [2, 3, 7, 1, 0xbfe3ff], [0, 5, 5, 1, 0xdfefff], [5, 6, 1, 1, 0xdfefff]]),
+      bag: tex([[2, 0, 1, 2, 0x8a3a30], [5, 0, 1, 2, 0x8a3a30], [1, 2, 6, 2, 0xa03028], [1, 4, 6, 4, 0xc0453a], [3, 5, 2, 2, 0xe8b431]]),
+      hands: tex([[0, 3, 3, 2, 0xe8b48a], [5, 3, 3, 2, 0xe8b48a], [1, 5, 6, 2, 0xe8b48a], [2, 2, 1, 1, 0xe8b48a], [5, 2, 1, 1, 0xe8b48a], [3, 6, 2, 1, 0xd8a077]]),
+      hay: tex([[3, 0, 1, 5, 0xd9b45a], [1, 1, 1, 4, 0xd9b45a], [5, 1, 1, 4, 0xd9b45a], [2, 2, 1, 3, 0xc79f45], [4, 2, 1, 3, 0xc79f45], [1, 5, 5, 2, 0xc79f45]]),
+      hourglass: tex([[0, 0, 7, 1, 0xdfefff], [1, 1, 5, 1, 0xf2cf5d], [2, 2, 3, 1, 0xf2cf5d], [3, 3, 1, 1, 0xd9b45a], [2, 4, 3, 1, 0x6a5a48], [1, 5, 5, 1, 0xf2cf5d], [0, 6, 7, 1, 0xdfefff]]),
+      sweep: tex([[0, 1, 1, 2, 0xe8b48a], [2, 0, 1, 3, 0xe8b48a], [4, 0, 1, 3, 0xe8b48a], [6, 1, 1, 2, 0xe8b48a], [1, 3, 6, 3, 0xe8b48a], [1, 6, 5, 1, 0xd8a077]]),
+      flame: tex([[3, 0, 1, 1, 0xff9a3d], [2, 1, 2, 2, 0xff9a3d], [4, 2, 2, 2, 0xff6a2b], [1, 3, 5, 2, 0xff6a2b], [2, 5, 3, 2, 0xffd94a], [3, 4, 2, 2, 0xffd94a]]),
+      coin: tex([[2, 0, 4, 1, 0xffd24a], [1, 1, 6, 1, 0xffd24a], [0, 2, 8, 3, 0xffd24a], [1, 5, 6, 1, 0xffd24a], [2, 6, 4, 1, 0xffd24a], [3, 2, 2, 3, 0xe8b431]]),
+      tag: tex([[0, 2, 5, 4, 0xd9b45a], [5, 3, 1, 2, 0xd9b45a], [6, 4, 1, 1, 0xd9b45a], [1, 3, 1, 1, 0x6a5a48]]),
+      trophy: tex([[0, 1, 1, 2, 0xffd24a], [7, 1, 1, 2, 0xffd24a], [1, 0, 6, 1, 0xffd24a], [1, 1, 6, 3, 0xe8b431], [2, 4, 4, 1, 0xffd24a], [3, 5, 2, 2, 0xe8b431], [2, 7, 4, 1, 0xffd24a]]),
+    },
   };
 }
 

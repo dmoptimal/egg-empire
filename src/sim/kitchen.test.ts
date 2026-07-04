@@ -137,9 +137,9 @@ describe("the kitchen truck", () => {
 
   it("the shared truck-schedule tech collects part-full counters", () => {
     const s = kitchenSim();
-    s.n.ttime = 5; // 10s schedule
+    s.n.ttime = 5; // 4s schedule
     s.kitchen.counter.push({ station: 0, value: 30, feathers: 1, golden: false });
-    step(s, 9.5, constHooks(0.5));
+    step(s, 3.5, constHooks(0.5));
     expect(s.kitchen.truck.truckState).toBe("idle");
     step(s, 3, constHooks(0.5));
     expect(s.money).toBe(30);

@@ -2,10 +2,11 @@
 // all in-canvas pixel panels with BitmapFont numbers. The bottom bar lives
 // in ./bar.ts.
 
-import { BitmapText, Container, Graphics, Rectangle, Text } from "pixi.js";
+import { BitmapText, Container, Graphics, Rectangle, Sprite, Text } from "pixi.js";
 import { toggleMute } from "../audio/sfx";
 import { fmt, fmtMoney } from "../config/format";
 import type { SimState } from "../sim";
+import type { Textures } from "../render/textures";
 import { attachTap, FONT, HOT_FONT, pixelPanel, safeInsets } from "./kit";
 
 export interface Hud {
@@ -20,6 +21,7 @@ export interface Hud {
 export interface HudDeps {
   sim: SimState;
   layer: Container;
+  textures: Textures;
 }
 
 const CHIP_H = 30;
@@ -35,7 +37,7 @@ interface Chip {
 }
 
 export function createHud(deps: HudDeps): Hud {
-  const { sim, layer } = deps;
+  const { sim, layer, textures } = deps;
 
   const makeChip = (content: Container[], tappable?: () => void): Chip => {
     const root = new Container();
@@ -59,13 +61,14 @@ export function createHud(deps: HudDeps): Hud {
     style: { fontFamily: HOT_FONT, fontSize: 20 },
   });
   featherText.tint = 0x8fe3d0;
-  const featherGlyph = new Text({ text: "🪶", style: { fontSize: 14 } });
+  const featherGlyph = new Sprite(textures.icons.feather);
+  featherGlyph.scale.set(2);
   const featherChip = makeChip([featherText, featherGlyph]);
 
-  const muteText = new Text({ text: "🔊", style: { fontSize: 15 } });
-  const muteChip = makeChip([muteText], () => {
-    muteText.text = toggleMute() ? "🔇" : "🔊";
-    layoutChips();
+  const muteIcon = new Sprite(textures.icons.speakerOn);
+  muteIcon.scale.set(1.6);
+  const muteChip = makeChip([muteIcon], () => {
+    muteIcon.texture = toggleMute() ? textures.icons.speakerOff : textures.icons.speakerOn;
   });
   // 44px+ hit target without growing the visual chip.
   muteChip.root.hitArea = new Rectangle(-5, -8, 44, 46);
@@ -122,9 +125,9 @@ export function createHud(deps: HudDeps): Hud {
     moneyText.position.set(CHIP_PAD, Math.round((CHIP_H - moneyText.height) / 2));
     featherText.position.set(CHIP_PAD, Math.round((CHIP_H - featherText.height) / 2));
     featherGlyph.position.set(CHIP_PAD + featherText.width + 6, Math.round((CHIP_H - featherGlyph.height) / 2));
-    muteText.position.set(
-      Math.round((muteChip.width - muteText.width) / 2),
-      Math.round((CHIP_H - muteText.height) / 2),
+    muteIcon.position.set(
+      Math.round((muteChip.width - muteIcon.width) / 2),
+      Math.round((CHIP_H - muteIcon.height) / 2),
     );
     hint.position.set(W / 2, sim.layout.h * 0.42);
     hint.style.wordWrapWidth = W - 48;

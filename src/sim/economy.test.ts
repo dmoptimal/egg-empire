@@ -158,9 +158,9 @@ describe("derived multipliers", () => {
     expect(truckPause(s)).toBeCloseTo(0.76176, 10);
   });
 
-  it("truck schedule table 30/24/18/14/10s, 0 = locked", () => {
+  it("truck schedule table 20/14/9/6/4s, 0 = locked", () => {
     const s = createSim();
-    const expected = [0, 30, 24, 18, 14, 10];
+    const expected = [0, 20, 14, 9, 6, 4];
     for (let l = 0; l <= 5; l++) {
       s.n.ttime = l;
       expect(truckSchedule(s)).toBe(expected[l]);
