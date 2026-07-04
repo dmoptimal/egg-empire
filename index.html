@@ -31,6 +31,9 @@
       #bar button small{display:block;font-weight:600;font-size:11px;opacity:.9;margin-top:2px}
       #hint{position:absolute;left:0;right:0;top:42%;text-align:center;color:#fff;font-weight:800;font-size:16px;
         text-shadow:0 2px 4px rgba(0,0,0,.6);pointer-events:none;transition:opacity .6s;z-index:2;opacity:0}
+      #toast{position:absolute;top:calc(48px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);
+        background:rgba(0,0,0,.65);border-radius:14px;padding:8px 16px;color:#ffd94a;font-weight:800;font-size:14px;
+        pointer-events:none;z-index:2;opacity:0;transition:opacity .5s;white-space:nowrap}
     </style>
   </head>
   <body>
@@ -42,6 +45,7 @@
           <span class="chip" id="mute">🔊</span>
         </div>
         <div id="hint">Tap or swipe across the eggs to collect them!</div>
+        <div id="toast"></div>
       </div>
       <div id="bar">
         <div id="shop"></div>

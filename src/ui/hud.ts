@@ -11,6 +11,8 @@ export interface Hud {
   refresh(): void;
   showHint(): void;
   hideHint(): void;
+  /** Transient message chip (e.g. the welcome-back offline income toast). */
+  toast(msg: string): void;
 }
 
 export interface HudDeps {
@@ -26,7 +28,9 @@ export function createHud(deps: HudDeps): Hud {
   const muteChip = el("mute");
   const shopEl = el("shop");
   const hintEl = el("hint");
+  const toastEl = el("toast");
   const shopBtns = new Map<number, HTMLButtonElement>();
+  let toastTimer: number | undefined;
 
   muteChip.addEventListener("pointerdown", (e) => {
     e.stopPropagation();
@@ -68,6 +72,14 @@ export function createHud(deps: HudDeps): Hud {
     },
     hideHint(): void {
       hintEl.style.opacity = "0";
+    },
+    toast(msg: string): void {
+      toastEl.textContent = msg;
+      toastEl.style.opacity = "1";
+      window.clearTimeout(toastTimer);
+      toastTimer = window.setTimeout(() => {
+        toastEl.style.opacity = "0";
+      }, 4500);
     },
   };
 }

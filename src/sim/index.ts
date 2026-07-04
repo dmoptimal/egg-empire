@@ -40,3 +40,11 @@ export {
   buyBird,
   type NodeVisualState,
 } from "./tree";
+export {
+  serialize,
+  restore,
+  estimateOfflineIncome,
+  SAVE_VERSION,
+  type SaveData,
+  type OfflineIncome,
+} from "./save";

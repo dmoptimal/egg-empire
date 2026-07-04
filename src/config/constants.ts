@@ -61,6 +61,9 @@ export const TRUCK_DISPATCH_X = -80;
 export const TRUCK_STOP_OFFSET = 10; //    truck stops at basket.x - 10
 export const TRUCK_EXIT_MARGIN = 90; //    despawns once x > W + 90
 
+// --- saves / offline progress (NEW work, README step 6 — not in prototype) ---
+export const OFFLINE_CAP_SECONDS = 8 * 3600; // idle income accrues for at most 8h away
+
 // --- collectors ---
 export const COLL_SPEED_BASE = 130;
 export const COLL_SPEED_GROWTH = 1.25; //  per cspd level

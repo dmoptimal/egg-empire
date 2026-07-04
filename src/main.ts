@@ -5,11 +5,14 @@
 import { Application, TextureSource, type FederatedPointerEvent } from "pixi.js";
 import { audioInit, SFX } from "./audio/sfx";
 import { SPECIES } from "./config/species";
-import { fmtMoney } from "./config/format";
+import { fmt, fmtMoney } from "./config/format";
 import {
   buyBird,
   createSim,
+  estimateOfflineIncome,
   resize,
+  restore,
+  serialize,
   sweepCollect,
   tick,
   totalBirds,
@@ -17,6 +20,7 @@ import {
   type SimEvent,
   type SimHooks,
 } from "./sim";
+import { clearSave, loadSave, writeSave } from "./storage";
 import { drawBackground } from "./render/background";
 import { createBasketViews } from "./render/baskets";
 import { createBirds } from "./render/birds";
@@ -42,7 +46,22 @@ async function boot(): Promise<void> {
   });
   gameDiv.appendChild(app.canvas);
 
-  const sim = createSim({ width: app.screen.width, height: app.screen.height });
+  // Restore a saved game if one exists; credit capped offline income.
+  const dims = { width: app.screen.width, height: app.screen.height };
+  const saved = loadSave();
+  const restored = saved ? restore(saved, dims) : null;
+  const sim = restored ?? createSim(dims);
+  let offlineMsg: string | null = null;
+  if (restored && saved) {
+    const off = estimateOfflineIncome(restored, (Date.now() - saved.lastSeen) / 1000);
+    if (off.money > 0 || off.feathers > 0) {
+      sim.money += off.money;
+      sim.feathers += off.feathers;
+      offlineMsg = `Welcome back! +${fmtMoney(off.money)} · +${fmt(off.feathers)} 🪶 while away`;
+    }
+  }
+  const persist = (): void => writeSave(serialize(sim, Date.now()));
+
   const textures = makeTextures(app.renderer);
   const layers = createLayers(app.stage);
   const birds = createBirds(layers.birds, textures, () => sim.layout);
@@ -71,6 +90,7 @@ async function boot(): Promise<void> {
   let W = 0;
   let H = 0;
   let hudAcc = 0;
+  let saveAcc = 0;
   let cluckT = 2;
   const pointers = new Map<number, { x: number; y: number }>();
   const heldBuf: HeldPointer[] = [];
@@ -246,18 +266,38 @@ async function boot(): Promise<void> {
       hud.refresh();
       hudAcc = 0;
     }
+    saveAcc += dt;
+    if (saveAcc > 5) {
+      persist();
+      saveAcc = 0;
+    }
   });
 
+  // Pause when backgrounded and save on hide (CLAUDE.md); pagehide catches
+  // iOS Safari closing the tab without firing visibilitychange.
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) app.ticker.stop();
-    else app.ticker.start();
+    if (document.hidden) {
+      persist();
+      app.ticker.stop();
+    } else {
+      app.ticker.start();
+    }
   });
+  window.addEventListener("pagehide", persist);
+  // Playtest helper until the ?dev=1 admin panel exists (PLAN.md Phase 0):
+  // run eggReset() in the console for a fresh farm.
+  (window as { eggReset?: () => void }).eggReset = () => {
+    clearSave();
+    location.reload();
+  };
 
   layout();
   birds.sync(sim);
   basketViews.sync(sim);
+  collectorViews.sync(sim);
   hud.refresh();
   startScreen.position(sim.layout);
+  if (offlineMsg) hud.toast(offlineMsg);
 }
 
 boot().catch((err) => console.error("Egg Empire failed to boot:", err));
