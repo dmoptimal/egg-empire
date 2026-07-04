@@ -87,8 +87,8 @@ branches, 5–15min species unlocks — tune tables until they pass).
   +2%/lvl (base 2%). Species-branch costs scale ×12^(tier−1) in feathers.
 - Feathers/egg by tier: 1/6/34/500/7.5K (golden ×15); Feathered Eggs node
   multiplies all feather income ×(1+lvl).
-- Baskets: 12 + 6/lvl; extra baskets $60K/$4M/$100M.
-- Trucks: speed ×1.3/lvl; schedule 30/24/18/14/10s (only while ≥1 egg).
+- Baskets: 12 + 8/lvl (soft-caps to 2× while the truck runs); extra baskets $40K/$2M/$50M.
+- Trucks: speed ×1.3/lvl; schedule 20/14/9/6/4s (only while ≥1 egg).
 - Collectors: hires $30K→$1B era-indexed; speed ×1.25/lvl; bag 1+lvl;
   Gentle Hands +10%/lvl.
 - Dev tools: append `?dev=1` for grants, era jumps, max tree, ×5 speed.

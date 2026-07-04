@@ -31,13 +31,20 @@ export function addBasket(state: SimState): Basket {
   return b;
 }
 
-/** Nearest basket (by x) that still has room, or null if all are full. */
+/**
+ * Nearest basket (by x) that still has room, or null if all are full.
+ * Soft cap: while a basket's truck is already on its way (driving in or
+ * loading), collection may keep piling it up to 2× cap — the truck takes
+ * everything present. The hard "Baskets full!" wall only exists while a
+ * full basket's truck is idle.
+ */
 export function basketWithSpace(state: SimState, nearX: number): Basket | null {
   const cap = basketCap(state);
   let best: Basket | null = null;
   let bd = Infinity;
   for (const b of state.baskets) {
-    if (b.count >= cap) continue;
+    const limit = b.truckState === "in" || b.truckState === "load" ? cap * 2 : cap;
+    if (b.count >= limit) continue;
     const d = Math.abs(b.x - nearX);
     if (d < bd) {
       bd = d;

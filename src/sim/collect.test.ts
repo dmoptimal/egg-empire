@@ -79,7 +79,7 @@ describe("sweep collection", () => {
     expect(egg.tx).toBe(272);
   });
 
-  it("warns once per cooldown when every basket is full, and keeps the egg", () => {
+  it("warns once per cooldown while a full basket's truck is idle", () => {
     const s = quietSim();
     s.baskets[0].count = 12;
     const egg = forgeGroundEgg(s, { x: 100, y: 400 });
@@ -91,8 +91,27 @@ describe("sweep collection", () => {
     sweepCollect(s, 100, 400, 100, 400); // still cooling down
     expect(drainEvents(s).filter((e) => e.type === "baskets-full")).toHaveLength(0);
 
-    step(s, 0.8, constHooks(0.5)); // cooldown is 0.7s
+    s.fullWarnCd = 0; // cooldown over, truck still idle → warns again
     sweepCollect(s, 100, 400, 100, 400);
+    expect(drainEvents(s).filter((e) => e.type === "baskets-full")).toHaveLength(1);
+  });
+
+  it("soft cap: a dispatched truck's basket keeps accepting up to 2× cap", () => {
+    const s = quietSim();
+    s.baskets[0].count = 12;
+    s.baskets[0].value = 120;
+    step(s, 0.1, constHooks(0.5)); // full basket → truck dispatches ("in")
+    expect(s.baskets[0].truckState).toBe("in");
+
+    const egg = forgeGroundEgg(s, { x: 100, y: 400, value: 10 });
+    sweepCollect(s, 100, 400, 100, 400);
+    expect(egg.phase).toBe("flying"); // no bounce — the truck is coming anyway
+    expect(drainEvents(s).filter((e) => e.type === "baskets-full")).toHaveLength(0);
+
+    s.baskets[0].count = 24; // at double cap the wall is back
+    const overflow = forgeGroundEgg(s, { x: 100, y: 400 });
+    sweepCollect(s, 100, 400, 100, 400);
+    expect(overflow.phase).toBe("ground");
     expect(drainEvents(s).filter((e) => e.type === "baskets-full")).toHaveLength(1);
   });
 });

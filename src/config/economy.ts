@@ -61,7 +61,7 @@ export const FARM_NODE_COSTS = {
 } as const;
 
 /** Extra basket prices (money), one per bextra level (duck/quail/goose era). */
-export const BASKET_COSTS = [60000, 4000000, 100000000];
+export const BASKET_COSTS = [40000, 2000000, 50000000];
 
 /** Collector hire prices (money), one per hire level (era-indexed). */
 export const HIRE_COSTS = [30000, 2500000, 80000000, 700000000, 1000000000];

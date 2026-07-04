@@ -66,7 +66,7 @@ export const NODES: NodeDef[] = [
 
   // Farm block — hangs off Ducks' opposite side.
   { id: "bsize",  nm: "Bigger baskets",  x: 120, y: 260, max: 5, par: "sp1",   cur: "feathers", edge: "straight",
-    cost: farmCost("bsize"), dsc: "Every basket holds +6 more eggs per level." },
+    cost: farmCost("bsize"), dsc: "Every basket holds +8 more eggs per level." },
   { id: "bextra", nm: "Extra basket",    x: 210, y: 260, max: 3, par: "bsize", cur: "money",
     cost: l => BASKET_COSTS[l], dsc: "Adds a basket with its own truck." },
   { id: "tspd",   nm: "Truck speed",     x: 300, y: 260, max: 5, par: "bextra", cur: "feathers",

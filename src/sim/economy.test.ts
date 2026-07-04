@@ -140,11 +140,11 @@ describe("derived multipliers", () => {
     expect(goldenPct(s, 0)).toBeCloseTo(0.12, 10);
   });
 
-  it("basket capacity 12 + 6 per level", () => {
+  it("basket capacity 12 + 8 per level", () => {
     const s = createSim();
     expect(basketCap(s)).toBe(12);
     s.n.bsize = 5;
-    expect(basketCap(s)).toBe(42);
+    expect(basketCap(s)).toBe(52);
   });
 
   it("truck speed ×1.3 and pause ×0.92 per level", () => {

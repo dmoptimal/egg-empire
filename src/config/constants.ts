@@ -46,7 +46,7 @@ export const LAY_SPEED_FACTOR = 0.9; //   lay interval ×0.90 per s-node level
 export const GOLDEN_BASE = 0.02;
 export const GOLDEN_PER_LVL = 0.02;
 export const GOLDEN_VALUE_MULT = 10;
-export const BASKET_CAP_PER_LVL = 6; //   on top of BASKET_BASE_CAP
+export const BASKET_CAP_PER_LVL = 8; //   on top of BASKET_BASE_CAP (was 6; throughput rebalance 2026-07-04)
 
 // --- trucks ---
 export const TRUCK_SPEED_IN_BASE = 300;

@@ -60,7 +60,7 @@ describe("purchases", () => {
   it("bextra adds a basket at the next slot leftward", () => {
     const s = createSim();
     s.n.bsize = 1; // reveal bextra
-    s.money = 60000;
+    s.money = 40000;
     expect(buyNode(s, "bextra")).toBe(true);
     expect(s.baskets).toHaveLength(2);
     expect(s.baskets.map((b) => b.x)).toEqual([338, 272]);

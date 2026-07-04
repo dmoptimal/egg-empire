@@ -100,7 +100,7 @@ export function createBasketViews(
     v.topEggs[0].visible = f >= 0.55;
     v.topEggs[1].visible = f >= 0.8;
     v.topEggs[2].visible = f >= 1;
-    v.label.text = `${Math.min(b.count, cap)}/${cap}`;
+    v.label.text = `${b.count}/${cap}`; // may exceed cap while the truck is en route
     v.lastCount = b.count;
     v.lastCap = cap;
   }
