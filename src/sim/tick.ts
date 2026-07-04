@@ -27,6 +27,7 @@ export function tick(
   held?: readonly HeldPointer[],
 ): void {
   if (state.fullWarnCd > 0) state.fullWarnCd -= dt;
+  state.comboT = Math.min(state.comboT + dt, 999);
 
   // Fixed-accumulator laying: fractional eggs-owed build up per species and
   // are laid in bursts of at most LAY_BURST_MAX per frame.

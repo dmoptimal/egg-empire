@@ -17,17 +17,36 @@ import {
   TRUCK_SPEED_IN_BASE,
   TRUCK_SPEED_OUT_BASE,
 } from "../config/constants";
-import { FEATHER_GOLDEN_MULT, FEATHERS_BY_TIER, WORTH_PER_LVL } from "../config/economy";
-import { BASKET_BASE_CAP, SPECIES, TRUCK_SCHEDULE } from "../config/species";
+import {
+  BIRDLOT_GROWTH_PER_LVL,
+  COMBO_VALUE_PER_LVL,
+  ECAP_PER_LVL,
+  ESPOIL_PER_LVL,
+  FEATHER_GOLDEN_MULT,
+  FEATHERS_BY_TIER,
+  SWEEP_R_PER_LVL,
+  WORTH_PER_LVL,
+} from "../config/economy";
+import { SWEEP_RADIUS } from "../config/constants";
+import { BASKET_BASE_CAP, EGG_CAP, EGG_LIFE, SPECIES, TRUCK_SCHEDULE } from "../config/species";
 import type { SimState } from "./types";
 
 export const lvl = (s: SimState, id: string): number => s.n[id] ?? 0;
 
 export const unlocked = (s: SimState, i: number): boolean => lvl(s, `sp${i}`) > 0;
 
-/** Cost of the next bird. Chickens start at 2 owned, so the 3rd is base price. */
+/**
+ * Cost of the next bird. Chickens start at 2 owned, so the 3rd is base price.
+ * Bulk deals (birdlot) flattens every species' growth by 0.02 per level.
+ */
 export const birdCost = (s: SimState, i: number): number =>
-  Math.floor(SPECIES[i].birdBase * Math.pow(SPECIES[i].growth, s.counts[i] - (i === 0 ? 2 : 1)));
+  Math.floor(
+    SPECIES[i].birdBase *
+      Math.pow(
+        SPECIES[i].growth - BIRDLOT_GROWTH_PER_LVL * lvl(s, "birdlot"),
+        s.counts[i] - (i === 0 ? 2 : 1),
+      ),
+  );
 
 export const worthMult = (s: SimState, i: number): number =>
   Math.pow(WORTH_PER_LVL, lvl(s, `w${i}`));
@@ -70,3 +89,18 @@ export const featherGolden = (s: SimState, species: number): number =>
   FEATHER_GOLDEN_MULT * FEATHERS_BY_TIER[species] * (1 + lvl(s, "fth"));
 
 export const totalBirds = (s: SimState): number => s.counts.reduce((a, b) => a + b, 0);
+
+// --- Phase 3 support-node effects ---
+/** Ground+falling egg cap: 80 base, +20 per Roomier hay level. */
+export const eggCap = (s: SimState): number => EGG_CAP + ECAP_PER_LVL * lvl(s, "ecap");
+
+/** Seconds before a ground egg spoils: 25 base, +5 per Fresh eggs level. */
+export const eggLife = (s: SimState): number => EGG_LIFE + ESPOIL_PER_LVL * lvl(s, "espoil");
+
+/** Player sweep radius: 46 base, +8 per Wider sweep level. */
+export const sweepRadius = (s: SimState): number =>
+  SWEEP_RADIUS + SWEEP_R_PER_LVL * lvl(s, "sweep");
+
+/** Hot streak value multiplier for streak-swiped eggs. */
+export const comboValueMult = (s: SimState): number =>
+  1 + COMBO_VALUE_PER_LVL * lvl(s, "combo");

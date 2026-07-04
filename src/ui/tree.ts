@@ -16,7 +16,7 @@ import {
   type TextStyleOptions,
 } from "pixi.js";
 import { fmt, fmtMoney } from "../config/format";
-import { NODES, nodeById, type NodeDef } from "../config/nodes";
+import { edgePath, NODES, nodeById, type NodeDef } from "../config/nodes";
 import {
   birdCost,
   buyBird,
@@ -33,7 +33,6 @@ import { FONT, pixelPanel } from "./kit";
 
 const NODE_R = 24;
 const HIT_R = 34;
-const EDGE_TRIM = 26;
 const MARGIN = 60; // camera slack around the node extents
 const MIN_ZOOM = 0.4;
 const MAX_ZOOM = 1.5;
@@ -176,6 +175,18 @@ export function createTree(deps: TreeDeps): TreeUI {
       c.addChild(centeredText("🤲", { fontSize: 20 }));
     } else if (id === "fth") {
       c.addChild(centeredText("🪶", { fontSize: 20 }));
+    } else if (id === "ecap") {
+      c.addChild(centeredText("🌾", { fontSize: 20 }));
+    } else if (id === "espoil") {
+      c.addChild(centeredText("⏳", { fontSize: 20 }));
+    } else if (id === "sweep") {
+      c.addChild(centeredText("🖐", { fontSize: 20 }));
+    } else if (id === "combo") {
+      c.addChild(centeredText("🔥", { fontSize: 20 }));
+    } else if (id === "gold2") {
+      c.addChild(centeredText("🪙", { fontSize: 20 }));
+    } else if (id === "birdlot") {
+      c.addChild(centeredText("🏷", { fontSize: 20 }));
     }
     return c;
   }
@@ -188,27 +199,10 @@ export function createTree(deps: TreeDeps): TreeUI {
       const st = nodeState(sim, n);
       if (st === "hidden") continue;
       if (n.par) {
-        const p = nodeById[n.par];
-        const col = lvl(sim, n.id) > 0 ? 0x4a7ba6 : 0x33475c;
-        if (n.edge === "straight") {
-          const dx = n.x - p.x;
-          const dy = n.y - p.y;
-          const d = Math.hypot(dx, dy) || 1;
-          edges
-            .moveTo(p.x + (dx / d) * EDGE_TRIM, p.y + (dy / d) * EDGE_TRIM)
-            .lineTo(n.x - (dx / d) * EDGE_TRIM, n.y - (dy / d) * EDGE_TRIM);
-        } else if (p.y === n.y) {
-          const dir = n.x > p.x ? 1 : -1;
-          edges.moveTo(p.x + EDGE_TRIM * dir, p.y).lineTo(n.x - EDGE_TRIM * dir, n.y);
-        } else {
-          const midY = (p.y + n.y) / 2;
-          edges
-            .moveTo(p.x, p.y + EDGE_TRIM)
-            .lineTo(p.x, midY)
-            .lineTo(n.x, midY)
-            .lineTo(n.x, n.y - EDGE_TRIM);
-        }
-        edges.stroke({ width: 3, color: col });
+        const path = edgePath(n);
+        edges.moveTo(path[0].x, path[0].y);
+        for (let i = 1; i < path.length; i++) edges.lineTo(path[i].x, path[i].y);
+        edges.stroke({ width: 3, color: lvl(sim, n.id) > 0 ? 0x4a7ba6 : 0x33475c });
       }
       const g = new Graphics();
       g.circle(0, 0, NODE_R).fill(0x18231a);

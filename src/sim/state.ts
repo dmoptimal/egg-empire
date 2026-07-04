@@ -31,6 +31,7 @@ export function createSim(opts: CreateSimOptions = {}): SimState {
     baskets: [],
     collectors: [],
     fullWarnCd: 0,
+    comboT: 999,
     events: [],
   };
   addBasket(state);

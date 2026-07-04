@@ -26,6 +26,10 @@ export {
   featherPerEgg,
   featherGolden,
   totalBirds,
+  eggCap,
+  eggLife,
+  sweepRadius,
+  comboValueMult,
 } from "./economy";
 export { layEgg, collectEgg, releaseEgg } from "./eggs";
 export { sweepCollect, segDist2 } from "./collect";

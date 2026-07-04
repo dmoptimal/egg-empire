@@ -19,8 +19,8 @@ import {
   EGG_TARGET_TOP_INSET,
   GOLDEN_VALUE_MULT,
 } from "../config/constants";
-import { EGG_CAP, EGG_LIFE, SPECIES } from "../config/species";
-import { featherGolden, featherPerEgg, goldenPct, worthMult } from "./economy";
+import { SPECIES } from "../config/species";
+import { eggCap, eggLife, featherGolden, featherPerEgg, goldenPct, worthMult } from "./economy";
 import { emit } from "./events";
 import type { Basket, Egg, SimHooks, SimState, SpawnPoint } from "./types";
 
@@ -56,11 +56,10 @@ export function layEgg(state: SimState, species: number, hooks: SimHooks): void 
   // (prototype: layEgg early-returns on an empty view list).
   const p = hooks.spawnPoint ? hooks.spawnPoint(species) : defaultSpawnPoint(state, hooks);
   if (!p) return;
-  // Ground cap: oldest spoils first, silently.
-  if (state.ground.length + state.falling.length >= EGG_CAP) despawnOldest(state);
-  // Pool bound (prototype pool = EGG_CAP + 40): a huge in-flight backlog
-  // means this lay is skipped entirely.
-  if (state.ground.length + state.falling.length + state.flying.length >= EGG_CAP + EGG_POOL_EXTRA)
+  // Ground cap (Roomier hay raises it): oldest spoils first, silently.
+  if (state.ground.length + state.falling.length >= eggCap(state)) despawnOldest(state);
+  // Pool bound (cap + 40): a huge in-flight backlog skips the lay entirely.
+  if (state.ground.length + state.falling.length + state.flying.length >= eggCap(state) + EGG_POOL_EXTRA)
     return;
   const golden = hooks.rng() < goldenPct(state, species);
   const { hayTop, hayBottom } = state.layout;
@@ -143,7 +142,7 @@ export function updateGround(state: SimState, dt: number): void {
   for (let k = state.ground.length - 1; k >= 0; k--) {
     const e = state.ground[k];
     e.age += dt;
-    if (e.age > EGG_LIFE) {
+    if (e.age > eggLife(state)) {
       releaseEgg(state, e);
       emit(state, { type: "egg-spoiled", egg: e });
     }

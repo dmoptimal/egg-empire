@@ -1,11 +1,11 @@
-// The full skill tree. COSTS are the PLAN.md Phase 0 era-indexed curves from
-// ./economy.ts (nothing inline). Phase 2: nodes carry free design-space x/y
-// (px) instead of grid col/row, and edges are "elbow" (default) or
-// "straight". The farm/collector cluster hangs below-left of Ducks so no
-// edge crosses a node (this killed the old route:"left" special case);
-// Phase 3 re-sprawls the whole layout.
+// The full skill tree — PLAN.md Phase 3 sprawl. A central species spine runs
+// top-to-bottom; each species fans its worth/speed/golden branch to one side;
+// the farm cluster hangs off Ducks to the opposite side with the collector
+// chain snaking below it; filler/support nodes sit between the big unlocks.
+// Layout sanity (min node spacing, edges clearing nodes) is enforced by
+// src/config/nodes.test.ts — reposition freely, the test has your back.
 // Reveal rule: a node is hidden until its parent has level >= 1.
-// Win condition: every node at max level.
+// Win condition: every node at max level (Phase 3 nodes included).
 
 import {
   BASKET_COSTS,
@@ -42,43 +42,102 @@ const farmCost = (kind: keyof typeof FARM_NODE_COSTS) => {
   return (l: number) => Math.ceil(base * Math.pow(growth, l));
 };
 
-const ROW = (r: number): number => 64 + r * 92;
-
-const sp = (i: number, tier: number): NodeDef[] => [
-  { id: `sp${i}`, nm: SPECIES[i].plural, x: 55, y: ROW(i), max: 1, par: i === 0 ? null : `sp${i - 1}`, cur: "money",
+/** One species hub + its upgrade fan. side=+1 fans right, −1 left. */
+const sp = (i: number, tier: number, y: number, side: 1 | -1): NodeDef[] => [
+  { id: `sp${i}`, nm: SPECIES[i].plural, x: 0, y, max: 1, par: i === 0 ? null : `sp${i - 1}`, cur: "money",
     cost: () => SPECIES[i].unlock, dsc: `Unlock ${SPECIES[i].plural.toLowerCase()}.` },
-  { id: `w${i}`, nm: "Egg worth", x: 135, y: ROW(i), max: 5, par: `sp${i}`, cur: "feathers",
+  { id: `w${i}`, nm: "Egg worth", x: 90 * side, y, max: 5, par: `sp${i}`, cur: "feathers",
     cost: speciesCost("w", tier), dsc: "Eggs sell for +50% per level." },
-  { id: `s${i}`, nm: "Lay speed", x: 215, y: ROW(i), max: 5, par: `w${i}`, cur: "feathers",
+  { id: `s${i}`, nm: "Lay speed", x: 180 * side, y, max: 5, par: `w${i}`, cur: "feathers",
     cost: speciesCost("s", tier), dsc: "Lays 10% faster per level." },
-  { id: `g${i}`, nm: "Golden egg", x: 295, y: ROW(i), max: 5, par: `s${i}`, cur: "feathers",
+  { id: `g${i}`, nm: "Golden egg", x: 270 * side, y, max: 5, par: `s${i}`, cur: "feathers",
     cost: speciesCost("g", tier), dsc: "+2% golden egg chance per level." },
 ];
 
 export const NODES: NodeDef[] = [
-  ...sp(0, 1), ...sp(1, 2), ...sp(2, 3), ...sp(3, 4), ...sp(4, 5),
+  // Species spine (zig-zagging fans) — the farm block occupies the right
+  // flank between Ducks and Quail, so those two fan left.
+  ...sp(0, 1, 0, 1),
+  ...sp(1, 2, 130, -1),
+  ...sp(2, 3, 520, -1),
+  ...sp(3, 4, 650, -1),
+  ...sp(4, 5, 780, 1),
 
-  { id: "bsize",  nm: "Bigger baskets",  x: -75, y: 524, max: 5, par: "sp1",   cur: "feathers", edge: "straight",
+  // Farm block — hangs off Ducks' opposite side.
+  { id: "bsize",  nm: "Bigger baskets",  x: 120, y: 260, max: 5, par: "sp1",   cur: "feathers", edge: "straight",
     cost: farmCost("bsize"), dsc: "Every basket holds +6 more eggs per level." },
-  { id: "bextra", nm: "Extra basket",    x: 15,  y: 524, max: 3, par: "bsize", cur: "money",
+  { id: "bextra", nm: "Extra basket",    x: 210, y: 260, max: 3, par: "bsize", cur: "money",
     cost: l => BASKET_COSTS[l], dsc: "Adds a basket with its own truck." },
-  { id: "tspd",   nm: "Truck speed",     x: 105, y: 524, max: 5, par: "bextra", cur: "feathers",
+  { id: "tspd",   nm: "Truck speed",     x: 300, y: 260, max: 5, par: "bextra", cur: "feathers",
     cost: farmCost("tspd"), dsc: "Trucks drive and load 30% faster per level." },
-  { id: "ttime",  nm: "Truck schedule",  x: 195, y: 524, max: 5, par: "tspd",  cur: "feathers",
+  { id: "ttime",  nm: "Truck schedule",  x: 300, y: 350, max: 5, par: "tspd",  cur: "feathers",
     cost: farmCost("ttime"), dsc: "Trucks collect part-full baskets on a countdown (30s → 10s)." },
-  { id: "coll",   nm: "Collectors",      x: -75, y: 616, max: 1, par: "bsize", cur: "feathers",
+
+  // Hay fillers under the baskets (Phase 3).
+  { id: "ecap",   nm: "Roomier hay",     x: 120, y: 350, max: 4, par: "bsize", cur: "feathers",
+    cost: farmCost("ecap"), dsc: "+20 eggs can wait on the hay per level." },
+  { id: "espoil", nm: "Fresh eggs",      x: 120, y: 440, max: 4, par: "ecap",  cur: "feathers",
+    cost: farmCost("espoil"), dsc: "Eggs stay fresh +5s per level." },
+
+  // Collector chain snakes below the farm block.
+  { id: "coll",   nm: "Collectors",      x: 35,  y: 350, max: 1, par: "bsize", cur: "feathers",
     cost: farmCost("coll"), dsc: "Unlock farmhands who gather eggs for you." },
-  { id: "hire",   nm: "Hire collector",  x: 15,  y: 616, max: 5, par: "coll",  cur: "money",
+  { id: "hire",   nm: "Hire collector",  x: 35,  y: 440, max: 5, par: "coll",  cur: "money",
     cost: l => HIRE_COSTS[l], dsc: "Adds a collector to the crew." },
-  { id: "cspd",   nm: "Collector speed", x: 105, y: 616, max: 5, par: "hire",  cur: "feathers",
+  { id: "cspd",   nm: "Collector speed", x: 120, y: 530, max: 5, par: "hire",  cur: "feathers",
     cost: farmCost("cspd"), dsc: "Collectors move 25% faster per level." },
-  { id: "cbag",   nm: "Bigger bag",      x: 195, y: 616, max: 5, par: "cspd",  cur: "feathers",
+  { id: "cbag",   nm: "Bigger bag",      x: 210, y: 530, max: 5, par: "cspd",  cur: "feathers",
     cost: farmCost("cbag"), dsc: "Collectors carry +1 egg per trip per level." },
-  { id: "cval",   nm: "Gentle hands",    x: 195, y: 708, max: 5, par: "cbag",  cur: "feathers",
+  { id: "cval",   nm: "Gentle hands",    x: 210, y: 620, max: 5, par: "cbag",  cur: "feathers",
     cost: farmCost("cval"), dsc: "Collector-gathered eggs are worth +10% per level." },
-  { id: "fth",    nm: "Feathered eggs",  x: 105, y: 708, max: 5, par: "cval",  cur: "feathers",
+  { id: "fth",    nm: "Feathered eggs",  x: 120, y: 620, max: 5, par: "cval",  cur: "feathers",
     cost: farmCost("fth"), dsc: "All feather income ×2 at level 1, up to ×6 at max." },
+
+  // Active-play branch off Quail (Phase 3).
+  { id: "sweep",  nm: "Wider sweep",     x: -60, y: 590, max: 3, par: "sp2",   cur: "feathers", edge: "straight",
+    cost: farmCost("sweep"), dsc: "Your swipe reaches +8px further per level." },
+  { id: "combo",  nm: "Hot streak",      x: -45, y: 690, max: 3, par: "sweep", cur: "feathers", edge: "straight",
+    cost: farmCost("combo"), dsc: "Streak-swiped eggs are worth +5% per level." },
+
+  // Golden filler off the quail golden branch (Phase 3).
+  { id: "gold2",  nm: "Midas flock",     x: -330, y: 590, max: 1, par: "g2",   cur: "feathers", edge: "straight",
+    cost: farmCost("gold2"), dsc: "Swept golden eggs drop a bonus feather instantly." },
+
+  // Flock economics off Geese (Phase 3).
+  { id: "birdlot", nm: "Bulk deals",     x: 90,  y: 720, max: 3, par: "sp3",   cur: "feathers", edge: "straight",
+    cost: farmCost("birdlot"), dsc: "Bird cost growth −0.02 per level, all species." },
 ];
 
 export const nodeById: Record<string, NodeDef> =
   Object.fromEntries(NODES.map(n => [n.id, n]));
+
+// --- edge geometry (single source for the tree renderer AND layout tests) ---
+export const EDGE_TRIM = 26;
+
+/** Polyline (design space) for the edge parent→child, trimmed off the nodes. */
+export function edgePath(child: NodeDef): { x: number; y: number }[] {
+  const p = nodeById[child.par!];
+  if (child.edge === "straight") {
+    const dx = child.x - p.x;
+    const dy = child.y - p.y;
+    const d = Math.hypot(dx, dy) || 1;
+    return [
+      { x: p.x + (dx / d) * EDGE_TRIM, y: p.y + (dy / d) * EDGE_TRIM },
+      { x: child.x - (dx / d) * EDGE_TRIM, y: child.y - (dy / d) * EDGE_TRIM },
+    ];
+  }
+  if (p.y === child.y) {
+    const dir = child.x > p.x ? 1 : -1;
+    return [
+      { x: p.x + EDGE_TRIM * dir, y: p.y },
+      { x: child.x - EDGE_TRIM * dir, y: child.y },
+    ];
+  }
+  const midY = (p.y + child.y) / 2;
+  return [
+    { x: p.x, y: p.y + Math.sign(child.y - p.y) * EDGE_TRIM },
+    { x: p.x, y: midY },
+    { x: child.x, y: midY },
+    { x: child.x, y: child.y - Math.sign(child.y - p.y) * EDGE_TRIM },
+  ];
+}

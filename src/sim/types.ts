@@ -143,6 +143,8 @@ export interface SimState {
   collectors: Collector[];
   /** Cooldown for the "Baskets full!" warning. */
   fullWarnCd: number;
+  /** Seconds since the player last swept an egg (Hot streak window). */
+  comboT: number;
   /** Buffered events since the last drain — the render/audio seam. */
   events: SimEvent[];
 }

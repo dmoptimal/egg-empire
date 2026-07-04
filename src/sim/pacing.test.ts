@@ -36,6 +36,9 @@ const NODE_ERA: Record<string, string> = {
   tspd: "quail", ttime: "quail", cspd: "quail",
   cbag: "goose", cval: "goose",
   fth: "ostrich",
+  // Phase 3 support nodes
+  ecap: "quail", sweep: "quail", combo: "quail",
+  espoil: "goose", gold2: "goose", birdlot: "goose",
 };
 
 /** Money nodes are one big purchase per level, each landing in its own era. */

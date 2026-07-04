@@ -15,6 +15,15 @@ export const WORTH_PER_LVL = 1.5;
 export const FEATHERS_BY_TIER = [1, 6, 34, 500, 7500];
 export const FEATHER_GOLDEN_MULT = 15;
 
+// --- Phase 3 support-node effects ------------------------------------------
+export const ECAP_PER_LVL = 20; //      Roomier hay: +20 ground egg cap
+export const ESPOIL_PER_LVL = 5; //     Fresh eggs: +5s spoil time
+export const SWEEP_R_PER_LVL = 8; //    Wider sweep: +8px swipe radius
+export const COMBO_VALUE_PER_LVL = 0.05; // Hot streak: swiped streak eggs +5%
+export const COMBO_WINDOW = 0.45; //    seconds between sweeps to keep a streak
+export const GOLD2_BONUS_FEATHERS = 1; // Midas flock: instant 🪶 per golden swept
+export const BIRDLOT_GROWTH_PER_LVL = 0.02; // Bulk deals: bird cost growth −0.02
+
 // --- cost indexing --------------------------------------------------------
 /** Species-branch feather costs scale 12^(tier−1) — geometric, not linear. */
 export const costTierMult = (tier: number): number => Math.pow(12, tier - 1);
@@ -36,6 +45,13 @@ export const FARM_NODE_COSTS = {
   cbag: { base: 60000, growth: 1.8 },
   cval: { base: 90000, growth: 1.8 },
   fth: { base: 850000, growth: 1.8 },
+  // Phase 3 support nodes (era-indexed via the pacing bands)
+  ecap: { base: 9000, growth: 2.0 },
+  espoil: { base: 80000, growth: 2.0 },
+  sweep: { base: 14000, growth: 2.6 },
+  combo: { base: 16000, growth: 2.6 },
+  gold2: { base: 100000, growth: 1 },
+  birdlot: { base: 90000, growth: 3.0 },
 } as const;
 
 /** Extra basket prices (money), one per bextra level (duck/quail/goose era). */
@@ -110,6 +126,7 @@ export const CHECKPOINTS: Checkpoint[] = [
       w2: 4, s2: 2, g2: 1,
       bsize: 3, bextra: 2, tspd: 2, ttime: 1,
       coll: 1, hire: 2, cspd: 2, cbag: 1,
+      ecap: 2, sweep: 1, combo: 1,
     },
   },
   {
@@ -126,6 +143,7 @@ export const CHECKPOINTS: Checkpoint[] = [
       w3: 4, s3: 3, g3: 2,
       bsize: 4, bextra: 3, tspd: 3, ttime: 2,
       coll: 1, hire: 3, cspd: 3, cbag: 2, cval: 1, fth: 1,
+      ecap: 3, espoil: 1, sweep: 2, combo: 2, gold2: 1, birdlot: 1,
     },
   },
   {
@@ -143,6 +161,7 @@ export const CHECKPOINTS: Checkpoint[] = [
       w4: 5, s4: 5, g4: 5,
       bsize: 5, bextra: 3, tspd: 5, ttime: 5,
       coll: 1, hire: 5, cspd: 5, cbag: 5, cval: 5, fth: 5,
+      ecap: 4, espoil: 4, sweep: 3, combo: 3, gold2: 1, birdlot: 3,
     },
   },
 ];

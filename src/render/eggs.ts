@@ -4,8 +4,10 @@
 
 import { Sprite, type Container } from "pixi.js";
 import { EGG_ARC_LIFT, EGG_FADE_TIME, EGG_POOL_EXTRA } from "../config/constants";
-import { EGG_CAP, EGG_LIFE, SPECIES } from "../config/species";
-import type { Egg, SimState } from "../sim";
+import { ECAP_PER_LVL } from "../config/economy";
+import { nodeById } from "../config/nodes";
+import { EGG_CAP, SPECIES } from "../config/species";
+import { eggLife, type Egg, type SimState } from "../sim";
 import { eggSpriteScale, type Textures } from "./textures";
 
 export interface EggSprites {
@@ -18,7 +20,10 @@ export function createEggSprites(layer: Container, textures: Textures): EggSprit
   const pool: Sprite[] = [];
   const free: number[] = [];
   const slotByEgg = new Map<number, number>();
-  for (let i = 0; i < EGG_CAP + EGG_POOL_EXTRA; i++) {
+  // Fixed pool sized for the LARGEST possible sim cap (Roomier hay maxed) —
+  // still allocated once at boot, zero allocation in the loop.
+  const POOL = EGG_CAP + ECAP_PER_LVL * nodeById.ecap.max + EGG_POOL_EXTRA;
+  for (let i = 0; i < POOL; i++) {
     const sp = new Sprite(textures.egg[0]);
     sp.anchor.set(0.5);
     sp.visible = false;
@@ -53,6 +58,7 @@ export function createEggSprites(layer: Container, textures: Textures): EggSprit
       free.push(slot);
     },
     update(sim: SimState, now: number, dt: number): void {
+      const life = eggLife(sim);
       for (const e of sim.falling) {
         const sp = spriteFor(e);
         if (sp) sp.position.set(e.x, e.y);
@@ -61,7 +67,7 @@ export function createEggSprites(layer: Container, textures: Textures): EggSprit
         const sp = spriteFor(e);
         if (!sp) continue;
         sp.position.set(e.x, e.y);
-        sp.alpha = e.age > EGG_LIFE - EGG_FADE_TIME ? (EGG_LIFE - e.age) / EGG_FADE_TIME : 1;
+        sp.alpha = e.age > life - EGG_FADE_TIME ? (life - e.age) / EGG_FADE_TIME : 1;
         if (e.golden)
           sp.scale.set(SPECIES[e.species].eggScale * 1.15 * (1 + Math.sin(now * 6) * 0.07));
       }

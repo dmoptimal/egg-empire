@@ -2,11 +2,13 @@
 // egg lists. Ported 1:1 from the prototype's collectSweep — including the
 // early return when no basket has space (the rest of the sweep is abandoned).
 
-import { FULL_WARN_COOLDOWN, SWEEP_RADIUS } from "../config/constants";
+import { FULL_WARN_COOLDOWN } from "../config/constants";
+import { COMBO_WINDOW, GOLD2_BONUS_FEATHERS } from "../config/economy";
 import { basketWithSpace } from "./baskets";
+import { comboValueMult, lvl, sweepRadius } from "./economy";
 import { collectEgg } from "./eggs";
 import { emit } from "./events";
-import type { SimState } from "./types";
+import type { Basket, Egg, SimState } from "./types";
 
 /** Squared distance from point (px,py) to segment (x1,y1)-(x2,y2). */
 export function segDist2(
@@ -32,6 +34,15 @@ export function segDist2(
  * held finger is a zero-length sweep. Fast flicks are fed in as segments so
  * they can't skip over eggs.
  */
+/** Player pickup: Hot streak bonus, Midas feather, then the shared flight. */
+function sweepPickup(state: SimState, e: Egg, b: Basket): void {
+  const streak = state.comboT < COMBO_WINDOW;
+  state.comboT = 0;
+  if (streak) e.value = Math.round(e.value * comboValueMult(state));
+  if (e.golden && lvl(state, "gold2") >= 1) state.feathers += GOLD2_BONUS_FEATHERS;
+  collectEgg(state, e, b);
+}
+
 export function sweepCollect(
   state: SimState,
   x1: number,
@@ -39,7 +50,8 @@ export function sweepCollect(
   x2: number,
   y2: number,
 ): void {
-  const r2 = SWEEP_RADIUS * SWEEP_RADIUS;
+  const r = sweepRadius(state);
+  const r2 = r * r;
   for (let k = state.ground.length - 1; k >= 0; k--) {
     const e = state.ground[k];
     if (e.claimed) continue;
@@ -52,7 +64,7 @@ export function sweepCollect(
       }
       return;
     }
-    collectEgg(state, e, b);
+    sweepPickup(state, e, b);
   }
   // Mid-air catches: falling/bouncing eggs are fair game once over the hay.
   for (let k = state.falling.length - 1; k >= 0; k--) {
@@ -61,6 +73,6 @@ export function sweepCollect(
     if (segDist2(e.x, e.y, x1, y1, x2, y2) > r2) continue;
     const b = basketWithSpace(state, e.x);
     if (!b) return;
-    collectEgg(state, e, b);
+    sweepPickup(state, e, b);
   }
 }
