@@ -4,7 +4,7 @@
 // the sim; SFX/popups follow from the sim's events in the main loop.
 
 import { Container, Graphics, Sprite, Text, type FederatedPointerEvent, type TextStyleOptions } from "pixi.js";
-import { fmtMoney } from "../config/format";
+import { fmt, fmtMoney } from "../config/format";
 import { NODES, nodeById, type NodeDef } from "../config/nodes";
 import {
   birdCost,
@@ -220,7 +220,7 @@ export function createTree(deps: TreeDeps): TreeUI {
     let afford = false;
     let cur: "money" | "feathers" = "money";
     if (!maxed) {
-      label = n.cur === "money" ? fmtMoney(nodeCost(sim, n)) : `${nodeCost(sim, n)} 🪶`;
+      label = n.cur === "money" ? fmtMoney(nodeCost(sim, n)) : `${fmt(nodeCost(sim, n))} 🪶`;
       afford = canAfford(sim, n);
       cur = n.cur;
     } else if (isSpecies) {

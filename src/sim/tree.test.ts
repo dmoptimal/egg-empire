@@ -14,7 +14,7 @@ describe("reveal rule", () => {
     expect(nodeState(s, nodeById.w0)).toBe("new"); // parent sp0 owned
     expect(nodeState(s, nodeById.s0)).toBe("hidden"); // parent w0 at 0
 
-    s.feathers = 8;
+    s.feathers = 50;
     expect(buyNode(s, "w0")).toBe(true);
     expect(nodeState(s, nodeById.w0)).toBe("part");
     expect(nodeState(s, nodeById.s0)).toBe("new");
@@ -31,7 +31,7 @@ describe("reveal rule", () => {
 describe("purchases", () => {
   it("spends the right currency and increments the level", () => {
     const s = createSim();
-    s.feathers = 8;
+    s.feathers = 50;
     expect(canAfford(s, nodeById.w0)).toBe(true);
     expect(buyNode(s, "w0")).toBe(true);
     expect(s.feathers).toBe(0);
@@ -42,9 +42,9 @@ describe("purchases", () => {
 
   it("refuses when unaffordable and when maxed", () => {
     const s = createSim();
-    s.feathers = 7; // w0 level 1 costs 8
+    s.feathers = 49; // w0 level 1 costs 50
     expect(buyNode(s, "w0")).toBe(false);
-    expect(s.feathers).toBe(7);
+    expect(s.feathers).toBe(49);
     expect(buyNode(s, "sp0")).toBe(false); // already at max 1
   });
 
@@ -60,7 +60,7 @@ describe("purchases", () => {
   it("bextra adds a basket at the next slot leftward", () => {
     const s = createSim();
     s.n.bsize = 1; // reveal bextra
-    s.money = 15000;
+    s.money = 60000;
     expect(buyNode(s, "bextra")).toBe(true);
     expect(s.baskets).toHaveLength(2);
     expect(s.baskets.map((b) => b.x)).toEqual([338, 272]);
@@ -70,7 +70,7 @@ describe("purchases", () => {
     const s = createSim();
     s.n.bsize = 1;
     s.n.coll = 1; // reveal hire
-    s.money = 5000;
+    s.money = 30000;
     expect(buyNode(s, "hire")).toBe(true);
     expect(s.collectors).toHaveLength(1);
     expect(s.collectors[0].x).toBe(298);

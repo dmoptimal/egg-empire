@@ -8,9 +8,6 @@ import {
   COLL_SPEED_BASE,
   COLL_SPEED_GROWTH,
   COLL_VALUE_PER_LVL,
-  FEATHER_GOLDEN_BASE,
-  FEATHER_GOLDEN_PER_LVL,
-  FEATHER_PER_LVL,
   GOLDEN_BASE,
   GOLDEN_PER_LVL,
   LAY_SPEED_FACTOR,
@@ -19,8 +16,8 @@ import {
   TRUCK_SPEED_GROWTH,
   TRUCK_SPEED_IN_BASE,
   TRUCK_SPEED_OUT_BASE,
-  WORTH_PER_LVL,
 } from "../config/constants";
+import { FEATHER_GOLDEN_MULT, FEATHERS_BY_TIER, WORTH_PER_LVL } from "../config/economy";
 import { BASKET_BASE_CAP, SPECIES, TRUCK_SCHEDULE } from "../config/species";
 import type { SimState } from "./types";
 
@@ -64,10 +61,12 @@ export const collBagCap = (s: SimState): number => COLL_BAG_BASE + lvl(s, "cbag"
 export const collValueMult = (s: SimState): number =>
   1 + COLL_VALUE_PER_LVL * lvl(s, "cval");
 
-export const featherPerEgg = (s: SimState): number =>
-  1 + FEATHER_PER_LVL * lvl(s, "fth");
+/** Feathers per delivered egg: tier base × the Feathered Eggs multiplier. */
+export const featherPerEgg = (s: SimState, species: number): number =>
+  FEATHERS_BY_TIER[species] * (1 + lvl(s, "fth"));
 
-export const featherGolden = (s: SimState): number =>
-  FEATHER_GOLDEN_BASE + FEATHER_GOLDEN_PER_LVL * lvl(s, "fth");
+/** Golden eggs pay ×15 the tier base, same Feathered Eggs multiplier. */
+export const featherGolden = (s: SimState, species: number): number =>
+  FEATHER_GOLDEN_MULT * FEATHERS_BY_TIER[species] * (1 + lvl(s, "fth"));
 
 export const totalBirds = (s: SimState): number => s.counts.reduce((a, b) => a + b, 0);

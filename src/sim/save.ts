@@ -104,7 +104,7 @@ export function estimateOfflineIncome(state: SimState, elapsedSeconds: number): 
     const base = Math.round(SPECIES[i].eggValue * worthMult(state, i));
     const g = goldenPct(state, i);
     moneyPerSec += eggsPerSec * (base * (1 - g) + base * GOLDEN_VALUE_MULT * g) * collValueMult(state);
-    feathersPerSec += eggsPerSec * (featherPerEgg(state) * (1 - g) + featherGolden(state) * g);
+    feathersPerSec += eggsPerSec * (featherPerEgg(state, i) * (1 - g) + featherGolden(state, i) * g);
   }
   return {
     money: Math.floor(moneyPerSec * seconds),

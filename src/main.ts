@@ -17,6 +17,7 @@ import {
   tick,
   totalBirds,
   type HeldPointer,
+  type SaveData,
   type SimEvent,
   type SimHooks,
 } from "./sim";
@@ -30,6 +31,7 @@ import { createLayers } from "./render/layers";
 import { createPopups } from "./render/popups";
 import { createStartScreen, createWinScreen } from "./render/screens";
 import { makeTextures } from "./render/textures";
+import { createDevPanel } from "./ui/devpanel";
 import { createHud } from "./ui/hud";
 import { createTree } from "./ui/tree";
 
@@ -60,7 +62,19 @@ async function boot(): Promise<void> {
       offlineMsg = `Welcome back! +${fmtMoney(off.money)} · +${fmt(off.feathers)} 🪶 while away`;
     }
   }
-  const persist = (): void => writeSave(serialize(sim, Date.now()));
+  // State-jumps (era presets, reset) write their target save and reload;
+  // persistence must stand down or the pagehide autosave would overwrite
+  // the target with the current sim mid-reload.
+  let persistEnabled = true;
+  const persist = (): void => {
+    if (persistEnabled) writeSave(serialize(sim, Date.now()));
+  };
+  const loadState = (save: SaveData | null): void => {
+    persistEnabled = false;
+    if (save) writeSave(save);
+    else clearSave();
+    location.reload();
+  };
 
   const textures = makeTextures(app.renderer);
   const layers = createLayers(app.stage);
@@ -92,6 +106,7 @@ async function boot(): Promise<void> {
   let hudAcc = 0;
   let saveAcc = 0;
   let cluckT = 2;
+  let devSpeed = 1; // ?dev=1 panel can crank this to ×5 (extra ticks per frame)
   const pointers = new Map<number, { x: number; y: number }>();
   const heldBuf: HeldPointer[] = [];
 
@@ -152,7 +167,7 @@ async function boot(): Promise<void> {
         break;
       case "payout":
         popups.spawn(ev.basket.x, sim.layout.basketY - 70, "+" + fmtMoney(ev.money), 0x7ef25d, 24);
-        popups.spawn(ev.basket.x, sim.layout.basketY - 44, `+${ev.feathers} 🪶`, 0x8fe3d0, 16);
+        popups.spawn(ev.basket.x, sim.layout.basketY - 44, `+${fmt(ev.feathers)} 🪶`, 0x8fe3d0, 16);
         SFX.kaching();
         hud.refresh();
         break;
@@ -246,7 +261,7 @@ async function boot(): Promise<void> {
 
     heldBuf.length = 0;
     if (!tree.isOpen()) pointers.forEach((p) => heldBuf.push(p)); // hold = per-frame vacuum
-    tick(sim, dt, hooks, heldBuf);
+    for (let i = 0; i < devSpeed; i++) tick(sim, dt, hooks, heldBuf);
 
     for (const ev of sim.events) dispatch(ev);
     sim.events.length = 0;
@@ -284,12 +299,9 @@ async function boot(): Promise<void> {
     }
   });
   window.addEventListener("pagehide", persist);
-  // Playtest helper until the ?dev=1 admin panel exists (PLAN.md Phase 0):
-  // run eggReset() in the console for a fresh farm.
-  (window as { eggReset?: () => void }).eggReset = () => {
-    clearSave();
-    location.reload();
-  };
+  // Playtest helper: run eggReset() in the console for a fresh farm
+  // (the ?dev=1 panel has a reset button wired to the same path).
+  (window as { eggReset?: () => void }).eggReset = () => loadState(null);
 
   layout();
   birds.sync(sim);
@@ -298,6 +310,17 @@ async function boot(): Promise<void> {
   hud.refresh();
   startScreen.position(sim.layout);
   if (offlineMsg) hud.toast(offlineMsg);
+  if (new URLSearchParams(location.search).get("dev") === "1") {
+    createDevPanel({
+      sim,
+      refresh: () => hud.refresh(),
+      getSpeed: () => devSpeed,
+      setSpeed: (x) => {
+        devSpeed = x;
+      },
+      loadState,
+    });
+  }
 }
 
 boot().catch((err) => console.error("Egg Empire failed to boot:", err));

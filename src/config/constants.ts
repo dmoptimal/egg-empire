@@ -40,15 +40,13 @@ export const SWEEP_RADIUS = 46;
 export const FULL_WARN_COOLDOWN = 0.7; // "Baskets full!" warning rate limit
 
 // --- upgrade / economy multipliers ---
-export const WORTH_PER_LVL = 1.25; //     egg worth ×1.25 per w-node level
+// (worth-per-level and the feather income model moved to config/economy.ts
+// in PLAN Phase 0 — all tuned curves live there.)
 export const LAY_SPEED_FACTOR = 0.9; //   lay interval ×0.90 per s-node level
 export const GOLDEN_BASE = 0.02;
 export const GOLDEN_PER_LVL = 0.02;
 export const GOLDEN_VALUE_MULT = 10;
 export const BASKET_CAP_PER_LVL = 6; //   on top of BASKET_BASE_CAP
-export const FEATHER_PER_LVL = 1; //      +1 🪶/egg per fth level
-export const FEATHER_GOLDEN_BASE = 15;
-export const FEATHER_GOLDEN_PER_LVL = 10;
 
 // --- trucks ---
 export const TRUCK_SPEED_IN_BASE = 300;

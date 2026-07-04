@@ -75,15 +75,23 @@ npm run build
    Gentle Hands is levelled; consider an active-play bonus or per-species
    spoil timers. Playtest before changing numbers.
 
-## Balance reference (current tuning)
+## Balance reference (PLAN.md Phase 0 era-indexed economy)
 
-- Bird costs: `base × 1.35–1.45^owned` per species table.
-- Upgrades: worth +25%/lvl ×5; lay speed ×0.90/lvl ×5; golden +2%/lvl ×5
-  (base 2%); costs scale ×(species tier) and ~2.1–2.4^lvl in feathers.
-- Baskets: 12 + 6/lvl capacity; extra baskets $15K/$400K/$10M.
+All curves live in `src/config/economy.ts`; the pacing tests in
+`src/sim/pacing.test.ts` are the spec (1–3min first levels, 20–40min
+branches, 5–15min species unlocks — tune tables until they pass).
+
+- Egg values ~×30/tier: $10 / $300 / $9K / $250K / $8M; unlocks
+  $2.5K / $150K / $8M / $400M; bird costs `base × 1.35–1.45^owned`.
+- Upgrades: worth +50%/lvl ×5 (×7.6 maxed); lay speed ×0.90/lvl; golden
+  +2%/lvl (base 2%). Species-branch costs scale ×12^(tier−1) in feathers.
+- Feathers/egg by tier: 1/6/34/500/7.5K (golden ×15); Feathered Eggs node
+  multiplies all feather income ×(1+lvl).
+- Baskets: 12 + 6/lvl; extra baskets $60K/$4M/$100M.
 - Trucks: speed ×1.3/lvl; schedule 30/24/18/14/10s (only while ≥1 egg).
-- Collectors: $5K×4^n hires; speed ×1.25/lvl; bag 1+lvl; Gentle Hands
-  +10%/lvl; Feathered eggs +1🪶/egg and +10🪶/golden per lvl.
+- Collectors: hires $30K→$1B era-indexed; speed ×1.25/lvl; bag 1+lvl;
+  Gentle Hands +10%/lvl.
+- Dev tools: append `?dev=1` for grants, era jumps, max tree, ×5 speed.
 
 ## Performance budget
 

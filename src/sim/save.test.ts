@@ -95,10 +95,10 @@ describe("offline income amounts", () => {
 
   it("applies worth rounding before golden ×10 and Gentle Hands on top", () => {
     const s = restore(serialize(idleFarm(), 0))!;
-    s.n.w0 = 5; // round(10·1.25⁵) = 31
+    s.n.w0 = 5; // round(10·1.5⁵) = 76
     s.n.cval = 5; // ×1.5
-    // (31·0.98 + 310·0.02)·1.5 = 54.87 per egg · 0.5/s · 100s = 2743.5
-    expect(estimateOfflineIncome(s, 100).money).toBe(2743);
+    // (76·0.98 + 760·0.02)·1.5 = 134.52 per egg · 0.5/s · 100s = 6726
+    expect(estimateOfflineIncome(s, 100).money).toBe(6726);
   });
 
   it("caps credited time at 8 hours", () => {

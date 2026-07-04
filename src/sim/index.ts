@@ -48,3 +48,4 @@ export {
   type SaveData,
   type OfflineIncome,
 } from "./save";
+export { checkpointToSave, checkpointSim, moneyRate, featherRate } from "./pacing";

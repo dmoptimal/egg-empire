@@ -113,7 +113,7 @@ function depositEgg(state: SimState, e: Egg): void {
   if (!b) return;
   b.count++;
   b.value += e.value;
-  b.feathers += e.golden ? featherGolden(state) : featherPerEgg(state);
+  b.feathers += e.golden ? featherGolden(state, e.species) : featherPerEgg(state, e.species);
   releaseEgg(state, e);
   emit(state, { type: "egg-deposited", egg: e, basket: b });
 }

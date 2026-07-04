@@ -1,10 +1,19 @@
 # CLAUDE.md — Egg Empire port
 
+> **Economy superseded (PLAN.md Phase 0, 2026-07-04).** The prototype's
+> BALANCE NUMBERS (egg values, unlock/bird prices, node costs, feather
+> income, worth multiplier) are replaced by the era-indexed economy in
+> `src/config/economy.ts` + `species.ts`/`nodes.ts`, specified by the
+> pacing tests in `src/sim/pacing.test.ts`. "Match the prototype" applies
+> to behaviour and feel — NOT to economy values. Never copy prototype
+> numbers back over the Phase 0 tables.
+
 The working game is `prototype/egg-empire.html` — a single-file PixiJS v7
-prototype, tested on iPhone. It is the **source of truth for behaviour,
-feel, and balance**. The job of this repo is to port it to the module
-structure under `src/` using Pixi v8 + Vite + TypeScript, without changing
-how the game plays. When in doubt, open the prototype and match it.
+prototype, tested on iPhone. It is the **source of truth for behaviour and
+feel** (see the economy exception above). The job of this repo is to port
+it to the module structure under `src/` using Pixi v8 + Vite + TypeScript,
+without changing how the game plays. When in doubt, open the prototype and
+match it.
 
 ## The two-system rule (non-negotiable)
 

@@ -75,10 +75,10 @@ describe("golden eggs", () => {
   it("rolls golden under the 2% base chance and rounds value before ×10", () => {
     const s = createSim();
     s.counts = [0, 0, 0, 0, 0];
-    s.n.w0 = 3; // worth ×1.953125 → round(19.53) = 20, then ×10
+    s.n.w0 = 3; // worth ×1.5³ = ×3.375 → round(33.75) = 34, then ×10
     layEgg(s, 0, seqHooks([0.019, 0.5, 0.5], spawnAt(100, 200)));
     expect(s.falling[0].golden).toBe(true);
-    expect(s.falling[0].value).toBe(200);
+    expect(s.falling[0].value).toBe(340);
   });
 
   it("stays plain at or above the threshold", () => {
