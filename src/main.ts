@@ -301,3 +301,11 @@ async function boot(): Promise<void> {
 }
 
 boot().catch((err) => console.error("Egg Empire failed to boot:", err));
+
+// PWA (README step 7): register the service worker in production builds
+// only, so dev/HMR never fights a cache.
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    void navigator.serviceWorker.register("/sw.js");
+  });
+}

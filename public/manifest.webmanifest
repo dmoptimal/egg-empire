@@ -1,0 +1,15 @@
+{
+  "name": "Egg Empire",
+  "short_name": "Egg Empire",
+  "description": "Tap, swipe and sweep eggs into baskets. Max the tree. Build the empire.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#14273a",
+  "theme_color": "#63a344",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
