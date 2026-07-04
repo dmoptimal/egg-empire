@@ -55,3 +55,16 @@ export {
   type TreeView,
 } from "./save";
 export { checkpointToSave, checkpointSim, moneyRate, featherRate } from "./pacing";
+export {
+  kitchenUnlocked,
+  stationUnlocked,
+  pantryCap,
+  counterCap,
+  chefSlots,
+  cookTime,
+  dishValueMult,
+  chefCost,
+  hireChef,
+  routeToPantry,
+  updateKitchen,
+} from "./kitchen";

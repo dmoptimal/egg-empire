@@ -1,3 +1,5 @@
+import { STATIONS } from "../config/kitchen";
+import { TRUCK_START_X } from "../config/constants";
 import { addBasket } from "./baskets";
 import { computeLayout } from "./layout";
 import type { SimHooks, SimState } from "./types";
@@ -32,6 +34,13 @@ export function createSim(opts: CreateSimOptions = {}): SimState {
     collectors: [],
     fullWarnCd: 0,
     comboT: 999,
+    kitchen: {
+      pantry: [],
+      chefs: STATIONS.map(() => 0),
+      cooking: [],
+      counter: [],
+      truck: { truckState: "idle", truckX: TRUCK_START_X, truckPause: 0, sched: 0 },
+    },
     events: [],
   };
   addBasket(state);

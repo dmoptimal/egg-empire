@@ -106,6 +106,7 @@ export function updateCollector(state: SimState, c: Collector, dt: number): void
         c.dest.count++;
         c.dest.value += eg.value;
         c.dest.feathers += eg.golden ? featherGolden(state, eg.species) : featherPerEgg(state, eg.species);
+        c.dest.load.push({ value: eg.value, golden: eg.golden, species: eg.species });
       }
       c.bag.length = 0;
       c.dest = null;

@@ -202,6 +202,19 @@ async function boot(): Promise<void> {
         SFX.unlock();
         refreshAll();
         break;
+      case "kitchen-truck-dispatched":
+        SFX.honk();
+        break;
+      case "kitchen-payout":
+        SFX.kaching();
+        refreshAll();
+        break;
+      case "chef-hired":
+        SFX.buy();
+        refreshAll();
+        break;
+      case "dish-cooked":
+        break; // plate ding + popup arrive with the Phase 5 kitchen screen
       case "won":
         SFX.win();
         winScreen.show(sim.layout);

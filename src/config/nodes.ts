@@ -14,6 +14,7 @@ import {
   HIRE_COSTS,
   SPECIES_NODE_COSTS,
 } from "./economy";
+import { KITCHEN_UNLOCK_COST } from "./kitchen";
 import { SPECIES } from "./species";
 
 export type Currency = "money" | "feathers";
@@ -102,6 +103,10 @@ export const NODES: NodeDef[] = [
   // Golden filler off the quail golden branch (Phase 3).
   { id: "gold2",  nm: "Midas flock",     x: -330, y: 590, max: 1, par: "g2",   cur: "feathers", edge: "straight",
     cost: farmCost("gold2"), dsc: "Swept golden eggs drop a bonus feather instantly." },
+
+  // The Kitchen gate (PLAN Phase 4) — the kitchen sub-tree hangs here in Phase 6.
+  { id: "kitchen", nm: "The Kitchen",   x: -120, y: 260, max: 1, par: "sp1",  cur: "money", edge: "straight",
+    cost: () => KITCHEN_UNLOCK_COST, dsc: "Unlock the kitchen: route eggs to chefs and sell dishes." },
 
   // Flock economics off Geese (Phase 3).
   { id: "birdlot", nm: "Bulk deals",     x: 90,  y: 720, max: 3, par: "sp3",   cur: "feathers", edge: "straight",

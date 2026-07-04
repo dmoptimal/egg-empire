@@ -126,7 +126,7 @@ export const CHECKPOINTS: Checkpoint[] = [
       w2: 4, s2: 2, g2: 1,
       bsize: 3, bextra: 2, tspd: 2, ttime: 1,
       coll: 1, hire: 2, cspd: 2, cbag: 1,
-      ecap: 2, sweep: 1, combo: 1,
+      ecap: 2, sweep: 1, combo: 1, kitchen: 1,
     },
   },
   {
@@ -143,7 +143,7 @@ export const CHECKPOINTS: Checkpoint[] = [
       w3: 4, s3: 3, g3: 2,
       bsize: 4, bextra: 3, tspd: 3, ttime: 2,
       coll: 1, hire: 3, cspd: 3, cbag: 2, cval: 1, fth: 1,
-      ecap: 3, espoil: 1, sweep: 2, combo: 2, gold2: 1, birdlot: 1,
+      ecap: 3, espoil: 1, sweep: 2, combo: 2, gold2: 1, birdlot: 1, kitchen: 1,
     },
   },
   {
@@ -161,7 +161,7 @@ export const CHECKPOINTS: Checkpoint[] = [
       w4: 5, s4: 5, g4: 5,
       bsize: 5, bextra: 3, tspd: 5, ttime: 5,
       coll: 1, hire: 5, cspd: 5, cbag: 5, cval: 5, fth: 5,
-      ecap: 4, espoil: 4, sweep: 3, combo: 3, gold2: 1, birdlot: 3,
+      ecap: 4, espoil: 4, sweep: 3, combo: 3, gold2: 1, birdlot: 3, kitchen: 1,
     },
   },
 ];

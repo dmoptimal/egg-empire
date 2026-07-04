@@ -41,6 +41,8 @@ export type TruckPhase = "idle" | "in" | "load" | "out";
 export interface Basket {
   /** Layout-owned: W - 52 - index*66, recomputed on resize. */
   x: number;
+  /** Per-egg detail of the current load — the kitchen routes from this. */
+  load: BagEgg[];
   count: number;
   /** Money paid out when the truck collects. */
   value: number;
@@ -98,6 +100,39 @@ export interface SimHooks {
   spawnPoint?: (species: number) => SpawnPoint | null;
 }
 
+export interface Dish {
+  station: number;
+  value: number;
+  feathers: number;
+  golden: boolean;
+}
+
+export interface CookJob {
+  station: number;
+  /** Seconds of cooking left. */
+  t: number;
+  value: number;
+  feathers: number;
+  golden: boolean;
+}
+
+export interface KitchenTruck {
+  truckState: TruckPhase;
+  truckX: number;
+  truckPause: number;
+  sched: number;
+}
+
+export interface KitchenState {
+  /** Raw eggs awaiting a pan (each carries value/golden/species). */
+  pantry: BagEgg[];
+  /** Chefs hired per station index. */
+  chefs: number[];
+  cooking: CookJob[];
+  counter: Dish[];
+  truck: KitchenTruck;
+}
+
 export type SimEvent =
   | { type: "egg-laid"; egg: Egg }
   | { type: "egg-bounced"; egg: Egg }
@@ -112,10 +147,14 @@ export type SimEvent =
   | { type: "egg-deposited"; egg: Egg; basket: Basket }
   | { type: "baskets-full" }
   | { type: "truck-dispatched"; basket: Basket; index: number }
-  | { type: "payout"; basket: Basket; index: number; money: number; feathers: number; count: number }
+  | { type: "payout"; basket: Basket; index: number; money: number; feathers: number; count: number; routed: number }
   | { type: "node-bought"; id: string; level: number }
   | { type: "species-unlocked"; species: number }
   | { type: "bird-bought"; species: number; count: number }
+  | { type: "dish-cooked"; dish: Dish }
+  | { type: "chef-hired"; station: number; count: number }
+  | { type: "kitchen-truck-dispatched" }
+  | { type: "kitchen-payout"; money: number; feathers: number; dishes: number }
   | { type: "won" };
 
 export interface SimState {
@@ -145,6 +184,7 @@ export interface SimState {
   fullWarnCd: number;
   /** Seconds since the player last swept an egg (Hot streak window). */
   comboT: number;
+  kitchen: KitchenState;
   /** Buffered events since the last drain — the render/audio seam. */
   events: SimEvent[];
 }

@@ -50,6 +50,7 @@ const MONEY_LEVEL_ERAS: Record<string, string[]> = {
 /** Species unlocks are judged against the PREVIOUS era's money income. */
 const UNLOCK_ERAS: Record<string, string> = {
   sp1: "fresh", sp2: "ducks", sp3: "quail", sp4: "goose",
+  kitchen: "ducks", // the gate should land like a species unlock (PLAN Phase 4)
 };
 
 const secsLabel = (s: number) => `${Math.round(s)}s (${(s / 60).toFixed(1)}min)`;

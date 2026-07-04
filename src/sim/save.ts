@@ -43,6 +43,8 @@ export interface SaveData {
   lastSeen: number;
   /** Optional UI state — absent on old saves (first open centres the root). */
   treeView?: TreeView;
+  /** Chefs hired per kitchen station — absent on pre-kitchen saves. */
+  chefs?: number[];
 }
 
 export function serialize(state: SimState, lastSeen: number, treeView?: TreeView): SaveData {
@@ -57,6 +59,7 @@ export function serialize(state: SimState, lastSeen: number, treeView?: TreeView
     lastSeen,
   };
   if (treeView) save.treeView = { ...treeView };
+  if (state.kitchen.chefs.some((c) => c > 0)) save.chefs = [...state.kitchen.chefs];
   return save;
 }
 
@@ -94,6 +97,8 @@ export function restore(save: SaveData, opts: CreateSimOptions = {}): SimState |
   state.won = !!save.won;
   for (let i = 0; i < lvl(state, "bextra"); i++) addBasket(state);
   for (let i = 0; i < lvl(state, "hire"); i++) addCollector(state);
+  if (Array.isArray(save.chefs) && save.chefs.length === state.kitchen.chefs.length && save.chefs.every(finiteNumber))
+    state.kitchen.chefs = [...save.chefs];
   return state;
 }
 

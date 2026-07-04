@@ -11,6 +11,7 @@ import { sweepCollect } from "./collect";
 import { updateCollector } from "./collectors";
 import { layIntv, unlocked } from "./economy";
 import { layEgg, updateFalling, updateFlying, updateGround } from "./eggs";
+import { updateKitchen } from "./kitchen";
 import { DEFAULT_HOOKS } from "./state";
 import type { SimHooks, SimState } from "./types";
 
@@ -49,4 +50,5 @@ export function tick(
   updateFlying(state, dt);
   for (const c of state.collectors) updateCollector(state, c, dt);
   for (const b of state.baskets) updateTruck(state, b, dt);
+  updateKitchen(state, dt); // both sims always run (no-op until unlocked)
 }

@@ -8,14 +8,16 @@ import {
   TRUCK_START_X,
   TRUCK_STOP_OFFSET,
 } from "../config/constants";
-import { basketCap, lvl, truckPause, truckSchedule, truckSpeedIn, truckSpeedOut } from "./economy";
+import { basketCap, featherGolden, featherPerEgg, lvl, truckPause, truckSchedule, truckSpeedIn, truckSpeedOut } from "./economy";
 import { emit } from "./events";
+import { routeToPantry } from "./kitchen";
 import { applyBasketXs } from "./layout";
 import type { Basket, SimState } from "./types";
 
 export function addBasket(state: SimState): Basket {
   const b: Basket = {
     x: 0,
+    load: [],
     count: 0,
     value: 0,
     feathers: 0,
@@ -72,15 +74,32 @@ export function updateTruck(state: SimState, b: Basket, dt: number): void {
   } else if (b.truckState === "load") {
     b.truckPause -= dt;
     if (b.truckPause <= 0) {
-      const money = b.value;
-      const feathers = b.feathers;
-      const count = b.count;
+      let money = b.value;
+      let feathers = b.feathers;
+      let count = b.count;
+      // PLAN Phase 4 routing: the load is offered to the kitchen pantry
+      // first; whatever doesn't fit is sold raw as before. Routed eggs pay
+      // nothing here — their money and feathers arrive as cooked dishes.
+      const routed = routeToPantry(state, b.load);
+      for (let i = 0; i < routed; i++) {
+        const egg = b.load[i];
+        money -= egg.value;
+        feathers -= egg.golden
+          ? featherGolden(state, egg.species)
+          : featherPerEgg(state, egg.species);
+        count -= 1;
+      }
+      b.load.splice(0, routed);
+      money = Math.max(0, money);
+      feathers = Math.max(0, feathers);
+      count = Math.max(0, count);
       state.money += money;
       state.feathers += feathers;
       state.totalDelivered += count;
       b.count = 0;
       b.value = 0;
       b.feathers = 0;
+      b.load.length = 0;
       b.truckState = "out";
       emit(state, {
         type: "payout",
@@ -89,6 +108,7 @@ export function updateTruck(state: SimState, b: Basket, dt: number): void {
         money,
         feathers,
         count,
+        routed,
       });
     }
   } else if (b.truckState === "out") {
