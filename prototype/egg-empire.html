@@ -1,0 +1,907 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Egg Empire</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#4a7c2f;font-family:system-ui,sans-serif;
+    -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;overscroll-behavior:none}
+  #wrap{position:fixed;inset:0;display:flex;flex-direction:column}
+  #game{flex:1;position:relative;touch-action:none}
+  #game canvas{position:absolute;inset:0;width:100%;height:100%;z-index:0}
+  #stats{position:absolute;top:0;left:0;right:0;display:flex;justify-content:center;gap:10px;
+    padding:calc(6px + env(safe-area-inset-top)) 8px 6px;pointer-events:none;z-index:2}
+  .chip{background:rgba(0,0,0,.45);border-radius:20px;padding:5px 14px;color:#fff;font-weight:800;font-size:16px}
+  #money{color:#ffd94a}#feathers{color:#8fe3d0}
+  #mute{pointer-events:auto;padding:5px 10px}
+  #bar{padding:8px 8px calc(8px + env(safe-area-inset-bottom));background:#20301a;display:flex;gap:8px}
+  #shop{flex:1;display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  #shop button{flex:0 0 auto;min-width:100px}
+  #togglePanel{flex:0 0 32%;min-width:112px}
+  #bar button{min-height:54px;border:0;border-radius:12px;font-size:14px;font-weight:800;color:#fff;
+    background:#2f6fdb;box-shadow:0 3px 0 rgba(0,0,0,.35);padding:4px}
+  #bar button:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.35)}
+  #bar button:disabled{background:#4a4a4a;color:#999}
+  #bar button small{display:block;font-weight:600;font-size:11px;opacity:.9;margin-top:2px}
+  #hint{position:absolute;left:0;right:0;top:42%;text-align:center;color:#fff;font-weight:800;font-size:16px;
+    text-shadow:0 2px 4px rgba(0,0,0,.6);pointer-events:none;transition:opacity .6s;z-index:2;opacity:0}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="game">
+    <div id="stats">
+      <span class="chip" id="money">$0</span>
+      <span class="chip" id="feathers">0 🪶</span>
+      <span class="chip" id="mute">🔊</span>
+    </div>
+    <div id="hint">Tap or swipe across the eggs to collect them!</div>
+  </div>
+  <div id="bar">
+    <div id="shop"></div>
+    <button id="togglePanel">Skill tree 🪶</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+const PIXI_URLS = [
+  "https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.4.2/pixi.min.js",
+  "https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js",
+  "https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.2.4/pixi.min.js"
+];
+(function loadPixi(i){
+  if(i >= PIXI_URLS.length){ const h=document.getElementById("hint"); h.style.opacity=1; h.textContent="Couldn't load renderer — check connection"; return; }
+  const s=document.createElement("script");
+  s.src=PIXI_URLS[i]; s.onload=main; s.onerror=()=>loadPixi(i+1);
+  document.head.appendChild(s);
+})(0);
+
+// ============================================================
+// AUDIO — all synthesized, no assets
+// ============================================================
+let AC=null, master=null, muted=false, noiseBuf=null;
+function audioInit(){
+  if(AC){ if(AC.state==="suspended") AC.resume(); return; }
+  AC=new (window.AudioContext||window.webkitAudioContext)();
+  master=AC.createGain(); master.gain.value=0.5; master.connect(AC.destination);
+  const len=AC.sampleRate;
+  noiseBuf=AC.createBuffer(1,len,AC.sampleRate);
+  const d=noiseBuf.getChannelData(0);
+  for(let i=0;i<len;i++) d[i]=Math.random()*2-1;
+}
+function tone(freq,dur,o={}){
+  if(!AC||muted) return;
+  const t0=AC.currentTime+(o.delay||0);
+  const osc=AC.createOscillator(), g=AC.createGain();
+  osc.type=o.type||"sine";
+  osc.frequency.setValueAtTime(freq,t0);
+  if(o.slide) osc.frequency.exponentialRampToValueAtTime(Math.max(30,freq+o.slide),t0+dur);
+  g.gain.setValueAtTime(0.0001,t0);
+  g.gain.linearRampToValueAtTime(o.vol||0.25,t0+0.004);
+  g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+  osc.connect(g); g.connect(master);
+  osc.start(t0); osc.stop(t0+dur+0.02);
+}
+function noise(dur,o={}){
+  if(!AC||muted||!noiseBuf) return;
+  const t0=AC.currentTime+(o.delay||0);
+  const src=AC.createBufferSource(); src.buffer=noiseBuf; src.loop=true;
+  src.playbackRate.value=0.7+Math.random()*0.6;
+  const f=AC.createBiquadFilter(); f.type="bandpass";
+  f.frequency.setValueAtTime(o.freq||800,t0);
+  if(o.slide) f.frequency.exponentialRampToValueAtTime(Math.max(40,(o.freq||800)+o.slide),t0+dur);
+  f.Q.value=o.q||1;
+  const g=AC.createGain();
+  g.gain.setValueAtTime(o.vol||0.15,t0);
+  g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+  src.connect(f); f.connect(g); g.connect(master);
+  src.start(t0,Math.random()*0.5); src.stop(t0+dur+0.02);
+}
+let comboN=0, lastPopT=0, lastLandT=0, lastSpoilT=0;
+const SFX={
+  pop(golden){
+    const now=performance.now();
+    comboN = now-lastPopT<450 ? comboN+1 : 0;
+    lastPopT=now;
+    // pentatonic climb (always musical); after ~2 octaves it cycles the top
+    // five notes instead of parking on one high shriek
+    const PENTA=[0,2,4,7,9];
+    const i = comboN<=9 ? comboN : 5+(comboN%5);
+    const semis = Math.floor(i/5)*12 + PENTA[i%5];
+    const f = 392*Math.pow(2,semis/12);
+    const vol = comboN>10 ? 0.16 : 0.24;   // soften sustained streaks
+    tone(f,0.09,{type:"triangle",vol,slide:f*0.4});
+    if(comboN<8||(comboN&1)===0) noise(0.03,{freq:3200,vol:.05,q:2});
+    if(golden){
+      tone(880,0.08,{type:"sine",vol:.22,delay:.02});
+      tone(1318,0.10,{type:"sine",vol:.22,delay:.09});
+      tone(1760,0.14,{type:"sine",vol:.18,delay:.16});
+      noise(0.25,{freq:6500,vol:.08,q:3,delay:.02});
+    }
+  },
+  land(){
+    const now=performance.now();
+    if(now-lastLandT<60) return;
+    lastLandT=now;
+    noise(0.05,{freq:280+Math.random()*180,vol:.10,q:.8});
+    tone(130+Math.random()*30,0.05,{type:"sine",vol:.08,slide:-50});
+  },
+  spoil(){
+    const now=performance.now();
+    if(now-lastSpoilT<200) return;
+    lastSpoilT=now;
+    tone(320,0.16,{type:"sine",vol:.09,slide:-180});
+  },
+  honk(){ tone(392,0.13,{type:"square",vol:.14}); tone(330,0.15,{type:"square",vol:.14,delay:.14}); },
+  kaching(){
+    tone(1244,0.07,{type:"square",vol:.15});
+    tone(1660,0.20,{type:"square",vol:.15,delay:.07});
+    noise(0.18,{freq:7000,vol:.09,q:2,delay:.05});
+    tone(90,0.10,{type:"sine",vol:.15});
+  },
+  buy(){ [523,659,784].forEach((f,i)=>tone(f,0.08,{type:"triangle",vol:.18,delay:i*.06})); },
+  unlock(){
+    [523,659,784,1046].forEach((f,i)=>tone(f,0.12,{type:"square",vol:.16,delay:i*.09}));
+    noise(0.5,{freq:5000,vol:.07,q:2,delay:.1});
+  },
+  donk(){ tone(180,0.12,{type:"square",vol:.13,slide:-50}); },
+  cluck(){
+    const f=750+Math.random()*500;
+    noise(0.045,{freq:f+400,vol:.05,q:5});
+    noise(0.07,{freq:f,vol:.07,q:4,delay:.07});
+  },
+  win(){
+    [523,659,784,1046,1318].forEach((f,i)=>tone(f,0.16,{type:"square",vol:.18,delay:i*.12}));
+    noise(0.8,{freq:6000,vol:.08,q:2,delay:.2});
+  }
+};
+const muteChip=document.getElementById("mute");
+muteChip.addEventListener("pointerdown",e=>{
+  e.stopPropagation();
+  muted=!muted;
+  muteChip.textContent=muted?"🔇":"🔊";
+});
+
+// ============================================================
+// SIM — the truth
+// ============================================================
+const SPECIES = [
+  {name:"Chicken", plural:"Chickens", unlock:0,       birdBase:50,     growth:1.35, eggValue:10,    interval:4.0,  eggScale:3.0},
+  {name:"Duck",    plural:"Ducks",    unlock:2500,    birdBase:500,    growth:1.35, eggValue:60,    interval:5.0,  eggScale:3.5},
+  {name:"Quail",   plural:"Quail",    unlock:30000,   birdBase:2200,   growth:1.35, eggValue:300,   interval:1.6,  eggScale:2.2},
+  {name:"Goose",   plural:"Geese",    unlock:450000,  birdBase:20000,  growth:1.40, eggValue:2600,  interval:8.0,  eggScale:4.5},
+  {name:"Ostrich", plural:"Ostriches",unlock:7500000, birdBase:250000, growth:1.45, eggValue:30000, interval:14.0, eggScale:6.5}
+];
+const S = {
+  money:0, feathers:0, totalDelivered:0,
+  counts:[2,0,0,0,0],
+  layAcc:[0,0,0,0,0],
+  n:{sp0:1}
+};
+const lvl = id => S.n[id]||0;
+const unlocked = i => lvl("sp"+i) > 0;
+const birdCost   = i => Math.floor(SPECIES[i].birdBase * Math.pow(SPECIES[i].growth, S.counts[i]-(i===0?2:1)));
+const worthMult  = i => Math.pow(1.25, lvl("w"+i));
+const layIntv    = i => SPECIES[i].interval * Math.pow(0.90, lvl("s"+i));
+const goldenPct  = i => 0.02 + 0.02*lvl("g"+i);
+const basketCap  = () => 12 + 6*lvl("bsize");
+const truckSpeedIn  = () => 300 * Math.pow(1.3, lvl("tspd"));
+const truckSpeedOut = () => 340 * Math.pow(1.3, lvl("tspd"));
+const truckPause    = () => 0.9 * Math.pow(0.92, lvl("tspd"));
+const SCHED=[0,30,24,18,14,10];
+const truckSchedule = () => SCHED[lvl("ttime")];
+const collSpeed     = () => 130 * Math.pow(1.25, lvl("cspd"));
+const collBagCap    = () => 1 + lvl("cbag");
+const collValueMult = () => 1 + 0.10*lvl("cval");
+const featherPerEgg = () => 1 + lvl("fth");
+const featherGolden = () => 15 + 10*lvl("fth");
+
+const fmt = n => n>=1e12?(n/1e12).toFixed(2)+"T":n>=1e9?(n/1e9).toFixed(2)+"B":
+                 n>=1e6?(n/1e6).toFixed(2)+"M":n>=1e3?(n/1e3).toFixed(1)+"K":Math.floor(n).toString();
+const $$ = n => "$"+fmt(n);
+
+const BASKET_COSTS=[15000,400000,10000000];
+const NODES = [
+  {id:"sp0", nm:"Chickens",  col:0,row:0, max:1, par:null,  cur:"m", cost:l=>0, dsc:"Your starter flock. Humble. Reliable. Loud at dawn."},
+  {id:"w0",  nm:"Egg worth", col:1,row:0, max:5, par:"sp0", cur:"f", cost:l=>Math.ceil(8*1*Math.pow(2.1,l)),  dsc:"Chicken eggs sell for +25% per level."},
+  {id:"s0",  nm:"Lay speed", col:2,row:0, max:5, par:"w0",  cur:"f", cost:l=>Math.ceil(12*1*Math.pow(2.2,l)), dsc:"Chickens lay 10% faster per level."},
+  {id:"g0",  nm:"Golden egg",col:3,row:0, max:5, par:"s0",  cur:"f", cost:l=>Math.ceil(15*1*Math.pow(2.4,l)), dsc:"+2% golden egg chance per level. Golden = 10× value, big 🪶."},
+
+  {id:"sp1", nm:"Ducks",     col:0,row:1, max:1, par:"sp0", cur:"m", cost:l=>SPECIES[1].unlock, dsc:"Unlock ducks. Eggs worth "+$$(SPECIES[1].eggValue)+"."},
+  {id:"w1",  nm:"Egg worth", col:1,row:1, max:5, par:"sp1", cur:"f", cost:l=>Math.ceil(8*2*Math.pow(2.1,l)),  dsc:"Duck eggs sell for +25% per level."},
+  {id:"s1",  nm:"Lay speed", col:2,row:1, max:5, par:"w1",  cur:"f", cost:l=>Math.ceil(12*2*Math.pow(2.2,l)), dsc:"Ducks lay 10% faster per level."},
+  {id:"g1",  nm:"Golden egg",col:3,row:1, max:5, par:"s1",  cur:"f", cost:l=>Math.ceil(15*2*Math.pow(2.4,l)), dsc:"+2% golden egg chance per level."},
+
+  {id:"sp2", nm:"Quail",     col:0,row:2, max:1, par:"sp1", cur:"m", cost:l=>SPECIES[2].unlock, dsc:"Unlock quail. Tiny eggs, frantic pace. Worth "+$$(SPECIES[2].eggValue)+"."},
+  {id:"w2",  nm:"Egg worth", col:1,row:2, max:5, par:"sp2", cur:"f", cost:l=>Math.ceil(8*3*Math.pow(2.1,l)),  dsc:"Quail eggs sell for +25% per level."},
+  {id:"s2",  nm:"Lay speed", col:2,row:2, max:5, par:"w2",  cur:"f", cost:l=>Math.ceil(12*3*Math.pow(2.2,l)), dsc:"Quail lay 10% faster per level. Chaos."},
+  {id:"g2",  nm:"Golden egg",col:3,row:2, max:5, par:"s2",  cur:"f", cost:l=>Math.ceil(15*3*Math.pow(2.4,l)), dsc:"+2% golden egg chance per level."},
+
+  {id:"sp3", nm:"Geese",     col:0,row:3, max:1, par:"sp2", cur:"m", cost:l=>SPECIES[3].unlock, dsc:"Unlock geese. Big eggs, bad attitude. Worth "+$$(SPECIES[3].eggValue)+"."},
+  {id:"w3",  nm:"Egg worth", col:1,row:3, max:5, par:"sp3", cur:"f", cost:l=>Math.ceil(8*4*Math.pow(2.1,l)),  dsc:"Goose eggs sell for +25% per level."},
+  {id:"s3",  nm:"Lay speed", col:2,row:3, max:5, par:"w3",  cur:"f", cost:l=>Math.ceil(12*4*Math.pow(2.2,l)), dsc:"Geese lay 10% faster per level."},
+  {id:"g3",  nm:"Golden egg",col:3,row:3, max:5, par:"s3",  cur:"f", cost:l=>Math.ceil(15*4*Math.pow(2.4,l)), dsc:"+2% golden egg chance per level."},
+
+  {id:"sp4", nm:"Ostriches", col:0,row:4, max:1, par:"sp3", cur:"m", cost:l=>SPECIES[4].unlock, dsc:"Unlock ostriches. Eggs the size of your head. Worth "+$$(SPECIES[4].eggValue)+"."},
+  {id:"w4",  nm:"Egg worth", col:1,row:4, max:5, par:"sp4", cur:"f", cost:l=>Math.ceil(8*5*Math.pow(2.1,l)),  dsc:"Ostrich eggs sell for +25% per level."},
+  {id:"s4",  nm:"Lay speed", col:2,row:4, max:5, par:"w4",  cur:"f", cost:l=>Math.ceil(12*5*Math.pow(2.2,l)), dsc:"Ostriches lay 10% faster per level."},
+  {id:"g4",  nm:"Golden egg",col:3,row:4, max:5, par:"s4",  cur:"f", cost:l=>Math.ceil(15*5*Math.pow(2.4,l)), dsc:"+2% golden egg chance per level."},
+
+  {id:"bsize", nm:"Bigger baskets", col:0,row:5, max:5, par:"sp1",  cur:"f", route:"left", cost:l=>Math.ceil(25*Math.pow(2.5,l)), dsc:"Every basket holds +6 more eggs per level."},
+  {id:"bextra",nm:"Extra basket",   col:1,row:5, max:3, par:"bsize",cur:"m", cost:l=>BASKET_COSTS[l], dsc:"Adds a basket with its own truck."},
+  {id:"tspd",  nm:"Truck speed",    col:2,row:5, max:5, par:"bextra",cur:"f", cost:l=>Math.ceil(30*Math.pow(2.2,l)), dsc:"Trucks drive and load 30% faster per level."},
+  {id:"ttime", nm:"Truck schedule", col:3,row:5, max:5, par:"tspd", cur:"f", cost:l=>Math.ceil(35*Math.pow(2.3,l)), dsc:"Trucks also collect part-full baskets on a timer: 30s at level 1, down to 10s at max. Countdown shows above each basket."},
+  {id:"coll",  nm:"Collectors",     col:0,row:6, max:1, par:"bsize",cur:"f", cost:l=>150, dsc:"Unlock farmhands who gather eggs for you."},
+  {id:"hire",  nm:"Hire collector", col:1,row:6, max:5, par:"coll", cur:"m", cost:l=>Math.floor(5000*Math.pow(4,l)), dsc:"Adds a collector to the crew."},
+  {id:"cspd",  nm:"Collector speed",col:2,row:6, max:5, par:"hire", cur:"f", cost:l=>Math.ceil(40*Math.pow(2.3,l)), dsc:"Collectors move 25% faster per level."},
+  {id:"cbag",  nm:"Bigger bag",     col:3,row:6, max:5, par:"cspd", cur:"f", cost:l=>Math.ceil(45*Math.pow(2.3,l)), dsc:"Collectors carry +1 egg per trip per level."},
+  {id:"cval",  nm:"Gentle hands",   col:3,row:7, max:5, par:"cbag", cur:"f", cost:l=>Math.ceil(55*Math.pow(2.4,l)), dsc:"Eggs gathered by collectors are worth +10% per level."},
+  {id:"fth",   nm:"Feathered eggs", col:2,row:7, max:5, par:"cval", cur:"f", cost:l=>Math.ceil(60*Math.pow(2.4,l)), dsc:"Every delivered egg gives +1 🪶 per level. Golden eggs give +10 🪶 per level."}
+];
+const nodeById=Object.fromEntries(NODES.map(n=>[n.id,n]));
+const nodeCost=n=>n.cost(lvl(n.id));
+const canAfford=n=>n.cur==="m"?S.money>=nodeCost(n):S.feathers>=nodeCost(n);
+const treeComplete=()=>NODES.every(n=>lvl(n.id)>=n.max);
+const MAX_ROW=7;
+
+// ============================================================
+function main(){
+PIXI.BaseTexture.defaultOptions.scaleMode = PIXI.SCALE_MODES.NEAREST;
+const gameDiv=document.getElementById("game");
+const app=new PIXI.Application({
+  resizeTo:gameDiv, backgroundColor:0x63a344, antialias:false,
+  resolution:Math.min(window.devicePixelRatio||1,2), autoDensity:true
+});
+gameDiv.appendChild(app.view);
+
+const bg=new PIXI.Graphics();
+const birdLayer=new PIXI.Container();
+const eggLayer=new PIXI.Container();
+const actorLayer=new PIXI.Container();
+const fxLayer=new PIXI.Container();
+const treeOverlay=new PIXI.Container(); treeOverlay.visible=false;
+const winScreen=new PIXI.Container(); winScreen.visible=false;
+const startScreen=new PIXI.Container();
+app.stage.addChild(bg,birdLayer,eggLayer,actorLayer,fxLayer,treeOverlay,winScreen,startScreen);
+const basketLayer=new PIXI.Container(),collLayer=new PIXI.Container(),truckLayer=new PIXI.Container();
+actorLayer.addChild(basketLayer,collLayer,truckLayer);
+
+let started=false, treeOpen=false, won=false;
+
+// ---- textures ----
+function tex(px){
+  const g=new PIXI.Graphics();
+  for(const [x,y,w,h,c] of px) g.beginFill(c).drawRect(x,y,w,h).endFill();
+  return app.renderer.generateTexture(g);
+}
+function eggTexF(color,speckle){
+  const g=new PIXI.Graphics();
+  g.beginFill(color).drawEllipse(3,3.5,2.6,3.4).endFill();
+  g.beginFill(0xffffff,.5).drawRect(2,1,1,1).endFill();
+  if(speckle) g.beginFill(0x6b5136).drawRect(2,3,1,1).drawRect(4,5,1,1).drawRect(3,2,1,1).endFill();
+  return app.renderer.generateTexture(g);
+}
+const BIRD_TEX=[
+  tex([[1,5,7,5,0xf7f0dd],[0,4,2,3,0xe8dfc8],[7,2,3,4,0xf7f0dd],[7,1,3,1,0xd43a2f],[10,3,2,1,0xf2a03d],[8,3,1,1,0x1a1a1a],[3,10,1,2,0xf2a03d],[6,10,1,2,0xf2a03d]]),
+  tex([[1,5,8,5,0x8a5a33],[0,4,2,3,0x6e4526],[8,2,3,4,0x2e7d43],[8,5,3,1,0xf0f0e8],[11,3,2,1,0xe8c531],[9,3,1,1,0x111111],[3,10,1,2,0xe8952e],[6,10,1,2,0xe8952e]]),
+  tex([[1,3,7,5,0x9c7a4e],[2,4,1,1,0x6b5136],[5,5,1,1,0x6b5136],[6,3,1,1,0x6b5136],[6,1,2,3,0x9c7a4e],[4,0,1,2,0x2b2b2b],[8,2,1,1,0xd8a03d],[7,1,1,1,0x111111],[3,8,1,1,0xd8a03d],[5,8,1,1,0xd8a03d]]),
+  tex([[1,8,9,6,0xf5f2ea],[0,7,2,4,0xe6e2d5],[8,2,2,7,0xf5f2ea],[8,0,3,2,0xf5f2ea],[11,1,2,1,0xe8952e],[9,1,1,1,0x111111],[3,14,1,2,0xe8952e],[6,14,1,2,0xe8952e]]),
+  tex([[2,9,9,7,0x2b2b2b],[3,10,5,4,0x3d3d3d],[9,2,2,8,0xd8b090],[9,0,3,2,0xd8b090],[12,1,2,1,0xc9773a],[10,1,1,1,0x111111],[5,16,1,6,0xe0a8a0],[8,16,1,6,0xe0a8a0],[4,22,3,1,0xc9773a],[7,22,3,1,0xc9773a]])
+];
+const BIRD_SCALE=[3,3,3,3,3.4];
+const EGG_TEX=[eggTexF(0xfff3da),eggTexF(0xdff0e0),eggTexF(0xe6d4ac,true),eggTexF(0xf7f5ee),eggTexF(0xf0e6cf)];
+const GOLD_TEX=eggTexF(0xffd24a);
+const BASKET_TEX=tex([[0,2,18,10,0x8a5a2b],[1,3,16,8,0xa06c36],[0,2,18,2,0x6e4520],[4,4,1,7,0x8a5a2b],[9,4,1,7,0x8a5a2b],[14,4,1,7,0x8a5a2b]]);
+const TRUCK_TEX=tex([[0,4,16,8,0x3a7bd5],[1,5,14,6,0x4a8be5],[16,5,8,7,0x2c5fa8],[18,6,4,3,0xbfe3ff],[3,12,4,4,0x1a1a1a],[4,13,2,2,0x666666],[18,12,4,4,0x1a1a1a],[19,13,2,2,0x666666]]);
+const COLL_TEX=tex([[3,0,4,2,0xe8c531],[2,1,6,1,0xe8c531],[3,2,4,3,0xe8b48a],[4,3,1,1,0x111111],[2,5,6,5,0x3a6bb5],[1,5,2,4,0xe8b48a],[7,5,2,4,0xe8b48a],[3,10,1,3,0x2b3a5a],[6,10,1,3,0x2b3a5a]]);
+
+// ---- layout ----
+let W=0,H=0,hayTop=0,hayBottom=0,roadY=0,basketY=0;
+function layout(){
+  W=app.screen.width; H=app.screen.height;
+  hayTop=H*0.50; roadY=H*0.87; hayBottom=roadY-26; basketY=hayBottom+2;
+  bg.clear();
+  bg.beginFill(0x63a344).drawRect(0,0,W,hayTop).endFill();
+  bg.beginFill(0x5a9339); for(let y=0;y<hayTop;y+=44) for(let x=(y/44%2)*22;x<W;x+=44) bg.drawRect(x,y,22,22); bg.endFill();
+  bg.beginFill(0x6e4520).drawRect(0,hayTop-4,W,4).endFill();
+  for(let x=14;x<W;x+=64) bg.beginFill(0x6e4520).drawRect(x,hayTop-16,5,16).endFill();
+  bg.beginFill(0xd9b45a).drawRect(0,hayTop,W,roadY-12-hayTop).endFill();
+  bg.beginFill(0xc79f45); for(let i=0;i<90;i++){const x=(i*97)%W,y=hayTop+((i*61)%(roadY-16-hayTop));bg.drawRect(x,y,7,2);}bg.endFill();
+  bg.beginFill(0x565656).drawRect(0,roadY-12,W,26).endFill();
+  bg.beginFill(0xdddddd); for(let x=8;x<W;x+=52) bg.drawRect(x,roadY,20,3); bg.endFill();
+  bg.beginFill(0x4a7c2f).drawRect(0,roadY+14,W,H-roadY-14).endFill();
+  baskets.forEach((b,i)=>{
+    b.x=W-52-i*66;
+    b.sp.position.set(b.x,basketY); b.label.position.set(b.x,basketY-34);
+    b.timerTxt.position.set(b.x,basketY-48);
+    b.truck.y=roadY-10+(i%2)*8;
+  });
+  // keep every bird inside the tappable field, whatever size the canvas settles at
+  for(const arr of birdViews) for(const b of arr){
+    b.x=Math.min(Math.max(b.x,24),Math.max(W-24,24));
+    b.y=Math.min(Math.max(b.y,92),Math.max(hayTop-30,92));
+  }
+  if(startScreen.visible) positionStartElems();
+}
+
+// ---- baskets & trucks ----
+const baskets=[];
+function addBasket(){
+  const sp=new PIXI.Sprite(BASKET_TEX); sp.anchor.set(.5,1); sp.scale.set(3.2);
+  const fill=new PIXI.Graphics(); sp.addChild(fill);
+  const topEggs=[];
+  for(let k=0;k<3;k++){
+    const eg=new PIXI.Sprite(EGG_TEX[0]); eg.anchor.set(.5,1); eg.scale.set(.85);
+    eg.position.set([-4.5,0,4.5][k],[-6,-7.5,-6][k]); eg.rotation=[-.2,0,.25][k];
+    eg.visible=false; sp.addChild(eg); topEggs.push(eg);
+  }
+  const label=new PIXI.Text("0/12",{fill:"#fff",fontSize:14,fontWeight:"800",stroke:"#000",strokeThickness:3}); label.anchor.set(.5,1);
+  const timerTxt=new PIXI.Text("",{fill:"#8fe3d0",fontSize:11,fontWeight:"800",stroke:"#000",strokeThickness:3}); timerTxt.anchor.set(.5,1);
+  const truck=new PIXI.Sprite(TRUCK_TEX); truck.anchor.set(.5,1); truck.scale.set(3); truck.x=-120;
+  basketLayer.addChild(sp);
+  truckLayer.addChild(truck,label,timerTxt);
+  baskets.push({sp,fill,label,timerTxt,truck,topEggs,x:0,count:0,value:0,feathers:0,
+                truckState:"idle",truckPause:0,sched:0,shownT:-1,wiggle:0});
+  layout(); baskets.forEach(drawBasketFill);
+}
+function drawBasketFill(b){
+  b.fill.clear();
+  const f=Math.min(b.count/basketCap(),1);
+  if(f>0) b.fill.beginFill(0xfff3da).drawRect(-7,-2-f*7,14,f*7).endFill();
+  b.topEggs[0].visible=f>=0.55;
+  b.topEggs[1].visible=f>=0.8;
+  b.topEggs[2].visible=f>=1;
+  b.label.text=Math.min(b.count,basketCap())+"/"+basketCap();
+}
+function basketWithSpace(nearX){
+  let best=null,bd=1e9;
+  for(const b of baskets){ if(b.count>=basketCap()) continue;
+    const d=Math.abs(b.x-nearX); if(d<bd){bd=d;best=b;} }
+  return best;
+}
+function truckUpdate(b,dt){
+  if(b.truckState==="idle"){
+    const schedOn = lvl("ttime")>0;
+    if(b.count>0) b.sched+=dt; else b.sched=0;
+    // countdown display (only rewrite text when the second changes)
+    if(schedOn && b.count>0 && b.count<basketCap()){
+      const left=Math.max(0,Math.ceil(truckSchedule()-b.sched));
+      if(left!==b.shownT){ b.shownT=left; b.timerTxt.text="🚚 "+left+"s"; }
+    } else if(b.shownT!==-1){ b.shownT=-1; b.timerTxt.text=""; }
+    const due = b.count>=basketCap() || (schedOn && b.count>0 && b.sched>=truckSchedule());
+    if(due){ b.truckState="in"; b.truck.x=-80; b.sched=0; b.shownT=-1; b.timerTxt.text=""; SFX.honk(); }
+    return;
+  }
+  if(b.truckState==="in"){
+    b.truck.x+=truckSpeedIn()*dt;
+    if(b.truck.x>=b.x-10){ b.truckState="load"; b.truckPause=truckPause(); }
+  } else if(b.truckState==="load"){
+    b.truckPause-=dt;
+    if(b.truckPause<=0){
+      S.money+=b.value; S.feathers+=b.feathers; S.totalDelivered+=b.count;
+      popup(b.x,basketY-70,"+"+$$(b.value),0x7ef25d,24);
+      popup(b.x,basketY-44,"+"+b.feathers+" 🪶",0x8fe3d0,16);
+      SFX.kaching();
+      b.count=0; b.value=0; b.feathers=0;
+      drawBasketFill(b); refreshStats();
+      b.truckState="out";
+    }
+  } else if(b.truckState==="out"){
+    b.truck.x+=truckSpeedOut()*dt;
+    if(b.truck.x>W+90){ b.truckState="idle"; b.truck.x=-120; }
+  }
+}
+
+// ---- birds ----
+const BIRD_VIEW_CAP=22;
+const birdViews=SPECIES.map(()=>[]);
+function addBirdView(i){
+  if(birdViews[i].length>=BIRD_VIEW_CAP) return;
+  const sp=new PIXI.Sprite(BIRD_TEX[i]);
+  sp.anchor.set(.5,1); sp.scale.set(BIRD_SCALE[i]);
+  if(Math.random()<.5) sp.scale.x*=-1;
+  birdLayer.addChild(sp);
+  birdViews[i].push({sp,x:24+Math.random()*(W-48),y:92+Math.random()*Math.max(hayTop-140,60),phase:Math.random()*6.28});
+}
+function syncBirds(){ SPECIES.forEach((_,i)=>{ while(birdViews[i].length<Math.min(S.counts[i],BIRD_VIEW_CAP)) addBirdView(i); }); }
+const totalBirds=()=>S.counts.reduce((a,b)=>a+b,0);
+
+// ---- eggs ----
+const EGG_CAP=80, EGG_LIFE=25;
+const eggPool=[];
+for(let i=0;i<EGG_CAP+40;i++){
+  const sp=new PIXI.Sprite(EGG_TEX[0]); sp.anchor.set(.5); sp.visible=false; eggLayer.addChild(sp);
+  eggPool.push({sp,active:false});
+}
+const groundEggs=[],fallingEggs=[],flyingEggs=[];
+function acquireEgg(){ for(const e of eggPool) if(!e.active){e.active=true;e.sp.visible=true;return e;} return null; }
+function releaseEgg(e){ e.active=false; e.sp.visible=false; e.claimed=false;
+  [groundEggs,fallingEggs,flyingEggs].forEach(a=>{const k=a.indexOf(e); if(k>=0)a.splice(k,1);}); }
+function layEgg(i){
+  const views=birdViews[i]; if(!views.length) return;
+  if(groundEggs.length+fallingEggs.length>=EGG_CAP) releaseEgg(groundEggs[0]||fallingEggs[0]);
+  const e=acquireEgg(); if(!e) return;
+  const b=views[(Math.random()*views.length)|0];
+  const golden=Math.random()<goldenPct(i);
+  e.species=i; e.golden=golden;
+  e.value=Math.round(SPECIES[i].eggValue*worthMult(i))*(golden?10:1);
+  e.sp.texture=golden?GOLD_TEX:EGG_TEX[i];
+  e.sp.scale.set(SPECIES[i].eggScale*(golden?1.15:1));
+  e.sp.alpha=1; e.sp.rotation=0;
+  e.sp.position.set(b.x+(Math.random()*20-10), b.y-6);
+  e.vy=30; e.targetY=hayTop+14+Math.random()*(hayBottom-hayTop-18);
+  e.age=0; e.claimed=false; e.bounced=false;
+  fallingEggs.push(e);
+}
+function collectEgg(e,basket){
+  e.claimed=true; e.basket=basket;
+  const k=groundEggs.indexOf(e); if(k>=0)groundEggs.splice(k,1);
+  const k2=fallingEggs.indexOf(e); if(k2>=0)fallingEggs.splice(k2,1);
+  e.flyT=0; e.sx=e.sp.x; e.sy=e.sp.y; e.tx=basket.x; e.ty=basketY-24;
+  flyingEggs.push(e);
+  SFX.pop(e.golden);
+  popup(e.sp.x,e.sp.y-14,"+"+$$(e.value),e.golden?0xffd24a:0xfff3da,e.golden?18:13);
+}
+function depositEgg(e){
+  const b=e.basket;
+  b.count++; b.value+=e.value; b.feathers+=e.golden?featherGolden():featherPerEgg();
+  drawBasketFill(b); releaseEgg(e);
+}
+
+// ---- collectors ----
+const collectors=[];
+function addCollector(){
+  const sp=new PIXI.Sprite(COLL_TEX); sp.anchor.set(.5,1); sp.scale.set(3);
+  const carry=new PIXI.Sprite(EGG_TEX[0]); carry.anchor.set(.5); carry.scale.set(.9); carry.y=-14; carry.visible=false; sp.addChild(carry);
+  const bagTxt=new PIXI.Text("",{fill:"#fff",fontSize:8,fontWeight:"800",stroke:"#000",strokeThickness:2});
+  bagTxt.anchor.set(0,.5); bagTxt.position.set(2,-14); sp.addChild(bagTxt);
+  sp.position.set(baskets[0].x-40,hayBottom);
+  collLayer.addChild(sp);
+  collectors.push({sp,carry,bagTxt,state:"idle",target:null,bag:[],dest:null});
+}
+function collectorShowBag(c){
+  if(c.bag.length===0){ c.carry.visible=false; c.bagTxt.text=""; return; }
+  const top=c.bag[c.bag.length-1];
+  c.carry.texture=top.tex; c.carry.scale.set(top.scale*.35); c.carry.visible=true;
+  c.bagTxt.text=c.bag.length>1?"×"+c.bag.length:"";
+}
+function collectorUpdate(c,dt){
+  const sp=c.sp, speed=collSpeed();
+  if(c.state==="idle"){
+    let best=null,bd=1e9;
+    for(const e of groundEggs){ if(e.claimed) continue;
+      const d=(e.sp.x-sp.x)**2+(e.sp.y-sp.y)**2; if(d<bd){bd=d;best=e;} }
+    if(best){ best.claimed=true; c.target=best; c.state="seek"; }
+    else if(c.bag.length>0) c.state="carry";
+    return;
+  }
+  if(c.state==="seek"){
+    const t=c.target;
+    if(!t||!t.active){ c.target=null; c.state=c.bag.length>0?"carry":"idle"; return; }
+    const dx=t.sp.x-sp.x,dy=t.sp.y-sp.y,d=Math.hypot(dx,dy);
+    if(d<14){
+      c.bag.push({value:Math.round(t.value*collValueMult()),golden:t.golden,tex:t.sp.texture,scale:t.sp.scale.x});
+      releaseEgg(t); c.target=null;
+      collectorShowBag(c);
+      if(c.bag.length<collBagCap()){
+        let best=null,bd=1e9;
+        for(const e of groundEggs){ if(e.claimed) continue;
+          const dd=(e.sp.x-sp.x)**2+(e.sp.y-sp.y)**2; if(dd<bd){bd=dd;best=e;} }
+        if(best){ best.claimed=true; c.target=best; return; }
+      }
+      c.state="carry";
+    } else { sp.x+=dx/d*speed*dt; sp.y+=dy/d*speed*dt; sp.scale.x=3*(dx<0?-1:1); }
+    return;
+  }
+  if(c.state==="carry"){
+    if(!c.dest||c.dest.count>=basketCap()) c.dest=basketWithSpace(sp.x);
+    if(!c.dest) return;
+    const dx=c.dest.x-26-sp.x,dy=hayBottom-sp.y,d=Math.hypot(dx,dy);
+    if(d<16){
+      for(const eg of c.bag){
+        c.dest.count++; c.dest.value+=eg.value;
+        c.dest.feathers+=eg.golden?featherGolden():featherPerEgg();
+      }
+      drawBasketFill(c.dest);
+      c.bag.length=0; collectorShowBag(c);
+      c.dest=null; c.state="idle";
+    } else { sp.x+=dx/d*speed*dt; sp.y+=dy/d*speed*dt; sp.scale.x=3*(dx<0?-1:1); }
+  }
+}
+
+// ---- popups ----
+const popups=[];
+for(let i=0;i<60;i++){
+  const t=new PIXI.Text("",{fill:"#fff",fontSize:14,fontWeight:"800",stroke:"#000",strokeThickness:4});
+  t.anchor.set(.5); t.visible=false; fxLayer.addChild(t);
+  popups.push({t,vy:0,life:0,active:false});
+}
+let popCur=0;
+function popup(x,y,txt,color,size){
+  const p=popups[popCur]; popCur=(popCur+1)%popups.length;
+  p.t.text=txt; p.t.style.fill=color; p.t.style.fontSize=size||14;
+  p.t.position.set(x,y); p.t.alpha=1; p.t.visible=true;
+  p.vy=-52; p.life=1; p.active=true;
+}
+
+// ---- egg collection input ----
+const SWEEP_R2=46*46;
+const pointers=new Map();
+let fullWarnCd=0, hinted=false;
+function segDist2(px,py,x1,y1,x2,y2){
+  const dx=x2-x1,dy=y2-y1,l2=dx*dx+dy*dy;
+  let t=l2?((px-x1)*dx+(py-y1)*dy)/l2:0;
+  t=t<0?0:t>1?1:t;
+  const qx=x1+t*dx,qy=y1+t*dy;
+  return (px-qx)*(px-qx)+(py-qy)*(py-qy);
+}
+function collectSweep(x1,y1,x2,y2){
+  for(let k=groundEggs.length-1;k>=0;k--){
+    const e=groundEggs[k];
+    if(e.claimed) continue;
+    if(segDist2(e.sp.x,e.sp.y,x1,y1,x2,y2)>SWEEP_R2) continue;
+    const b=basketWithSpace(e.sp.x);
+    if(!b){
+      if(fullWarnCd<=0){ fullWarnCd=0.7; for(const bk of baskets)bk.wiggle=1;
+        popup(baskets[0].x,basketY-70,"Baskets full!",0xff8a8a,14); SFX.donk(); }
+      return;
+    }
+    collectEgg(e,b);
+    if(!hinted){ hinted=true; document.getElementById("hint").style.opacity=0; }
+  }
+  // mid-air catches: falling/bouncing eggs are fair game once over the hay
+  for(let k=fallingEggs.length-1;k>=0;k--){
+    const e=fallingEggs[k];
+    if(e.claimed||e.sp.y<hayTop) continue;
+    if(segDist2(e.sp.x,e.sp.y,x1,y1,x2,y2)>SWEEP_R2) continue;
+    const b=basketWithSpace(e.sp.x);
+    if(!b) return;
+    collectEgg(e,b);
+    if(!hinted){ hinted=true; document.getElementById("hint").style.opacity=0; }
+  }
+}
+app.stage.eventMode="static"; app.stage.hitArea=app.screen;
+app.stage.on("pointerdown",ev=>{
+  audioInit();
+  if(!started){ startGame(); return; }
+  if(won&&winScreen.visible){ winScreen.visible=false; return; }
+  if(treeOpen){ treeDown(ev); return; }
+  const {x,y}=ev.global;
+  pointers.set(ev.pointerId,{x,y});
+  collectSweep(x,y,x,y);
+});
+app.stage.on("pointermove",ev=>{
+  if(treeOpen){ treeMove(ev); return; }
+  const p=pointers.get(ev.pointerId); if(!p) return;
+  const {x,y}=ev.global;
+  collectSweep(p.x,p.y,x,y);
+  p.x=x; p.y=y;
+});
+const endPointer=ev=>{ if(treeOpen){ treeUp(ev); return; } pointers.delete(ev.pointerId); };
+app.stage.on("pointerup",endPointer);
+app.stage.on("pointerupoutside",endPointer);
+app.stage.on("pointercancel",endPointer);
+
+// ============================================================
+// SKILL TREE overlay
+// ============================================================
+const COLS=[55,135,215,295], ROW_H=92, TREE_TOP=64;
+const treeBg=new PIXI.Graphics();
+const pan=new PIXI.Container();
+const treeHeader=new PIXI.Text("SKILL TREE",{fill:"#ffd24a",fontSize:20,fontWeight:"900",stroke:"#000",strokeThickness:4});
+const treeClose=new PIXI.Text("✕",{fill:"#fff",fontSize:24,fontWeight:"900"});
+const infoCard=new PIXI.Container();
+treeOverlay.addChild(treeBg,pan,treeHeader,treeClose,infoCard);
+let selected=null, panY=0, dragStart=null, buyRect=null, treeOffX=0;
+
+function nodeState(n){
+  const l=lvl(n.id);
+  if(n.par&&lvl(n.par)<1) return "hidden";
+  if(l>=n.max) return "max";
+  if(l>0) return "part";
+  return "new";
+}
+const STATE_COLOR={new:0x8a8a8a,part:0x3fd06c,max:0xffd24a};
+function nodeIcon(n){
+  const c=new PIXI.Container(); const id=n.id;
+  const T=(s,st)=>Object.assign(new PIXI.Text(s,st),{anchor:{x:.5,y:.5}});
+  if(id.startsWith("sp")){ const i=+id[2]; const s=new PIXI.Sprite(BIRD_TEX[i]); s.anchor.set(.5); s.scale.set(i===4?1.5:2.2); c.addChild(s); }
+  else if(id[0]==="w"){ c.addChild(T("$",{fill:"#ffd94a",fontSize:24,fontWeight:"900"})); }
+  else if(id[0]==="s"){ c.addChild(T("⚡",{fontSize:20})); }
+  else if(id[0]==="g"){ const s=new PIXI.Sprite(GOLD_TEX); s.anchor.set(.5); s.scale.set(4); c.addChild(s); }
+  else if(id==="bsize"||id==="bextra"){ const s=new PIXI.Sprite(BASKET_TEX); s.anchor.set(.5); s.scale.set(1.7); c.addChild(s);
+    if(id==="bextra") c.addChild(Object.assign(T("+",{fill:"#7ef25d",fontSize:18,fontWeight:"900",stroke:"#000",strokeThickness:3}),{x:13,y:-10})); }
+  else if(id==="tspd"||id==="ttime"){ const s=new PIXI.Sprite(TRUCK_TEX); s.anchor.set(.5); s.scale.set(1.5); c.addChild(s);
+    c.addChild(Object.assign(T(id==="tspd"?"⚡":"⏱",{fontSize:14}),{x:13,y:-10})); }
+  else if(id==="coll"||id==="hire"){ const s=new PIXI.Sprite(COLL_TEX); s.anchor.set(.5); s.scale.set(2); c.addChild(s);
+    if(id==="hire") c.addChild(Object.assign(T("+",{fill:"#7ef25d",fontSize:18,fontWeight:"900",stroke:"#000",strokeThickness:3}),{x:13,y:-10})); }
+  else if(id==="cspd"){ c.addChild(T("💨",{fontSize:20})); }
+  else if(id==="cbag"){ c.addChild(T("🎒",{fontSize:20})); }
+  else if(id==="cval"){ c.addChild(T("🤲",{fontSize:20})); }
+  else if(id==="fth"){ c.addChild(T("🪶",{fontSize:20})); }
+  return c;
+}
+function nodePos(n){ return {x:COLS[n.col],y:TREE_TOP+n.row*ROW_H}; }
+function buildTree(){
+  pan.removeChildren();
+  const edges=new PIXI.Graphics();
+  pan.addChild(edges);
+  for(const n of NODES){
+    const st=nodeState(n);
+    if(st==="hidden") continue;
+    const p=nodePos(n);
+    if(n.par){
+      const pn=nodeById[n.par], pp=nodePos(pn);
+      const col=lvl(n.id)>0?0x4a7ba6:0x33475c;
+      edges.lineStyle(3,col,1);
+      if(n.route==="left"){
+        edges.moveTo(pp.x,pp.y+26); edges.lineTo(pp.x,pp.y+44); edges.lineTo(16,pp.y+44);
+        edges.lineTo(16,p.y-44); edges.lineTo(p.x,p.y-44); edges.lineTo(p.x,p.y-26);
+      } else if(pp.y===p.y){
+        const dir=p.x>pp.x?1:-1;
+        edges.moveTo(pp.x+26*dir,pp.y); edges.lineTo(p.x-26*dir,p.y);
+      } else {
+        edges.moveTo(pp.x,pp.y+26); edges.lineTo(pp.x,(pp.y+p.y)/2); edges.lineTo(p.x,(pp.y+p.y)/2); edges.lineTo(p.x,p.y-26);
+      }
+    }
+    const g=new PIXI.Graphics();
+    g.beginFill(0x18231a).drawCircle(0,0,24).endFill();
+    g.lineStyle(3,STATE_COLOR[st],1).drawCircle(0,0,24);
+    if(selected===n.id) g.lineStyle(2,0x8fe3d0,1).drawCircle(0,0,29);
+    g.position.set(p.x,p.y);
+    const icon=nodeIcon(n); icon.alpha=st==="new"?0.45:1; g.addChild(icon);
+    const l=lvl(n.id);
+    const lt=new PIXI.Text(l>=n.max?"MAX":l+"/"+n.max,
+      {fill:l>=n.max?"#ffd24a":l>0?"#fff":"#999",fontSize:11,fontWeight:"800",stroke:"#000",strokeThickness:3});
+    lt.anchor.set(.5,0); lt.position.set(p.x,p.y+27);
+    pan.addChild(g,lt);
+  }
+  pan.x=treeOffX; pan.y=panY;
+}
+function renderInfo(){
+  infoCard.removeChildren(); buyRect=null;
+  if(!selected) return;
+  const n=nodeById[selected], l=lvl(n.id), maxed=l>=n.max;
+  const ch=136, cy=H-ch-8;
+  const g=new PIXI.Graphics();
+  g.beginFill(0x1c2b1c,.98).lineStyle(2,0x3fd06c,.6).drawRoundedRect(8,cy,W-16,ch,14).endFill();
+  infoCard.addChild(g);
+  const t1=new PIXI.Text(n.nm,{fill:"#fff",fontSize:17,fontWeight:"900"}); t1.position.set(24,cy+12);
+  const t2=new PIXI.Text(n.dsc,{fill:"#cfd8cf",fontSize:12,wordWrap:true,wordWrapWidth:W-48}); t2.position.set(24,cy+38);
+  const t3=new PIXI.Text(maxed?(n.id.startsWith("sp")?"Owned: "+S.counts[+n.id[2]]:"MAXED"):"Level "+l+"/"+n.max,{fill:maxed?"#ffd24a":"#8fe3d0",fontSize:13,fontWeight:"800"});
+  t3.position.set(24,cy+ch-38);
+  infoCard.addChild(t1,t2,t3);
+  const isSpecies=n.id.startsWith("sp");
+  let label,afford,cur;
+  if(!maxed){ label=(n.cur==="m"?$$(nodeCost(n)):nodeCost(n)+" 🪶"); afford=canAfford(n); cur=n.cur; }
+  else if(isSpecies){ const i=+n.id[2]; label="Bird "+$$(birdCost(i)); afford=S.money>=birdCost(i); cur="m"; }
+  if(label!==undefined){
+    const bw=132,bh=42,bx=W-24-bw,by=cy+ch-54;
+    const bg2=new PIXI.Graphics();
+    bg2.beginFill(afford?(cur==="m"?0x2f9d5c:0x1f8a76):0x4a4a4a).drawRoundedRect(bx,by,bw,bh,10).endFill();
+    const bt=new PIXI.Text(label,{fill:afford?"#fff":"#999",fontSize:14,fontWeight:"900"});
+    bt.anchor.set(.5); bt.position.set(bx+bw/2,by+bh/2);
+    infoCard.addChild(bg2,bt);
+    buyRect={x:bx,y:by,w:bw,h:bh};
+  }
+}
+function openTree(){
+  treeOpen=true; treeOverlay.visible=true;
+  treeOffX=Math.max(0,(W-350)/2);
+  treeBg.clear(); treeBg.beginFill(0x101a12,.97).drawRect(0,0,W,H).endFill();
+  treeHeader.position.set(16,14);
+  treeClose.position.set(W-40,12);
+  buildTree(); renderInfo();
+}
+function closeTree(){ treeOpen=false; treeOverlay.visible=false; selected=null; }
+function treeDown(ev){ dragStart={x:ev.global.x,y:ev.global.y,panY,moved:false}; }
+function treeMove(ev){
+  if(!dragStart) return;
+  const dy=ev.global.y-dragStart.y;
+  if(Math.abs(dy)>8||dragStart.moved){
+    dragStart.moved=true;
+    const contentH=TREE_TOP+MAX_ROW*ROW_H+80;
+    const minY=Math.min(0,H-160-contentH);
+    panY=Math.max(minY,Math.min(0,dragStart.panY+dy));
+    pan.y=panY;
+  }
+}
+function treeUp(ev){
+  if(!dragStart) return;
+  const wasDrag=dragStart.moved; dragStart=null;
+  if(wasDrag) return;
+  const gx=ev.global.x, gy=ev.global.y;
+  if(gx>W-56&&gy<52){ closeTree(); return; }
+  if(buyRect&&gx>=buyRect.x&&gx<=buyRect.x+buyRect.w&&gy>=buyRect.y&&gy<=buyRect.y+buyRect.h){ tryBuy(); return; }
+  const lx=gx-treeOffX, ly=gy-panY;
+  let hit=null;
+  for(const n of NODES){
+    if(nodeState(n)==="hidden") continue;
+    const p=nodePos(n);
+    if((p.x-lx)**2+(p.y-ly)**2<34*34){ hit=n; break; }
+  }
+  if(hit){ selected=hit.id; buildTree(); renderInfo(); }
+}
+function tryBuy(){
+  const n=nodeById[selected], l=lvl(n.id), maxed=l>=n.max;
+  if(maxed&&n.id.startsWith("sp")){
+    const i=+n.id[2], c=birdCost(i);
+    if(S.money<c) return;
+    S.money-=c; S.counts[i]++; syncBirds(); SFX.buy();
+  } else if(!maxed&&canAfford(n)){
+    if(n.cur==="m") S.money-=nodeCost(n); else S.feathers-=nodeCost(n);
+    S.n[n.id]=l+1;
+    if(n.id.startsWith("sp")){ const i=+n.id[2]; S.counts[i]=Math.max(S.counts[i],1); syncBirds();
+      popup(W/2,H*0.3,SPECIES[i].plural+" unlocked!",0xffd24a,26); SFX.unlock(); }
+    else SFX.buy();
+    if(n.id==="bextra") addBasket();
+    if(n.id==="hire") addCollector();
+    if(treeComplete()&&!won){ won=true; showWin(); }
+  } else return;
+  refreshStats(); buildTree(); renderInfo();
+}
+
+// ---- win screen ----
+function showWin(){
+  winScreen.removeChildren(); winScreen.visible=true;
+  SFX.win();
+  const g=new PIXI.Graphics(); g.beginFill(0x000000,.75).drawRect(0,0,W,H).endFill();
+  const t1=new PIXI.Text("🏆 SKILL TREE COMPLETE!",{fill:"#ffd24a",fontSize:26,fontWeight:"900",stroke:"#000",strokeThickness:5,align:"center",wordWrap:true,wordWrapWidth:W-40});
+  t1.anchor.set(.5); t1.position.set(W/2,H*0.4);
+  const t2=new PIXI.Text("You built the Egg Empire.\nTap to keep farming forever.",{fill:"#fff",fontSize:15,fontWeight:"700",align:"center"});
+  t2.anchor.set(.5); t2.position.set(W/2,H*0.52);
+  winScreen.addChild(g,t1,t2);
+  for(let i=0;i<20;i++) setTimeout(()=>popup(Math.random()*W,H*0.3+Math.random()*H*0.4,"🪶",0x8fe3d0,22),i*120);
+}
+
+// ---- start screen ----
+let titleText,tapText,startBirds=[];
+function buildStart(){
+  startScreen.removeChildren(); startBirds=[];
+  const g=new PIXI.Graphics(); g.beginFill(0x14273a).drawRect(0,0,Math.max(W,900),Math.max(H,900)).endFill();
+  startScreen.addChild(g);
+  titleText=new PIXI.Text("EGG EMPIRE",{fill:"#ffd24a",fontSize:10,fontWeight:"900",stroke:"#000",strokeThickness:6});
+  titleText.anchor.set(.5);
+  startScreen.addChild(titleText);
+  for(let i=0;i<5;i++){
+    const s=new PIXI.Sprite(BIRD_TEX[i]); s.anchor.set(.5,1);
+    startScreen.addChild(s); startBirds.push(s);
+  }
+  tapText=new PIXI.Text("Tap to start",{fill:"#8fe3d0",fontSize:16,fontWeight:"800"});
+  tapText.anchor.set(.5);
+  startScreen.addChild(tapText);
+  positionStartElems();
+}
+function positionStartElems(){
+  if(!titleText) return;
+  const fs=Math.min(Math.floor(W/6.2),58);
+  titleText.style.fontSize=fs;
+  titleText.position.set(W/2,H*0.46);
+  const top=titleText.y-titleText.height/2;
+  const w=titleText.width;
+  for(let i=0;i<5;i++){
+    const s=startBirds[i];
+    const sc=(i===4?2.0:2.6)*(fs/58);
+    s.scale.set(sc*(i%2?-1:1),sc);
+    s.position.set(W/2-w/2+w*(0.1+0.2*i),top+4);
+  }
+  tapText.position.set(W/2,H*0.62);
+}
+function startGame(){
+  started=true; startScreen.visible=false;
+  document.getElementById("hint").style.opacity=1;
+}
+
+// ---- HUD ----
+const elMoney=document.getElementById("money"),elFeathers=document.getElementById("feathers"),
+      shopEl=document.getElementById("shop");
+const shopBtns=new Map();
+function tryBuyBird(i){
+  const c=birdCost(i); if(S.money<c) return;
+  S.money-=c; S.counts[i]++; syncBirds(); refreshStats(); SFX.buy();
+}
+function refreshStats(){
+  elMoney.textContent=$$(S.money);
+  elFeathers.textContent=fmt(S.feathers)+" 🪶";
+  for(let i=0;i<5;i++){
+    if(!unlocked(i)) continue;
+    let b=shopBtns.get(i);
+    if(!b){
+      b=document.createElement("button");
+      b.addEventListener("pointerdown",()=>{ audioInit(); tryBuyBird(i); });
+      shopEl.insertBefore(b,shopEl.firstChild);   // newest species first
+      shopBtns.set(i,b);
+    }
+    const c=birdCost(i);
+    b.innerHTML=SPECIES[i].name+" <small>"+$$(c)+" · own "+S.counts[i]+"</small>";
+    b.disabled=S.money<c;
+  }
+}
+document.getElementById("togglePanel").addEventListener("pointerdown",()=>{
+  audioInit();
+  if(!started) return;
+  treeOpen?closeTree():openTree();
+});
+
+// ============================================================
+// MAIN LOOP
+// ============================================================
+let hudAcc=0, cluckT=2;
+app.ticker.add(()=>{
+  const dt=Math.min(app.ticker.deltaMS,100)/1000;
+  if(app.screen.width!==W||app.screen.height!==H){ layout(); if(treeOpen) openTree(); }
+  const now=performance.now()/1000;
+
+  if(!started){
+    for(let i=0;i<5;i++){ const s=startBirds[i]; if(s) s.y+=Math.sin(now*2+i)*0.15; }
+    if(tapText) tapText.alpha=0.6+Math.sin(now*3)*0.4;
+    return;
+  }
+  if(fullWarnCd>0) fullWarnCd-=dt;
+
+  // ambient clucking, denser with more birds
+  cluckT-=dt;
+  if(cluckT<=0){ SFX.cluck(); cluckT=(totalBirds()>12?1.0:2.0)+Math.random()*2.5; }
+
+  // sim: lay accumulation
+  for(let i=0;i<5;i++){
+    if(!unlocked(i)||S.counts[i]===0) continue;
+    S.layAcc[i]+=dt*S.counts[i]/layIntv(i);
+    let n=Math.min(S.layAcc[i]|0,6);
+    while(n-->0){ layEgg(i); S.layAcc[i]--; }
+    S.layAcc[i]=Math.min(S.layAcc[i],8);
+  }
+  if(!treeOpen) pointers.forEach(p=>collectSweep(p.x,p.y,p.x,p.y));
+  // falling eggs
+  for(let k=fallingEggs.length-1;k>=0;k--){
+    const e=fallingEggs[k];
+    e.vy+=680*dt; e.sp.y+=e.vy*dt;
+    if(e.sp.y>=e.targetY){
+      if(!e.bounced&&e.vy>220){ e.bounced=true; e.vy*=-0.2; e.sp.y=e.targetY; SFX.land(); }
+      else { e.sp.y=e.targetY; fallingEggs.splice(k,1); groundEggs.push(e); }
+    }
+  }
+  // ground eggs
+  for(let k=groundEggs.length-1;k>=0;k--){
+    const e=groundEggs[k];
+    e.age+=dt;
+    if(e.age>EGG_LIFE){ releaseEgg(e); SFX.spoil(); continue; }
+    e.sp.alpha=e.age>EGG_LIFE-3?(EGG_LIFE-e.age)/3:1;
+    if(e.golden) e.sp.scale.set(SPECIES[e.species].eggScale*1.15*(1+Math.sin(now*6)*.07));
+  }
+  // flying eggs
+  for(let k=flyingEggs.length-1;k>=0;k--){
+    const e=flyingEggs[k];
+    e.flyT+=dt/0.45;
+    if(e.flyT>=1){ flyingEggs.splice(k,1); depositEgg(e); continue; }
+    const t=e.flyT,mx=(e.sx+e.tx)/2,my=Math.min(e.sy,e.ty)-110;
+    e.sp.x=(1-t)*(1-t)*e.sx+2*(1-t)*t*mx+t*t*e.tx;
+    e.sp.y=(1-t)*(1-t)*e.sy+2*(1-t)*t*my+t*t*e.ty;
+    e.sp.rotation+=6*dt;
+  }
+  for(const c of collectors) collectorUpdate(c,dt);
+  for(const b of baskets){
+    truckUpdate(b,dt);
+    if(b.wiggle>0){ b.wiggle-=dt*3; b.sp.rotation=Math.sin(b.wiggle*30)*.12*b.wiggle; }
+    else b.sp.rotation=0;
+  }
+  for(let i=0;i<birdViews.length;i++) for(const b of birdViews[i]){
+    b.sp.x=b.x+Math.sin(now*1.1+b.phase)*10;
+    b.sp.y=b.y+Math.sin(now*.8+b.phase*2)*4;
+  }
+  for(const p of popups){ if(!p.active) continue;
+    p.life-=dt*.9; if(p.life<=0){ p.active=false; p.t.visible=false; continue; }
+    p.t.y+=p.vy*dt; p.t.alpha=Math.min(1,p.life*1.6);
+  }
+  hudAcc+=dt; if(hudAcc>.25){ refreshStats(); hudAcc=0; }
+});
+
+document.addEventListener("visibilitychange",()=>{ document.hidden?app.ticker.stop():app.ticker.start(); });
+
+addBasket(); layout(); syncBirds(); refreshStats(); buildStart();
+}
+</script>
+</body>
+</html>
