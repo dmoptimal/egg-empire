@@ -17,7 +17,7 @@ import {
   type SimState,
 } from "../sim";
 import type { Textures } from "../render/textures";
-import { FONT } from "./kit";
+import { FONT, pixelPanel } from "./kit";
 
 // View geometry (prototype values) — not balance, so it lives with the UI.
 const COLS = [55, 135, 215, 295];
@@ -195,9 +195,7 @@ export function createTree(deps: TreeDeps): TreeUI {
     const ch = 136;
     const cy = H() - ch - 8;
     const g = new Graphics();
-    g.roundRect(8, cy, W() - 16, ch, 14)
-      .fill({ color: 0x1c2b1c, alpha: 0.98 })
-      .stroke({ width: 2, color: 0x3fd06c, alpha: 0.6 });
+    pixelPanel(g, 8, cy, W() - 16, ch, { face: 0x1c2b1c, faceAlpha: 0.98, frame: 0x2e7d43 });
     infoCard.addChild(g);
     const t1 = new Text({ text: n.nm, style: { fontFamily: FONT, fill: "#fff", fontSize: 17, fontWeight: "700" } });
     t1.position.set(24, cy + 12);
@@ -237,9 +235,10 @@ export function createTree(deps: TreeDeps): TreeUI {
       const bx = W() - 24 - bw;
       const by = cy + ch - 54;
       const bg2 = new Graphics();
-      bg2
-        .roundRect(bx, by, bw, bh, 10)
-        .fill(afford ? (cur === "money" ? 0x2f9d5c : 0x1f8a76) : 0x4a4a4a);
+      pixelPanel(bg2, bx, by, bw, bh, {
+        face: afford ? (cur === "money" ? 0x2f9d5c : 0x1f8a76) : 0x4a4a4a,
+        frame: 0x0d120d,
+      });
       const bt = centeredText(label, { fill: afford ? "#fff" : "#999", fontSize: 14, fontWeight: "700" });
       bt.position.set(bx + bw / 2, by + bh / 2);
       infoCard.addChild(bg2, bt);

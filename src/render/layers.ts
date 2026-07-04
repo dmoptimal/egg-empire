@@ -16,6 +16,8 @@ export interface Layers {
   tree: Container;
   win: Container;
   start: Container;
+  /** Bottom bar — above the screens so the title never hides the shop. */
+  bar: Container;
   uiTop: Container;
 }
 
@@ -31,6 +33,7 @@ export function createLayers(stage: Container): Layers {
     tree: new Container(),
     win: new Container(),
     start: new Container(),
+    bar: new Container(),
     uiTop: new Container(),
   };
   layers.tree.visible = false;
@@ -46,6 +49,7 @@ export function createLayers(stage: Container): Layers {
     layers.tree,
     layers.win,
     layers.start,
+    layers.bar,
     layers.uiTop,
   );
   return layers;

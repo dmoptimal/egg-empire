@@ -31,9 +31,10 @@ import { createLayers } from "./render/layers";
 import { createPopups } from "./render/popups";
 import { createStartScreen, createWinScreen } from "./render/screens";
 import { makeTextures } from "./render/textures";
+import { BAR_H, createBar } from "./ui/bar";
 import { createDevPanel } from "./ui/devpanel";
 import { createHud } from "./ui/hud";
-import { loadPixelFont } from "./ui/kit";
+import { loadPixelFont, safeInsets } from "./ui/kit";
 import { createTree } from "./ui/tree";
 
 async function boot(): Promise<void> {
@@ -88,17 +89,22 @@ async function boot(): Promise<void> {
   const startScreen = createStartScreen(layers.start, textures);
   const winScreen = createWinScreen(layers.win);
 
-  const hud = createHud({
+  const hud = createHud({ sim, layer: layers.uiTop });
+  const bar = createBar({
     sim,
-    layer: layers.uiTop,
+    layer: layers.bar,
     onBuyBird(species) {
-      if (buyBird(sim, species)) hud.refresh();
+      if (buyBird(sim, species)) refreshAll();
     },
     onToggleTree() {
       if (started) tree.toggle();
     },
   });
-  const tree = createTree({ overlay: layers.tree, sim, textures, refreshHud: () => hud.refresh() });
+  const refreshAll = (): void => {
+    hud.refresh();
+    bar.refresh();
+  };
+  const tree = createTree({ overlay: layers.tree, sim, textures, refreshHud: refreshAll });
 
   const hooks: SimHooks = { rng: Math.random, spawnPoint: (i) => birds.spawnPoint(i) };
 
@@ -116,11 +122,15 @@ async function boot(): Promise<void> {
   function layout(): void {
     W = app.screen.width;
     H = app.screen.height;
-    resize(sim, W, H);
+    // The farm world stops above the in-canvas bar; the bar owns the rest
+    // (including the home-indicator safe area).
+    const safe = safeInsets();
+    resize(sim, W, H - BAR_H - safe.bottom);
     drawBackground(layers.bg, sim.layout);
     basketViews.layout(sim);
     birds.clamp(sim.layout);
     hud.layout();
+    bar.layout(W, H, safe.bottom);
     if (startScreen.visible) startScreen.position(sim.layout);
   }
 
@@ -173,17 +183,17 @@ async function boot(): Promise<void> {
         popups.spawn(ev.basket.x, sim.layout.basketY - 70, "+" + fmtMoney(ev.money), 0x7ef25d, 24);
         popups.spawn(ev.basket.x, sim.layout.basketY - 44, `+${fmt(ev.feathers)} 🪶`, 0x8fe3d0, 16);
         SFX.kaching();
-        hud.refresh();
+        refreshAll();
         break;
       case "node-bought":
       case "bird-bought":
         SFX.buy();
-        hud.refresh();
+        refreshAll();
         break;
       case "species-unlocked":
         popups.spawn(W / 2, H * 0.3, `${SPECIES[ev.species].plural} unlocked!`, 0xffd24a, 26);
         SFX.unlock();
-        hud.refresh();
+        refreshAll();
         break;
       case "won":
         SFX.win();
@@ -283,7 +293,7 @@ async function boot(): Promise<void> {
 
     hudAcc += dt;
     if (hudAcc > 0.25) {
-      hud.refresh();
+      refreshAll();
       hudAcc = 0;
     }
     saveAcc += dt;
@@ -312,13 +322,13 @@ async function boot(): Promise<void> {
   birds.sync(sim);
   basketViews.sync(sim);
   collectorViews.sync(sim);
-  hud.refresh();
+  refreshAll();
   startScreen.position(sim.layout);
   if (offlineMsg) hud.toast(offlineMsg);
   if (new URLSearchParams(location.search).get("dev") === "1") {
     createDevPanel({
       sim,
-      refresh: () => hud.refresh(),
+      refresh: () => refreshAll(),
       getSpeed: () => devSpeed,
       setSpeed: (x) => {
         devSpeed = x;

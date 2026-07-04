@@ -1,13 +1,11 @@
 // HUD (PLAN.md Phase 1): money/feather chips, mute button, hint and toast —
-// all in-canvas pixel panels with BitmapFont numbers. TRANSITIONAL: the
-// bottom bar (shop strip + tree button) is still DOM and migrates in the
-// next Phase 1 chunk; its refresh logic lives here until then.
+// all in-canvas pixel panels with BitmapFont numbers. The bottom bar lives
+// in ./bar.ts.
 
-import { BitmapText, Container, Graphics, Text } from "pixi.js";
-import { audioInit, toggleMute } from "../audio/sfx";
+import { BitmapText, Container, Graphics, Rectangle, Text } from "pixi.js";
+import { toggleMute } from "../audio/sfx";
 import { fmt, fmtMoney } from "../config/format";
-import { SPECIES } from "../config/species";
-import { birdCost, unlocked, type SimState } from "../sim";
+import type { SimState } from "../sim";
 import { attachTap, FONT, HOT_FONT, pixelPanel, safeInsets } from "./kit";
 
 export interface Hud {
@@ -22,8 +20,6 @@ export interface Hud {
 export interface HudDeps {
   sim: SimState;
   layer: Container;
-  onBuyBird(species: number): void;
-  onToggleTree(): void;
 }
 
 const CHIP_H = 30;
@@ -71,6 +67,8 @@ export function createHud(deps: HudDeps): Hud {
     muteText.text = toggleMute() ? "🔇" : "🔊";
     layoutChips();
   });
+  // 44px+ hit target without growing the visual chip.
+  muteChip.root.hitArea = new Rectangle(-5, -8, 44, 46);
 
   const chips = [moneyChip, featherChip, muteChip];
 
@@ -142,40 +140,11 @@ export function createHud(deps: HudDeps): Hud {
     toastRoot.position.set(Math.round((sim.layout.w - w) / 2), safeInsets().top + 6 + CHIP_H + 8);
   }
 
-  // transitional DOM shop (migrates in the next Phase 1 chunk) -----------
-  const shopEl = document.getElementById("shop")!;
-  const shopBtns = new Map<number, HTMLButtonElement>();
-  document.getElementById("togglePanel")!.addEventListener("pointerdown", () => {
-    audioInit();
-    deps.onToggleTree();
-  });
-
-  function refreshShop(): void {
-    for (let i = 0; i < SPECIES.length; i++) {
-      if (!unlocked(sim, i)) continue;
-      let b = shopBtns.get(i);
-      if (!b) {
-        b = document.createElement("button");
-        const species = i;
-        b.addEventListener("pointerdown", () => {
-          audioInit();
-          deps.onBuyBird(species);
-        });
-        shopEl.insertBefore(b, shopEl.firstChild); // newest species first
-        shopBtns.set(i, b);
-      }
-      const c = birdCost(sim, i);
-      b.innerHTML = `${SPECIES[i].name} <small>${fmtMoney(c)} · own ${sim.counts[i]}</small>`;
-      b.disabled = sim.money < c;
-    }
-  }
-
   return {
     refresh(): void {
       moneyText.text = fmtMoney(sim.money);
       featherText.text = fmt(sim.feathers);
       layoutChips();
-      refreshShop();
     },
     layout: layoutChips,
     update(dt: number): void {
