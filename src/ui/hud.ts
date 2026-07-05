@@ -51,14 +51,14 @@ export function createHud(deps: HudDeps): Hud {
 
   const moneyText = new BitmapText({
     text: "$0",
-    style: { fontFamily: HOT_FONT, fontSize: 20 },
+    style: { fontFamily: HOT_FONT, fontSize: 13 },
   });
   moneyText.tint = 0xffd94a;
   const moneyChip = makeChip([moneyText]);
 
   const featherText = new BitmapText({
     text: "0",
-    style: { fontFamily: HOT_FONT, fontSize: 20 },
+    style: { fontFamily: HOT_FONT, fontSize: 13 },
   });
   featherText.tint = 0x8fe3d0;
   const featherGlyph = new Sprite(textures.icons.feather);
@@ -93,6 +93,22 @@ export function createHud(deps: HudDeps): Hud {
   hint.alpha = 0;
   let hintTarget = 0;
   layer.addChild(hint);
+
+  // combo meter — escalates Balatro-style as the streak climbs -----------
+  const combo = new BitmapText({ text: "", style: { fontFamily: HOT_FONT, fontSize: 12 } });
+  combo.anchor.set(0.5);
+  combo.alpha = 0;
+  layer.addChild(combo);
+  let lastComboN = 0;
+  let comboPop = 1;
+  let comboTime = 0;
+
+  // Golden Rush countdown -------------------------------------------------
+  const rushText = new BitmapText({ text: "", style: { fontFamily: HOT_FONT, fontSize: 11 } });
+  rushText.tint = 0xffd24a;
+  rushText.anchor.set(0.5);
+  rushText.visible = false;
+  layer.addChild(rushText);
 
   // toast ---------------------------------------------------------------
   const toastRoot = new Container();
@@ -156,6 +172,35 @@ export function createHud(deps: HudDeps): Hud {
         toastTimer -= dt;
         toastRoot.alpha = Math.min(1, toastTimer * 2);
         if (toastTimer <= 0) toastRoot.visible = false;
+      }
+      // combo meter: bigger, hotter, shakier as the streak climbs
+      comboTime += dt;
+      const n = sim.comboN;
+      if (n > lastComboN) comboPop = 1.5; // punch on every extra egg
+      lastComboN = n;
+      comboPop += (1 - comboPop) * Math.min(1, dt * 10);
+      const show = n >= 3 && sim.comboT < 1.2;
+      if (show) {
+        combo.text = `×${n}`;
+        combo.style.fontSize = 12 + Math.min(n, 40) * 0.6;
+        combo.tint = n < 5 ? 0xffffff : n < 10 ? 0x8fe3d0 : n < 20 ? 0xffd24a : n < 30 ? 0xff9a3d : 0xff5a4a;
+        combo.scale.set(comboPop);
+        const shake = n > 15 ? Math.min(3, (n - 15) * 0.2) : 0;
+        combo.position.set(
+          Math.round(sim.layout.w / 2 + Math.sin(comboTime * 70) * shake),
+          Math.round(safeInsets().top + 64 + Math.cos(comboTime * 63) * shake),
+        );
+        combo.alpha = sim.comboT < 0.45 ? 1 : 1 - (sim.comboT - 0.45) / 0.75;
+      } else {
+        combo.alpha = Math.max(0, combo.alpha - dt * 4);
+      }
+      // rush countdown
+      if (sim.rush.active > 0) {
+        rushText.visible = true;
+        rushText.text = `RUSH ${Math.ceil(sim.rush.active)}s`;
+        rushText.position.set(Math.round(sim.layout.w / 2), safeInsets().top + 44);
+      } else {
+        rushText.visible = false;
       }
     },
     showHint(): void {

@@ -8,6 +8,7 @@
 // in the save; the first-ever open centres the root.
 
 import {
+  BitmapText,
   Container,
   Graphics,
   Sprite,
@@ -29,7 +30,7 @@ import {
   type TreeView,
 } from "../sim";
 import type { Textures } from "../render/textures";
-import { FONT, pixelPanel } from "./kit";
+import { FONT, HOT_FONT, pixelPanel } from "./kit";
 
 const NODE_R = 24;
 const HIT_R = 34;
@@ -187,6 +188,8 @@ export function createTree(deps: TreeDeps): TreeUI {
       c.addChild(spriteIcon(textures.icons.coin, 2.4));
     } else if (id === "birdlot") {
       c.addChild(spriteIcon(textures.icons.tag, 2.6));
+    } else if (id === "rush") {
+      c.addChild(spriteIcon(textures.icons.star, 2.6));
     } else if (id === "kitchen") {
       c.addChild(spriteIcon(textures.pan, 2.2));
     } else if (id.startsWith("st_")) {
@@ -218,18 +221,13 @@ export function createTree(deps: TreeDeps): TreeUI {
       icon.alpha = st === "new" ? 0.45 : 1;
       g.addChild(icon);
       const l = lvl(sim, n.id);
-      const lt = new Text({
+      const lt = new BitmapText({
         text: l >= n.max ? "MAX" : `${l}/${n.max}`,
-        style: {
-          fontFamily: FONT,
-          fill: l >= n.max ? "#ffd24a" : l > 0 ? "#fff" : "#999",
-          fontSize: 11,
-          fontWeight: "700",
-          stroke: { color: "#000", width: 3 },
-        },
+        style: { fontFamily: HOT_FONT, fontSize: 8 },
       });
+      lt.tint = l >= n.max ? 0xffd24a : l > 0 ? 0xffffff : 0x999999;
       lt.anchor.set(0.5, 0);
-      lt.position.set(n.x, n.y + 27);
+      lt.position.set(n.x, n.y + 28);
       pan.addChild(g, lt);
     }
     clampView();
@@ -271,15 +269,11 @@ export function createTree(deps: TreeDeps): TreeUI {
       costLabel = "MAXED";
       affordable = false;
     }
-    const cost = new Text({
+    const cost = new BitmapText({
       text: costLabel,
-      style: {
-        fontFamily: FONT,
-        fontSize: 13,
-        fontWeight: "700",
-        fill: maxed && !isSpecies ? "#ffd24a" : affordable ? "#7ef25d" : "#9aa39a",
-      },
+      style: { fontFamily: HOT_FONT, fontSize: 10 },
     });
+    cost.tint = maxed && !isSpecies ? 0xffd24a : affordable ? 0x7ef25d : 0x9aa39a;
 
     const w = Math.max(170, Math.ceil(Math.max(name.width, effect.width, cost.width)) + 24);
     const pipY = 34 + Math.ceil(effect.height);

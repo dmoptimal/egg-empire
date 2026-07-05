@@ -1,9 +1,12 @@
 // PLAN.md Phase 3 — one vitest per new support node's sim effect.
 
 import { describe, expect, it } from "vitest";
+import { RUSH_EGG_LIFE, RUSH_INTERVAL_MIN } from "../config/economy";
 import { EGG_CAP } from "../config/species";
 import { sweepCollect } from "./collect";
-import { birdCost, eggCap, eggLife, sweepRadius } from "./economy";
+import { updateCollector } from "./collectors";
+import { addCollector } from "./collectors";
+import { birdCost, eggCap, eggLife, rushDuration, sweepRadius } from "./economy";
 import { drainEvents } from "./events";
 import { createSim } from "./state";
 import { constHooks, forgeGroundEgg, step } from "./test-helpers";
@@ -113,6 +116,89 @@ describe("gold2 — Midas flock", () => {
     forgeGroundEgg(s, { x: 100, y: 400, golden: true, value: 100 });
     sweepCollect(s, 100, 400, 100, 400);
     expect(s.feathers).toBe(0);
+  });
+});
+
+describe("rush — Golden Rush", () => {
+  it("locked: no shimmer eggs ever drop", () => {
+    const s = quiet();
+    step(s, 300, constHooks(0.5));
+    expect(s.ground.some((e) => e.rush)).toBe(false);
+    expect(s.falling.some((e) => e.rush)).toBe(false);
+  });
+
+  it("unlocked: a shimmer egg drops on the randomised cadence", () => {
+    const s = quiet();
+    s.n.rush = 1;
+    const interval = RUSH_INTERVAL_MIN + 0.5 * 60; // constHooks(0.5)
+    step(s, interval - 1, constHooks(0.5));
+    expect([...s.ground, ...s.falling].some((e) => e.rush)).toBe(false);
+    step(s, 2, constHooks(0.5));
+    expect([...s.ground, ...s.falling].some((e) => e.rush)).toBe(true);
+  });
+
+  it("sweeping the shimmer egg starts the rush and multiplies laying", () => {
+    const s = createSim(); // 2 chickens
+    s.n.rush = 1;
+    const egg = forgeGroundEgg(s, { x: 100, y: 400, rush: true, golden: true, value: 0 });
+    sweepCollect(s, 100, 400, 100, 400);
+    expect(egg.phase).toBe("gone"); // consumed, never flies to a basket
+    expect(s.rush.active).toBe(rushDuration(s)); // 10s at L1
+    const evs = drainEvents(s);
+    expect(evs.some((e) => e.type === "rush-started")).toBe(true);
+    expect(evs.some((e) => e.type === "egg-collected")).toBe(false);
+
+    step(s, 8.1, constHooks(0.5)); // 8s of x5 laying: 2 birds/4s x5 = 2.5/s -> 20 eggs
+    const laid = drainEvents(s).filter((e) => e.type === "egg-laid").length;
+    expect(laid).toBeGreaterThanOrEqual(19);
+    step(s, 2.5, constHooks(0.5));
+    expect(s.rush.active).toBe(0);
+    expect(drainEvents(s).some((e) => e.type === "rush-ended")).toBe(true);
+  });
+
+  it("levels lengthen the rush: 10/14/18s", () => {
+    const s = quiet();
+    s.n.rush = 1;
+    expect(rushDuration(s)).toBe(10);
+    s.n.rush = 3;
+    expect(rushDuration(s)).toBe(18);
+  });
+
+  it("streak bonus doubles during a rush", () => {
+    const s = quiet();
+    s.n.combo = 2; // +10% streak
+    s.rush.active = 5;
+    forgeGroundEgg(s, { x: 100, y: 400, value: 100 });
+    const b = forgeGroundEgg(s, { x: 300, y: 400, value: 100 });
+    sweepCollect(s, 100, 400, 100, 400); // opener
+    tick(s, 0.1, constHooks(0.5));
+    sweepCollect(s, 300, 400, 300, 400);
+    expect(b.value).toBe(120); // 1 + 0.10x2 (rush) instead of 110
+  });
+
+  it("shimmer eggs spoil fast and collectors ignore them", () => {
+    const s = quiet();
+    addCollector(s);
+    const shimmer = forgeGroundEgg(s, { x: 300, y: 500, rush: true, value: 0 });
+    updateCollector(s, s.collectors[0], 0.1);
+    expect(shimmer.claimed).toBe(false);
+    expect(s.collectors[0].mode).toBe("idle");
+    step(s, RUSH_EGG_LIFE + 1.2, constHooks(0.5));
+    expect(shimmer.phase).toBe("gone");
+  });
+});
+
+describe("comboN — the visible streak counter", () => {
+  it("counts quick sweeps and resets after a cold gap", () => {
+    const s = quiet();
+    forgeGroundEgg(s, { x: 50, y: 400 });
+    forgeGroundEgg(s, { x: 150, y: 400 });
+    forgeGroundEgg(s, { x: 250, y: 400 });
+    sweepCollect(s, 50, 400, 150, 400); // two in one gesture
+    expect(s.comboN).toBe(2);
+    step(s, 1, constHooks(0.5));
+    sweepCollect(s, 250, 400, 250, 400);
+    expect(s.comboN).toBe(1);
   });
 });
 

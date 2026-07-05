@@ -39,7 +39,7 @@ function nearestFreeEgg(state: SimState, x: number, y: number): Egg | null {
   let best: Egg | null = null;
   let bd = Infinity;
   for (const e of state.ground) {
-    if (e.claimed) continue;
+    if (e.claimed || e.rush) continue; // the shimmer egg is the player's moment
     const d = (e.x - x) ** 2 + (e.y - y) ** 2;
     if (d < bd) {
       bd = d;

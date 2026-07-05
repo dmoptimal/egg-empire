@@ -2,7 +2,7 @@
 // and wires input/render/audio/UI around it. The sim never sees any of this:
 // it gets dt + hooks in, and hands typed events out (drained once per frame).
 
-import { Application, TextureSource, type FederatedPointerEvent } from "pixi.js";
+import { Application, Graphics, TextureSource, type FederatedPointerEvent } from "pixi.js";
 import { audioInit, SFX } from "./audio/sfx";
 import { SPECIES } from "./config/species";
 import { fmt, fmtMoney } from "./config/format";
@@ -95,6 +95,9 @@ async function boot(): Promise<void> {
   const eggSprites = createEggSprites(layers.eggs, textures);
   const basketViews = createBasketViews(layers.baskets, layers.trucks, textures);
   const collectorViews = createCollectorViews(layers.collectors, textures);
+  // Gold wash over the farm while a rush runs (behind the popups).
+  const rushOverlay = new Graphics();
+  layers.fx.addChild(rushOverlay);
   const popups = createPopups(layers.fx);
   const startScreen = createStartScreen(layers.start, textures);
   const winScreen = createWinScreen(layers.win, textures);
@@ -163,6 +166,9 @@ async function boot(): Promise<void> {
     const safe = safeInsets();
     resize(sim, W, H - BAR_H - safe.bottom);
     drawBackground(layers.bg, sim.layout);
+    rushOverlay.clear();
+    rushOverlay.rect(0, 0, W, sim.layout.h).fill(0xffd24a);
+    rushOverlay.alpha = 0;
     basketViews.layout(sim);
     birds.clamp(sim.layout);
     hud.layout();
@@ -263,6 +269,12 @@ async function boot(): Promise<void> {
         }
         break;
       }
+      case "rush-started":
+        SFX.rush();
+        popups.spawn(W / 2, sim.layout.h * 0.33, "GOLDEN RUSH!", 0xffd24a, 22, textures.icons.star);
+        break;
+      case "rush-ended":
+        break;
       case "won":
         SFX.win();
         winScreen.show(sim.layout);
@@ -358,6 +370,7 @@ async function boot(): Promise<void> {
       kitchenView.update(sim, now);
       if (sim.kitchen.cooking.length > 0) SFX.sizzle();
     }
+    rushOverlay.alpha = sim.rush.active > 0 && screen === "farm" ? 0.06 + 0.03 * Math.sin(now * 8) : 0;
 
     eggSprites.update(sim, now, dt);
     basketViews.update(sim, dt);

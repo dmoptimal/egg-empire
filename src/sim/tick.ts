@@ -5,12 +5,14 @@
 // headless tests call it with fixed small steps.
 
 import { LAY_ACC_MAX, LAY_BURST_MAX } from "../config/constants";
+import { RUSH_INTERVAL_MIN, RUSH_INTERVAL_VAR, RUSH_LAY_MULT } from "../config/economy";
 import { SPECIES } from "../config/species";
 import { updateTruck } from "./baskets";
 import { sweepCollect } from "./collect";
 import { updateCollector } from "./collectors";
-import { layIntv, unlocked } from "./economy";
-import { layEgg, updateFalling, updateFlying, updateGround } from "./eggs";
+import { layIntv, lvl, unlocked } from "./economy";
+import { layEgg, layRushEgg, updateFalling, updateFlying, updateGround } from "./eggs";
+import { emit } from "./events";
 import { updateKitchen } from "./kitchen";
 import { DEFAULT_HOOKS } from "./state";
 import type { SimHooks, SimState } from "./types";
@@ -30,11 +32,30 @@ export function tick(
   if (state.fullWarnCd > 0) state.fullWarnCd -= dt;
   state.comboT = Math.min(state.comboT + dt, 999);
 
+  // Golden Rush: shimmer eggs drop on a randomised cadence once unlocked;
+  // sweeping one sets rush.active (see collect.ts).
+  if (state.rush.active > 0) {
+    state.rush.active -= dt;
+    if (state.rush.active <= 0) {
+      state.rush.active = 0;
+      emit(state, { type: "rush-ended" });
+    }
+  }
+  if (lvl(state, "rush") >= 1) {
+    if (state.rush.next <= 0) state.rush.next = RUSH_INTERVAL_MIN + hooks.rng() * RUSH_INTERVAL_VAR;
+    state.rush.next -= dt;
+    if (state.rush.next <= 0) {
+      layRushEgg(state, hooks);
+      state.rush.next = RUSH_INTERVAL_MIN + hooks.rng() * RUSH_INTERVAL_VAR;
+    }
+  }
+  const layMult = state.rush.active > 0 ? RUSH_LAY_MULT : 1;
+
   // Fixed-accumulator laying: fractional eggs-owed build up per species and
   // are laid in bursts of at most LAY_BURST_MAX per frame.
   for (let i = 0; i < SPECIES.length; i++) {
     if (!unlocked(state, i) || state.counts[i] === 0) continue;
-    state.layAcc[i] += (dt * state.counts[i]) / layIntv(state, i);
+    state.layAcc[i] += (dt * state.counts[i] * layMult) / layIntv(state, i);
     let n = Math.min(Math.floor(state.layAcc[i]), LAY_BURST_MAX);
     while (n-- > 0) {
       layEgg(state, i, hooks);

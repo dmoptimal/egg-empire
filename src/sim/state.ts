@@ -34,6 +34,8 @@ export function createSim(opts: CreateSimOptions = {}): SimState {
     collectors: [],
     fullWarnCd: 0,
     comboT: 999,
+    comboN: 0,
+    rush: { active: 0, next: 0 },
     kitchen: {
       pantry: [],
       chefs: STATIONS.map(() => 0),

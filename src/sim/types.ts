@@ -25,6 +25,8 @@ export interface Egg {
   /** Reserved by a collector or already swept — skipped by collection. */
   claimed: boolean;
   bounced: boolean;
+  /** A shimmer egg: sweeping it triggers a Golden Rush instead of value. */
+  rush?: boolean;
   phase: EggPhase;
   /** Flight progress 0→1 (advances by dt / EGG_FLY_TIME). */
   flyT: number;
@@ -151,6 +153,8 @@ export type SimEvent =
   | { type: "node-bought"; id: string; level: number }
   | { type: "species-unlocked"; species: number }
   | { type: "bird-bought"; species: number; count: number }
+  | { type: "rush-started"; duration: number }
+  | { type: "rush-ended" }
   | { type: "dish-cooked"; dish: Dish }
   | { type: "chef-hired"; station: number; count: number }
   | { type: "kitchen-truck-dispatched" }
@@ -184,6 +188,10 @@ export interface SimState {
   fullWarnCd: number;
   /** Seconds since the player last swept an egg (Hot streak window). */
   comboT: number;
+  /** Current sweep streak length (drives the combo meter). */
+  comboN: number;
+  /** Golden Rush: seconds of frenzy left / countdown to the next shimmer egg. */
+  rush: { active: number; next: number };
   kitchen: KitchenState;
   /** Buffered events since the last drain — the render/audio seam. */
   events: SimEvent[];

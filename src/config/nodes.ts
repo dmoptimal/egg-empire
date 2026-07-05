@@ -100,6 +100,10 @@ export const NODES: NodeDef[] = [
   { id: "combo",  nm: "Hot streak",      x: -45, y: 690, max: 3, par: "sweep", cur: "feathers", edge: "straight",
     cost: farmCost("combo"), dsc: "Streak-swiped eggs are worth +5% per level." },
 
+  // Golden Rush — the active-play capstone (unlockable event, 2026-07-05).
+  { id: "rush",   nm: "Golden rush",       x: -105, y: 780, max: 3, par: "combo", cur: "feathers", edge: "straight",
+    cost: farmCost("rush"), dsc: "A shimmer egg lands now and then — sweep it and every bird lays ×5, streaks pay double. +4s per level." },
+
   // Golden filler off the quail golden branch (Phase 3).
   { id: "gold2",  nm: "Midas flock",     x: -330, y: 590, max: 1, par: "g2",   cur: "feathers", edge: "straight",
     cost: farmCost("gold2"), dsc: "Swept golden eggs drop a bonus feather instantly." },

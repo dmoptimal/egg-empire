@@ -19,6 +19,8 @@ import {
 } from "../config/constants";
 import {
   BIRDLOT_GROWTH_PER_LVL,
+  RUSH_BASE_DURATION,
+  RUSH_DURATION_PER_LVL,
   COMBO_VALUE_PER_LVL,
   ECAP_PER_LVL,
   ESPOIL_PER_LVL,
@@ -104,3 +106,7 @@ export const sweepRadius = (s: SimState): number =>
 /** Hot streak value multiplier for streak-swiped eggs. */
 export const comboValueMult = (s: SimState): number =>
   1 + COMBO_VALUE_PER_LVL * lvl(s, "combo");
+
+/** Golden Rush length at the current node level. */
+export const rushDuration = (s: SimState): number =>
+  RUSH_BASE_DURATION + RUSH_DURATION_PER_LVL * (lvl(s, "rush") - 1);

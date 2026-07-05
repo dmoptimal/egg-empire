@@ -30,7 +30,7 @@ interface StationView {
   progress: Graphics;
   chefs: Sprite[];
   hire: PixelButton;
-  hireLabel: Text;
+  hireLabel: BitmapText;
 }
 
 export interface KitchenView {
@@ -57,7 +57,7 @@ export function createKitchenView(
   const crate = new Sprite(textures.crate);
   crate.scale.set(3.5);
   crate.position.set(14, 78);
-  const pantryText = new BitmapText({ text: "0/30", style: { fontFamily: HOT_FONT, fontSize: 20 } });
+  const pantryText = new BitmapText({ text: "0/30", style: { fontFamily: HOT_FONT, fontSize: 13 } });
   pantryText.tint = 0xfff3da;
   pantryText.position.set(74, 92);
   const pantryLabel = new Text({
@@ -97,9 +97,9 @@ export function createKitchenView(
       sroot.addChild(chef);
       chefs.push(chef);
     }
-    const hireLabel = new Text({
+    const hireLabel = new BitmapText({
       text: "",
-      style: { fontFamily: FONT, fontSize: 9, fontWeight: "700", fill: "#fff" },
+      style: { fontFamily: HOT_FONT, fontSize: 8 },
     });
     hireLabel.anchor.set(0.5);
     const hire = pixelButton({
@@ -122,7 +122,7 @@ export function createKitchenView(
     text: "Counter",
     style: { fontFamily: FONT, fontSize: 12, fontWeight: "700", fill: "#e8dcc8" },
   });
-  const railCount = new BitmapText({ text: "0/20", style: { fontFamily: HOT_FONT, fontSize: 18 } });
+  const railCount = new BitmapText({ text: "0/20", style: { fontFamily: HOT_FONT, fontSize: 12 } });
   railCount.tint = 0xfff3da;
   const railDishes = new Container();
   root.addChild(railPanel, railLabel, railCount, railDishes);

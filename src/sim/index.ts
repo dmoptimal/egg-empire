@@ -30,6 +30,7 @@ export {
   eggLife,
   sweepRadius,
   comboValueMult,
+  rushDuration,
 } from "./economy";
 export { layEgg, collectEgg, releaseEgg } from "./eggs";
 export { sweepCollect, segDist2 } from "./collect";

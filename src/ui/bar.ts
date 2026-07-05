@@ -4,13 +4,13 @@
 // can never purchase. Newest unlocked species sits leftmost, like the
 // prototype's insertBefore(firstChild).
 
-import { Container, Graphics, Rectangle, Sprite, Text, type FederatedPointerEvent } from "pixi.js";
+import { BitmapText, Container, Graphics, Rectangle, Sprite, Text, type FederatedPointerEvent } from "pixi.js";
 import { audioInit } from "../audio/sfx";
 import { fmtMoney } from "../config/format";
 import { SPECIES } from "../config/species";
 import { birdCost, kitchenUnlocked, unlocked, type SimState } from "../sim";
 import type { Textures } from "../render/textures";
-import { FONT, pixelButton, pixelPanel } from "./kit";
+import { FONT, HOT_FONT, pixelButton, pixelPanel } from "./kit";
 
 /** Bar content height (excludes the safe-area inset below it). */
 export const BAR_H = 70;
@@ -27,7 +27,7 @@ interface ShopBtn {
   root: Container;
   gfx: Graphics;
   name: Text;
-  sub: Text;
+  sub: BitmapText;
   w: number;
   disabled: boolean;
   pressed: boolean;
@@ -223,10 +223,11 @@ export function createBar(deps: BarDeps): Bar {
         style: { fontFamily: FONT, fontSize: 14, fontWeight: "700", fill: "#fff" },
       });
       name.anchor.set(0.5);
-      const sub = new Text({
+      const sub = new BitmapText({
         text: "",
-        style: { fontFamily: FONT, fontSize: 11, fill: "#dce6f5" },
+        style: { fontFamily: HOT_FONT, fontSize: 8 },
       });
+      sub.tint = 0xdce6f5;
       sub.anchor.set(0.5);
       root.addChild(gfx, name, sub);
       strip.addChild(root);

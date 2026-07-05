@@ -7,9 +7,9 @@ import { BitmapFont, Container, Graphics, type FederatedPointerEvent } from "pix
 
 export const FONT = "Pixelify Sans";
 /**
- * BitmapFont family for hot text (HUD numbers, popups, basket labels).
- * Baked from VT323 rather than Pixelify: Pixelify's 6/8/9 are ambiguous at
- * chip sizes, and numbers are what hot text mostly shows (Dan, 2026-07-04).
+ * BitmapFont family for numbers and hot text (HUD, popups, labels, tree
+ * levels/costs). Baked from Press Start 2P — Pixelify's digits were
+ * ambiguous and VT323 read too thin (Dan, 2026-07-05). Chunky wins.
  */
 export const HOT_FONT = "PixelHot";
 
@@ -19,17 +19,17 @@ export const HOT_FONT = "PixelHot";
  */
 export async function loadPixelFont(): Promise<void> {
   const pixelify = new FontFace(FONT, "url(/fonts/PixelifySans.ttf)", { weight: "400 700" });
-  const vt323 = new FontFace("VT323", "url(/fonts/VT323.ttf)");
-  await Promise.all([pixelify.load(), vt323.load()]);
+  const ps2p = new FontFace("Press Start 2P", "url(/fonts/PressStart2P.ttf)");
+  await Promise.all([pixelify.load(), ps2p.load()]);
   document.fonts.add(pixelify);
-  document.fonts.add(vt323);
+  document.fonts.add(ps2p);
   BitmapFont.install({
     name: HOT_FONT,
     style: {
-      fontFamily: "VT323",
-      fontSize: 40, // VT323 is condensed; bake large for crisp downscales
+      fontFamily: "Press Start 2P",
+      fontSize: 32, // glyphs are designed on an 8px grid — bake at a multiple
       fill: 0xffffff, // white glyphs — tint per instance; stroke stays black
-      stroke: { color: "#000", width: 4 },
+      stroke: { color: "#000", width: 3 },
     },
     chars: [[" ", "~"], "×’→"],
     resolution: 2,

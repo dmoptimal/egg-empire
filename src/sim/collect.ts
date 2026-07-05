@@ -3,10 +3,10 @@
 // early return when no basket has space (the rest of the sweep is abandoned).
 
 import { FULL_WARN_COOLDOWN } from "../config/constants";
-import { COMBO_WINDOW, GOLD2_BONUS_FEATHERS } from "../config/economy";
+import { COMBO_WINDOW, GOLD2_BONUS_FEATHERS, RUSH_COMBO_MULT } from "../config/economy";
 import { basketWithSpace } from "./baskets";
-import { comboValueMult, lvl, sweepRadius } from "./economy";
-import { collectEgg } from "./eggs";
+import { comboValueMult, lvl, rushDuration, sweepRadius } from "./economy";
+import { collectEgg, releaseEgg } from "./eggs";
 import { emit } from "./events";
 import type { Basket, Egg, SimState } from "./types";
 
@@ -38,7 +38,19 @@ export function segDist2(
 function sweepPickup(state: SimState, e: Egg, b: Basket): void {
   const streak = state.comboT < COMBO_WINDOW;
   state.comboT = 0;
-  if (streak) e.value = Math.round(e.value * comboValueMult(state));
+  state.comboN = streak ? state.comboN + 1 : 1;
+  if (e.rush) {
+    // The shimmer egg starts the Golden Rush instead of banking value.
+    releaseEgg(state, e);
+    state.rush.active = rushDuration(state);
+    emit(state, { type: "rush-started", duration: state.rush.active });
+    return;
+  }
+  if (streak) {
+    const bonus = comboValueMult(state) - 1;
+    const mult = 1 + bonus * (state.rush.active > 0 ? RUSH_COMBO_MULT : 1);
+    e.value = Math.round(e.value * mult);
+  }
   if (e.golden && lvl(state, "gold2") >= 1) state.feathers += GOLD2_BONUS_FEATHERS;
   collectEgg(state, e, b);
 }

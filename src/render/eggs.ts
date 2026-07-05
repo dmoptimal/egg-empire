@@ -68,8 +68,17 @@ export function createEggSprites(layer: Container, textures: Textures): EggSprit
         if (!sp) continue;
         sp.position.set(e.x, e.y);
         sp.alpha = e.age > life - EGG_FADE_TIME ? (life - e.age) / EGG_FADE_TIME : 1;
-        if (e.golden)
+        if (e.rush) {
+          // The shimmer egg: big pulse + colour cycle so it reads as an event.
+          sp.scale.set(SPECIES[e.species].eggScale * 1.35 * (1 + Math.sin(now * 9) * 0.14));
+          const t = now * 4;
+          sp.tint =
+            (Math.floor(190 + 65 * Math.sin(t)) << 16) |
+            (Math.floor(190 + 65 * Math.sin(t + 2.1)) << 8) |
+            Math.floor(190 + 65 * Math.sin(t + 4.2));
+        } else if (e.golden) {
           sp.scale.set(SPECIES[e.species].eggScale * 1.15 * (1 + Math.sin(now * 6) * 0.07));
+        }
       }
       for (const e of sim.flying) {
         const sp = spriteFor(e);

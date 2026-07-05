@@ -170,6 +170,13 @@ export const SFX = {
     noise(0.18, { freq: 8000, vol: 0.08, q: 2, delay: 0.05 });
     tone(112, 0.1, { type: "sine", vol: 0.14 });
   },
+  /** Golden Rush fanfare: a fast rising arpeggio with shimmer. */
+  rush(): void {
+    [523, 659, 784, 1046, 1318, 1568].forEach((f, i) =>
+      tone(f, 0.1, { type: "triangle", vol: 0.16, delay: i * 0.05 }),
+    );
+    noise(0.6, { freq: 7000, vol: 0.07, q: 2, delay: 0.1 });
+  },
   win(): void {
     [523, 659, 784, 1046, 1318].forEach((f, i) => tone(f, 0.16, { type: "square", vol: 0.18, delay: i * 0.12 }));
     noise(0.8, { freq: 6000, vol: 0.08, q: 2, delay: 0.2 });

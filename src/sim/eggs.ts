@@ -21,6 +21,7 @@ import {
 } from "../config/constants";
 import { SPECIES } from "../config/species";
 import { eggCap, eggLife, featherGolden, featherPerEgg, goldenPct, worthMult } from "./economy";
+import { RUSH_EGG_LIFE } from "../config/economy";
 import { emit } from "./events";
 import type { Basket, Egg, SimHooks, SimState, SpawnPoint } from "./types";
 
@@ -69,6 +70,37 @@ export function layEgg(state: SimState, species: number, hooks: SimHooks): void 
     golden,
     // Round the upgraded value first, then apply the golden ×10 — prototype order.
     value: Math.round(SPECIES[species].eggValue * worthMult(state, species)) * (golden ? GOLDEN_VALUE_MULT : 1),
+    x: p.x + (hooks.rng() * EGG_SPAWN_JITTER_X * 2 - EGG_SPAWN_JITTER_X),
+    y: p.y - EGG_SPAWN_Y_OFFSET,
+    vy: EGG_INITIAL_VY,
+    targetY:
+      hayTop + EGG_TARGET_TOP_INSET + hooks.rng() * (hayBottom - hayTop - EGG_TARGET_BAND_INSET),
+    age: 0,
+    claimed: false,
+    bounced: false,
+    phase: "falling",
+    flyT: 0,
+    sx: 0,
+    sy: 0,
+    tx: 0,
+    ty: 0,
+    basket: null,
+  };
+  state.falling.push(e);
+  emit(state, { type: "egg-laid", egg: e });
+}
+
+/** Drop the shimmer egg that starts a Golden Rush when swept. */
+export function layRushEgg(state: SimState, hooks: SimHooks): void {
+  const p = hooks.spawnPoint ? hooks.spawnPoint(0) : defaultSpawnPoint(state, hooks);
+  if (!p) return;
+  const { hayTop, hayBottom } = state.layout;
+  const e: Egg = {
+    id: state.nextEggId++,
+    species: 0,
+    golden: true, // golden visuals; render layers a shimmer on top
+    rush: true,
+    value: 0,
     x: p.x + (hooks.rng() * EGG_SPAWN_JITTER_X * 2 - EGG_SPAWN_JITTER_X),
     y: p.y - EGG_SPAWN_Y_OFFSET,
     vy: EGG_INITIAL_VY,
@@ -143,7 +175,7 @@ export function updateGround(state: SimState, dt: number): void {
   for (let k = state.ground.length - 1; k >= 0; k--) {
     const e = state.ground[k];
     e.age += dt;
-    if (e.age > eggLife(state)) {
+    if (e.age > (e.rush ? RUSH_EGG_LIFE : eggLife(state))) {
       releaseEgg(state, e);
       emit(state, { type: "egg-spoiled", egg: e });
     }
