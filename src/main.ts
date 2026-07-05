@@ -47,6 +47,7 @@ import { makeTextures } from "./render/textures";
 import { BAR_H, createBar } from "./ui/bar";
 import { createDevPanel } from "./ui/devpanel";
 import { createHud, type Screen } from "./ui/hud";
+import { createSettings } from "./ui/settings";
 import { loadPixelFont, safeInsets } from "./ui/kit";
 import { createTree } from "./ui/tree";
 
@@ -134,6 +135,15 @@ async function boot(): Promise<void> {
     onScreen(next) {
       if (started) setScreen(next);
     },
+    onSettings() {
+      settings.toggle();
+    },
+  });
+  // After the HUD so the overlay covers the chips too.
+  const settings = createSettings({
+    layer: layers.uiTop,
+    textures,
+    onReset: () => loadState(null),
   });
   const bar = createBar({
     sim,
@@ -224,6 +234,7 @@ async function boot(): Promise<void> {
     bar.layout(W, H, safe.bottom);
     kitchenView.layout(sim);
     casinoView.layout(sim);
+    settings.layout(W, H);
     if (startScreen.visible) startScreen.position(sim.layout);
   }
 

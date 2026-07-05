@@ -93,6 +93,7 @@ export async function showGallery(): Promise<void> {
     { slug: "icon-coin", label: "Coin (midas flock)", tex: t.icons.coin },
     { slug: "icon-tag", label: "Tag (bulk deals)", tex: t.icons.tag },
     { slug: "icon-trophy", label: "Trophy (win screen)", tex: t.icons.trophy },
+    { slug: "icon-gear", label: "Gear (settings)", tex: t.icons.gear },
     ...makeSwatches(app.renderer),
   ];
 

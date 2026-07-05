@@ -4,7 +4,7 @@
 // The bottom bar (shop strip + skill tree) lives in ./bar.ts.
 
 import { BitmapText, Container, Graphics, Rectangle, Sprite, Text } from "pixi.js";
-import { audioInit, toggleMute } from "../audio/sfx";
+import { audioInit } from "../audio/sfx";
 import { fmt, fmtMoney } from "../config/format";
 import { casinoUnlocked, kitchenUnlocked, type SimState } from "../sim";
 import type { Textures } from "../render/textures";
@@ -27,6 +27,8 @@ export interface HudDeps {
   layer: Container;
   textures: Textures;
   onScreen(screen: Screen): void;
+  /** Gear chip tapped — main opens the settings overlay. */
+  onSettings(): void;
 }
 
 const CHIP_H = 30;
@@ -70,15 +72,14 @@ export function createHud(deps: HudDeps): Hud {
   featherGlyph.scale.set(2);
   const featherChip = makeChip([featherText, featherGlyph]);
 
-  const muteIcon = new Sprite(textures.icons.speakerOn);
-  muteIcon.scale.set(1.6);
-  const muteChip = makeChip([muteIcon], () => {
-    muteIcon.texture = toggleMute() ? textures.icons.speakerOff : textures.icons.speakerOn;
-  });
+  // Gear chip → settings menu (sound toggle + reset live in there now).
+  const gearIcon = new Sprite(textures.icons.gear);
+  gearIcon.scale.set(2);
+  const gearChip = makeChip([gearIcon], () => deps.onSettings());
   // 44px+ hit target without growing the visual chip.
-  muteChip.root.hitArea = new Rectangle(-5, -8, 44, 46);
+  gearChip.root.hitArea = new Rectangle(-5, -8, 44, 46);
 
-  const chips = [moneyChip, featherChip, muteChip];
+  const chips = [moneyChip, featherChip, gearChip];
 
   // room tabs (farm/kitchen/casino) — top-left, shown as gates unlock ------
   const TAB = 40;
@@ -179,7 +180,7 @@ export function createHud(deps: HudDeps): Hud {
     // … and the chips right-aligned so the two never meet
     moneyChip.width = Math.ceil(moneyText.width) + CHIP_PAD * 2;
     featherChip.width = Math.ceil(featherText.width + 6 + featherGlyph.width) + CHIP_PAD * 2;
-    muteChip.width = 34;
+    gearChip.width = 34;
     const total = chips.reduce((a, c) => a + c.width, 0) + CHIP_GAP * (chips.length - 1);
     let x = Math.round(Math.max(tabFarm.root.visible ? tx + 2 : 8, W - 8 - total));
     for (const c of chips) {
@@ -191,9 +192,9 @@ export function createHud(deps: HudDeps): Hud {
     moneyText.position.set(CHIP_PAD, Math.round((CHIP_H - moneyText.height) / 2));
     featherText.position.set(CHIP_PAD, Math.round((CHIP_H - featherText.height) / 2));
     featherGlyph.position.set(CHIP_PAD + featherText.width + 6, Math.round((CHIP_H - featherGlyph.height) / 2));
-    muteIcon.position.set(
-      Math.round((muteChip.width - muteIcon.width) / 2),
-      Math.round((CHIP_H - muteIcon.height) / 2),
+    gearIcon.position.set(
+      Math.round((gearChip.width - gearIcon.width) / 2),
+      Math.round((CHIP_H - gearIcon.height) / 2),
     );
     hint.position.set(W / 2, sim.layout.h * 0.42);
     hint.style.wordWrapWidth = W - 48;
