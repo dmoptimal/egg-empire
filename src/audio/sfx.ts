@@ -32,6 +32,11 @@ export function toggleMute(): boolean {
   return muted;
 }
 
+/** Shared context handles for the music sequencer (src/audio/music.ts). */
+export function audioHandles(): { ac: AudioContext; master: GainNode; muted: boolean } | null {
+  return AC && master ? { ac: AC, master, muted } : null;
+}
+
 interface ToneOpts {
   type?: OscillatorType;
   vol?: number;

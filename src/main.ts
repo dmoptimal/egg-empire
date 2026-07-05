@@ -4,6 +4,7 @@
 
 import { Application, Graphics, TextureSource, type FederatedPointerEvent } from "pixi.js";
 import { audioInit, SFX } from "./audio/sfx";
+import { musicSetPaused, musicStart } from "./audio/music";
 import { SPECIES } from "./config/species";
 import { fmt, fmtMoney } from "./config/format";
 import {
@@ -125,7 +126,9 @@ async function boot(): Promise<void> {
       if (buyBird(sim, species)) refreshAll();
     },
     onToggleTree() {
-      if (started) tree.toggle();
+      if (!started) return;
+      pointers.clear(); // ditto for opening/closing the tree mid-hold
+      tree.toggle();
     },
     onScreen(next) {
       if (started) setScreen(next);
@@ -152,6 +155,7 @@ async function boot(): Promise<void> {
   const farmLayers = [layers.bg, layers.birds, layers.eggs, layers.baskets, layers.collectors, layers.trucks];
   function setScreen(next: "farm" | "kitchen"): void {
     if (next === "kitchen" && !kitchenUnlocked(sim)) return;
+    pointers.clear(); // a held sweep must not survive a screen change
     screen = next;
     layers.kitchen.visible = next === "kitchen";
     for (const l of farmLayers) l.visible = next === "farm";
@@ -348,6 +352,7 @@ async function boot(): Promise<void> {
   app.stage.hitArea = app.screen;
   app.stage.on("pointerdown", (ev: FederatedPointerEvent) => {
     audioInit();
+    musicStart(); // idempotent; needs the user-gesture context above
     if (!started) {
       startGame();
       return;
@@ -379,11 +384,11 @@ async function boot(): Promise<void> {
     p.y = y;
   });
   const endPointer = (ev: FederatedPointerEvent): void => {
-    if (tree.isOpen()) {
-      tree.onUp(ev);
-      return;
-    }
+    // ALWAYS drop the pointer first. A finger that lifted while the tree
+    // was open used to survive in `pointers` forever and auto-vacuum the
+    // whole field every frame (Lily's "stuck swipe" during a gold rush).
     pointers.delete(ev.pointerId);
+    if (tree.isOpen()) tree.onUp(ev);
   };
   app.stage.on("pointerup", endPointer);
   app.stage.on("pointerupoutside", endPointer);
@@ -451,8 +456,10 @@ async function boot(): Promise<void> {
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
       persist();
+      musicSetPaused(true);
       app.ticker.stop();
     } else {
+      musicSetPaused(false);
       app.ticker.start();
     }
   });
