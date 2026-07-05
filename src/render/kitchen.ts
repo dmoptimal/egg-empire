@@ -31,7 +31,7 @@ const STATION_GAP = 4;
 const CHEF_VIEW_CAP = 4; //   sprites per station regardless of slots (view rule)
 const DISH_SHOW_COUNTER = 24; // dish minis drawn before the count text takes over
 const DISH_SHOW_DELIVERY = 16;
-const CUSTOMER_POOL = 9; //   4 tables + everyone mid-walk
+const CUSTOMER_POOL = 14; //  8 tables + everyone mid-walk
 const RUNNER_SPEED = 190; //  px/s chef jog to the counter and back
 const WAITER_POOL = 3;
 const WAITER_SPEED = 210; //  px/s table service
@@ -80,12 +80,12 @@ export interface KitchenView {
   update(sim: SimState, now: number, dt: number): void;
   /** Screen position of a station's pan — dish popups spawn here. */
   stationPos(station: number): { x: number; y: number };
-  /** Feet line of the customer lane — serve popups spawn above it. */
-  laneY(): number;
+  /** Feet line of a table slot's row — serve popups spawn above it. */
+  laneY(slot?: number): number;
   /** Send a chef jogging with a fresh dish to its section (visual only). */
   onDishCooked(station: number, target: "counter" | "delivery"): void;
   /** Send a waiter running plates from the counter to a served table. */
-  onServed(tableX: number, dishKind: number): void;
+  onServed(tableX: number, slot: number, dishKind: number): void;
 }
 
 export interface KitchenDeps {
@@ -382,7 +382,9 @@ export function createKitchenView(
   root.addChild(krushOverlay, krushBanner);
 
   let railY = 290;
-  let laneYv = 420;
+  let laneFront = 560;
+  let laneBack = 470;
+  const rowY = (slot: number): number => (slot >= 4 ? laneBack : laneFront);
   let screenW = 390;
   let counterX = 8;
   let counterW = 220;
@@ -428,7 +430,8 @@ export function createKitchenView(
       counterW = Math.floor((W - 24) * 0.58);
       deliveryX = counterX + counterW + 8;
       deliveryW = W - 16 - counterW - 8;
-      laneYv = Math.min(railY + 86 + 56, roadY - 22);
+      laneFront = roadY - 32;
+      laneBack = Math.max(railY + 86 + 96, laneFront - 92);
       counterPanel.clear();
       pixelPanel(counterPanel, counterX, railY, counterW, 86, { face: 0x6a5a48, frame: 0x3a3028 });
       counterLabel.position.set(counterX + 12, railY + 6);
@@ -444,7 +447,7 @@ export function createKitchenView(
       krushOverlay.alpha = 0;
       krushBanner.position.set(W / 2, 136);
       for (let i = 0; i < tables.length; i++)
-        tables[i].position.set(customerSlotX(sim, i), laneYv + 16);
+        tables[i].position.set(customerSlotX(sim, i), rowY(i) + 16);
       waiters.forEach((wv, i) => {
         wv.px = counterX + counterW - 20 - i * 18;
         wv.py = railY + 76;
@@ -599,7 +602,7 @@ export function createKitchenView(
         }
         const fret = c.state === "wait" && c.patience < 6;
         v.root.x = c.x + (fret ? Math.sin(now * 26) * 1.5 : 0);
-        v.root.y = laneYv;
+        v.root.y = rowY(c.slot);
         v.body.scale.x = (c.state === "leave" ? -1 : 1) * 3;
         v.bubble.visible = c.state !== "leave";
         if (c.state !== "leave") {
@@ -642,8 +645,8 @@ export function createKitchenView(
     stationPos(station: number): { x: number; y: number } {
       return { x: 8 + station * (STATION_W + STATION_GAP) + STATION_W / 2, y: 150 + 30 };
     },
-    laneY(): number {
-      return laneYv;
+    laneY(slot = 0): number {
+      return rowY(slot);
     },
     onDishCooked(station: number, target: "counter" | "delivery"): void {
       const free = chefs.find((c) => c.station === station && c.root.visible && c.mode === "post");
@@ -660,7 +663,7 @@ export function createKitchenView(
         free.ty = railY + 72;
       }
     },
-    onServed(tableX: number, dishKind: number): void {
+    onServed(tableX: number, slot: number, dishKind: number): void {
       let free: WaiterView | null = null;
       for (const wv of waiters)
         if (wv.mode === "post") {
@@ -673,7 +676,7 @@ export function createKitchenView(
       free.tray.visible = true;
       free.root.position.set(free.px, free.py);
       free.tx = tableX + 20;
-      free.ty = laneYv - 2;
+      free.ty = rowY(slot) - 2;
     },
   };
 }

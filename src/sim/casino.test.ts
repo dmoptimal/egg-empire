@@ -6,9 +6,11 @@ import {
   AUTO_DROP_INTERVAL,
   AUTO_MIN_BANKROLL,
   BIN_MULTS,
+  BOUNCY_PER_LVL,
   MAX_BALLS,
+  SPLIT_PER_LVL,
 } from "../config/casino";
-import { binMult, casinoUnlocked, dropBall, dropCost } from "./casino";
+import { binMult, casinoUnlocked, dropBall, dropCost, pinKind } from "./casino";
 import { drainEvents } from "./events";
 import { createSim } from "./state";
 import { constHooks, step } from "./test-helpers";
@@ -77,14 +79,33 @@ describe("upgrades", () => {
     expect(binMult(s, 0)).toBeCloseTo(BIN_MULTS[0] * 1.6, 10);
   });
 
-  it("Double yolk splits eggs on pin hits", () => {
+  it("special pins are visible board features, added level by level", () => {
     const s = casinoSim();
-    s.n.pdup = 3; // 15% per hit — rng 0.1 always splits
-    dropBall(s, () => 0.1);
-    step(s, 8, constHooks(0.1));
+    const count = (kind: string): number => {
+      let n = 0;
+      for (let r = 0; r < 5; r++) for (let c = 0; c < 7; c++) if (pinKind(s, r, c) === kind) n++;
+      return n;
+    };
+    expect(count("bouncy")).toBe(0);
+    expect(count("split")).toBe(0);
+    s.n.pbounce = 2;
+    s.n.pdup = 1;
+    expect(count("bouncy")).toBe(BOUNCY_PER_LVL * 2);
+    expect(count("split")).toBe(SPLIT_PER_LVL);
+    s.n.pbounce = 3;
+    s.n.pdup = 3;
+    expect(count("bouncy")).toBe(BOUNCY_PER_LVL * 3);
+    expect(count("split")).toBe(SPLIT_PER_LVL * 3);
+  });
+
+  it("pink pins split eggs — both halves pay out", () => {
+    const s = casinoSim();
+    s.n.pdup = 3; // six pink pins on the board; rng 0.3 < split chance
+    for (let i = 0; i < 10; i++) dropBall(s, () => 0.3 + i * 0.04);
+    step(s, 10, constHooks(0.3));
     const evs = drainEvents(s);
     expect(evs.some((e) => e.type === "casino-split")).toBe(true);
-    expect(payouts(evs).length).toBeGreaterThanOrEqual(2); // both halves paid
+    expect(payouts(evs).length).toBeGreaterThan(10); // more payouts than drops
   });
 
   it("the Roost dropper feeds the machine on its cadence", () => {

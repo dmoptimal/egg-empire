@@ -15,7 +15,7 @@ import {
   PIN_ROWS,
 } from "../config/casino";
 import { fmtMoney } from "../config/format";
-import { binMult, dropCost, lvl, pinAt, type SimState } from "../sim";
+import { binMult, dropCost, lvl, pinAt, pinKind, type SimState } from "../sim";
 import { FONT, HOT_FONT, pixelButton, pixelPanel, type PixelButton } from "../ui/kit";
 import type { Textures } from "./textures";
 
@@ -61,18 +61,38 @@ export function createCasinoView(
   pixelPanel(felt, -8, -8, BOARD_W + 16, BOARD_H + 46, { face: 0x1d3a2a, frame: 0x0d1a12 });
   board.addChild(felt);
   const pins = new Graphics();
-  for (let r = 0; r < PIN_ROWS; r++)
-    for (let c = 0; c < PIN_COLS; c++) {
-      const p = pinAt(r, c);
-      pins.circle(p.x, p.y, PIN_R).fill(0xd8d8e0);
-      pins.rect(p.x - 1, p.y - PIN_R, 2, 2).fill(0xffffff);
-    }
-  // bin dividers + floor
-  const binW = BOARD_W / BIN_MULTS.length;
-  pins.rect(0, BOARD_H, BOARD_W, 4).fill(0x0d1a12);
-  for (let b = 0; b <= BIN_MULTS.length; b++)
-    pins.rect(b * binW - 1, BOARD_H - 34, 2, 34).fill(0x6a5a48);
   board.addChild(pins);
+  let pinSig = "";
+  // Special pins are visible board features: blue = springy, pink = splitter.
+  const redrawPins = (sim: SimState): void => {
+    const sig = `${lvl(sim, "pbounce")}|${lvl(sim, "pdup")}`;
+    if (sig === pinSig) return;
+    pinSig = sig;
+    pins.clear();
+    for (let r = 0; r < PIN_ROWS; r++)
+      for (let c = 0; c < PIN_COLS; c++) {
+        const p = pinAt(r, c);
+        const kind = pinKind(sim, r, c);
+        if (kind === "bouncy") {
+          pins.circle(p.x, p.y, PIN_R + 2).fill(0x54a8ff);
+          pins.circle(p.x, p.y, PIN_R - 1).fill(0x9fd2ff);
+        } else if (kind === "split") {
+          pins.circle(p.x, p.y, PIN_R + 2).fill(0xff6ad5);
+          // a twin-yolk mark so it reads as "splitter"
+          pins.circle(p.x - 2, p.y, 1.5).fill(0xfff0bd);
+          pins.circle(p.x + 2, p.y, 1.5).fill(0xfff0bd);
+        } else {
+          pins.circle(p.x, p.y, PIN_R).fill(0xd8d8e0);
+          pins.rect(p.x - 1, p.y - PIN_R, 2, 2).fill(0xffffff);
+        }
+      }
+    // bin dividers + floor
+    const binW = BOARD_W / BIN_MULTS.length;
+    pins.rect(0, BOARD_H, BOARD_W, 4).fill(0x0d1a12);
+    for (let b = 0; b <= BIN_MULTS.length; b++)
+      pins.rect(b * binW - 1, BOARD_H - 34, 2, 34).fill(0x6a5a48);
+  };
+  const binW = BOARD_W / BIN_MULTS.length;
   const binLabels: BitmapText[] = [];
   for (let b = 0; b < BIN_MULTS.length; b++) {
     const t = new BitmapText({ text: "", style: { fontFamily: HOT_FONT, fontSize: 9 } });
@@ -129,6 +149,7 @@ export function createCasinoView(
       drop.root.position.set(Math.round(W / 2 - 95), Math.min(oy + BOARD_H + 52, H - 56));
     },
     refresh(sim: SimState): void {
+      redrawPins(sim);
       const cost = dropCost(sim);
       dropLabel.text = `DROP  -${fmtMoney(cost)}`;
       drop.setDisabled(sim.money < cost);

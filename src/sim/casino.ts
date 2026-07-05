@@ -10,13 +10,15 @@ import {
   BIN_MULTS,
   BOARD_H,
   BOARD_W,
+  BOUNCY_BOOST,
+  BOUNCY_PER_LVL,
+  BOUNCY_PINS,
+  BOUNCY_VALUE_MULT,
   DROP_COST_EGGS,
   GRAVITY,
   HIT_MULT,
   MAX_BALLS,
   MAX_SPLITS,
-  PBOUNCE_PER_LVL,
-  PDUP_PCT_PER_LVL,
   PIN_COLS,
   PIN_GAP_Y,
   PIN_R,
@@ -24,6 +26,9 @@ import {
   PIN_TOP,
   PVAL_PER_LVL,
   RESTITUTION,
+  SPLIT_PER_LVL,
+  SPLIT_PIN_PCT,
+  SPLIT_PINS,
 } from "../config/casino";
 import { GOLDEN_VALUE_MULT } from "../config/constants";
 import { SPECIES } from "../config/species";
@@ -56,7 +61,18 @@ export function dropCost(s: SimState): number {
 export const binMult = (s: SimState, bin: number): number =>
   BIN_MULTS[bin] * (1 + PVAL_PER_LVL * lvl(s, "pval"));
 
-const restitution = (s: SimState): number => RESTITUTION + PBOUNCE_PER_LVL * lvl(s, "pbounce");
+export type PinKind = "normal" | "bouncy" | "split";
+
+/** What a given pin does — upgrades convert fixed pins so the board reads. */
+export function pinKind(s: SimState, row: number, col: number): PinKind {
+  const splits = SPLIT_PER_LVL * lvl(s, "pdup");
+  for (let i = 0; i < splits && i < SPLIT_PINS.length; i++)
+    if (SPLIT_PINS[i][0] === row && SPLIT_PINS[i][1] === col) return "split";
+  const bouncies = BOUNCY_PER_LVL * lvl(s, "pbounce");
+  for (let i = 0; i < bouncies && i < BOUNCY_PINS.length; i++)
+    if (BOUNCY_PINS[i][0] === row && BOUNCY_PINS[i][1] === col) return "bouncy";
+  return "normal";
+}
 
 /** Player (or the roost dropper) feeds one egg into the machine. */
 export function dropBall(state: SimState, rng: () => number, auto = false): boolean {
@@ -83,28 +99,36 @@ export function dropBall(state: SimState, rng: () => number, auto = false): bool
   return true;
 }
 
-function bounce(state: SimState, ball: CasinoBall, px: number, py: number, rng: () => number): void {
+function bounce(
+  state: SimState,
+  ball: CasinoBall,
+  px: number,
+  py: number,
+  rng: () => number,
+  kind: PinKind,
+): void {
   const dx = ball.x - px;
   const dy = ball.y - py;
   const d = Math.hypot(dx, dy) || 1;
   const nx = dx / d;
   const ny = dy / d;
-  // push out of the pin, reflect, damp
+  // push out of the pin, reflect, damp (blue pins spring much harder)
   ball.x = px + nx * (PIN_R + BALL_R + 0.5);
   ball.y = py + ny * (PIN_R + BALL_R + 0.5);
   const dot = ball.vx * nx + ball.vy * ny;
-  const r = restitution(state);
+  const r = RESTITUTION + (kind === "bouncy" ? BOUNCY_BOOST : 0);
   ball.vx = (ball.vx - 2 * dot * nx) * r + (rng() * 2 - 1) * 26;
   ball.vy = (ball.vy - 2 * dot * ny) * r;
   // Anti-stuck: a dead-centre hit can pogo on one pin forever — kick it
   // sideways (deterministic by id so headless runs stay reproducible).
   if (Math.abs(ball.vx) < 12) ball.vx = (ball.id % 2 === 0 ? -1 : 1) * 14;
-  ball.value = Math.round(ball.value * HIT_MULT);
-  // Double yolk: a hit can split the egg (children never split again)
+  ball.value = Math.round(ball.value * (kind === "bouncy" ? BOUNCY_VALUE_MULT : HIT_MULT));
+  // Double yolk: PINK pins split the egg (children never split again)
   if (
+    kind === "split" &&
     ball.splits < MAX_SPLITS &&
     state.casino.balls.length < MAX_BALLS &&
-    rng() < PDUP_PCT_PER_LVL * lvl(state, "pdup")
+    rng() < SPLIT_PIN_PCT
   ) {
     ball.splits++;
     const child: CasinoBall = {
@@ -160,7 +184,8 @@ export function updateCasino(state: SimState, dt: number, rng: () => number): vo
           const p = pinAt(r, col);
           const dx = b.x - p.x;
           const dy = b.y - p.y;
-          if (dx * dx + dy * dy < (PIN_R + BALL_R) * (PIN_R + BALL_R)) bounce(state, b, p.x, p.y, rng);
+          if (dx * dx + dy * dy < (PIN_R + BALL_R) * (PIN_R + BALL_R))
+            bounce(state, b, p.x, p.y, rng, pinKind(state, r, col));
         }
       }
       // bins

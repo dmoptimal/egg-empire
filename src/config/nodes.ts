@@ -152,9 +152,9 @@ export const NODES: NodeDef[] = [
   { id: "pval",    nm: "Loaded baskets", x: 60, y: 730, max: 3, par: "casino", cur: "feathers", edge: "straight",
     cost: farmCost("pval"), dsc: "Every pachinko basket multiplier is +20% richer per level." },
   { id: "pbounce", nm: "Bouncy pins",    x: -60, y: 700, max: 3, par: "pval",  cur: "feathers",
-    cost: farmCost("pbounce"), dsc: "Eggs bounce livelier — more pin hits, more value per drop." },
+    cost: farmCost("pbounce"), dsc: "Adds springy BLUE pins to the board — eggs rocket off them for extra value." },
   { id: "pdup",    nm: "Double yolk",    x: -60, y: 820, max: 3, par: "pbounce", cur: "feathers", edge: "straight",
-    cost: farmCost("pdup"), dsc: "Pin hits can split an egg in two — both halves pay out." },
+    cost: farmCost("pdup"), dsc: "Adds PINK twin-pins — an egg that hits one can split in two, both halves paying." },
   { id: "pauto",   nm: "Roost dropper",  x: 60, y: 820, max: 3, par: "pval",   cur: "feathers", edge: "straight",
     cost: farmCost("pauto"), dsc: "A hen roosts on the machine and drops eggs herself — faster per level." },
 ];
