@@ -4,6 +4,7 @@
 
 import { FULL_WARN_COOLDOWN } from "../config/constants";
 import { COMBO_WINDOW, GOLD2_BONUS_FEATHERS, RUSH_COMBO_MULT } from "../config/economy";
+import { GOOSE_SHINE_MULT, GOOSE_SHINE_TIME, OSTRICH_SMASH_R } from "../config/species";
 import { basketWithSpace } from "./baskets";
 import { comboValueMult, lvl, rushDuration, sweepRadius } from "./economy";
 import { collectEgg, releaseEgg } from "./eggs";
@@ -46,6 +47,8 @@ function sweepPickup(state: SimState, e: Egg, b: Basket): void {
     emit(state, { type: "rush-started", duration: state.rush.active, egg: e });
     return;
   }
+  // Goose gimmick: eggs sparkle while fresh — sweep one fast for +50%.
+  if (e.species === 3 && e.age < GOOSE_SHINE_TIME) e.value = Math.round(e.value * GOOSE_SHINE_MULT);
   if (streak) {
     const bonus = comboValueMult(state) - 1;
     const mult = 1 + bonus * (state.rush.active > 0 ? RUSH_COMBO_MULT : 1);
@@ -53,6 +56,27 @@ function sweepPickup(state: SimState, e: Egg, b: Basket): void {
   }
   if (e.golden && lvl(state, "gold2") >= 1) state.feathers += GOLD2_BONUS_FEATHERS;
   collectEgg(state, e, b);
+}
+
+/**
+ * Ostrich gimmick: a swept egg that was still ROLLING bowls its neighbourhood
+ * into the baskets with it (rush shimmers stay put — a rush is deliberate).
+ */
+function strike(state: SimState, center: Egg): void {
+  const r2 = OSTRICH_SMASH_R * OSTRICH_SMASH_R;
+  let count = 0;
+  for (let k = state.ground.length - 1; k >= 0; k--) {
+    const o = state.ground[k];
+    if (o.claimed || o.rush) continue;
+    const dx = o.x - center.x;
+    const dy = o.y - center.y;
+    if (dx * dx + dy * dy > r2) continue;
+    const b = basketWithSpace(state, o.x);
+    if (!b) break;
+    sweepPickup(state, o, b);
+    count++;
+  }
+  if (count > 0) emit(state, { type: "strike", egg: center, count });
 }
 
 export function sweepCollect(
@@ -76,7 +100,9 @@ export function sweepCollect(
       }
       return;
     }
+    const rolling = e.species === 4 && !!e.vx;
     sweepPickup(state, e, b);
+    if (rolling) strike(state, e);
   }
   // Mid-air catches: falling/bouncing eggs are fair game once over the hay.
   for (let k = state.falling.length - 1; k >= 0; k--) {

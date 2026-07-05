@@ -6,7 +6,7 @@
 
 import { LAY_ACC_MAX, LAY_BURST_MAX } from "../config/constants";
 import { RUSH_INTERVAL_MIN, RUSH_INTERVAL_VAR, RUSH_LAY_MULT } from "../config/economy";
-import { SPECIES } from "../config/species";
+import { QUAIL_CLUSTER_PCT, QUAIL_CLUSTER_SIZE, SPECIES } from "../config/species";
 import { updateTruck } from "./baskets";
 import { sweepCollect } from "./collect";
 import { updateCollector } from "./collectors";
@@ -14,6 +14,7 @@ import { layIntv, lvl, unlocked } from "./economy";
 import { layEgg, layRushEgg, updateFalling, updateFlying, updateGround } from "./eggs";
 import { emit } from "./events";
 import { updateKitchen } from "./kitchen";
+import { updateMilestones } from "./milestones";
 import { DEFAULT_HOOKS } from "./state";
 import type { SimHooks, SimState } from "./types";
 
@@ -58,8 +59,12 @@ export function tick(
     state.layAcc[i] += (dt * state.counts[i] * layMult) / layIntv(state, i);
     let n = Math.min(Math.floor(state.layAcc[i]), LAY_BURST_MAX);
     while (n-- > 0) {
-      layEgg(state, i, hooks);
+      const laid = layEgg(state, i, hooks);
       state.layAcc[i]--;
+      // Quail gimmick: sometimes a lay is a whole burst, landing together —
+      // one sweep grabs the lot, which is what hot streaks are made of.
+      if (laid && i === 2 && hooks.rng() < QUAIL_CLUSTER_PCT)
+        for (let c = 1; c < QUAIL_CLUSTER_SIZE; c++) layEgg(state, i, hooks, laid);
     }
     state.layAcc[i] = Math.min(state.layAcc[i], LAY_ACC_MAX);
   }
@@ -72,4 +77,5 @@ export function tick(
   for (const c of state.collectors) updateCollector(state, c, dt);
   for (const b of state.baskets) updateTruck(state, b, dt);
   updateKitchen(state, dt, hooks.rng); // both sims always run (no-op until unlocked)
+  updateMilestones(state, dt);
 }

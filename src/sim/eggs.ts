@@ -19,7 +19,12 @@ import {
   EGG_TARGET_TOP_INSET,
   GOLDEN_VALUE_MULT,
 } from "../config/constants";
-import { SPECIES } from "../config/species";
+import {
+  OSTRICH_ROLL_DRAG,
+  OSTRICH_ROLL_MIN,
+  OSTRICH_ROLL_VAR,
+  SPECIES,
+} from "../config/species";
 import { eggCap, eggLife, featherGolden, featherPerEgg, goldenPct, worthMult } from "./economy";
 import { RUSH_EGG_LIFE } from "../config/economy";
 import { emit } from "./events";
@@ -55,18 +60,26 @@ function defaultSpawnPoint(state: SimState, hooks: SimHooks): SpawnPoint {
   };
 }
 
-export function layEgg(state: SimState, species: number, hooks: SimHooks): void {
+export function layEgg(
+  state: SimState,
+  species: number,
+  hooks: SimHooks,
+  /** Burst-mate anchor (quail clusters): spawn beside it, land beside it. */
+  near?: Pick<Egg, "x" | "y" | "targetY">,
+): Egg | null {
   // No bird to drop from → nothing happens, not even the cap eviction
   // (prototype: layEgg early-returns on an empty view list).
-  const p = hooks.spawnPoint ? hooks.spawnPoint(species) : defaultSpawnPoint(state, hooks);
-  if (!p) return;
+  const p = near ?? (hooks.spawnPoint ? hooks.spawnPoint(species) : defaultSpawnPoint(state, hooks));
+  if (!p) return null;
   // Ground cap (Roomier hay raises it): oldest spoils first, silently.
   if (state.ground.length + state.falling.length >= eggCap(state)) despawnOldest(state);
   // Pool bound (cap + 40): a huge in-flight backlog skips the lay entirely.
   if (state.ground.length + state.falling.length + state.flying.length >= eggCap(state) + EGG_POOL_EXTRA)
-    return;
+    return null;
   const golden = hooks.rng() < goldenPct(state, species);
   const { hayTop, hayBottom } = state.layout;
+  const tyMin = hayTop + EGG_TARGET_TOP_INSET;
+  const tyBand = hayBottom - hayTop - EGG_TARGET_BAND_INSET;
   const e: Egg = {
     id: state.nextEggId++,
     species,
@@ -76,8 +89,9 @@ export function layEgg(state: SimState, species: number, hooks: SimHooks): void 
     x: p.x + (hooks.rng() * EGG_SPAWN_JITTER_X * 2 - EGG_SPAWN_JITTER_X),
     y: p.y - EGG_SPAWN_Y_OFFSET,
     vy: EGG_INITIAL_VY,
-    targetY:
-      hayTop + EGG_TARGET_TOP_INSET + hooks.rng() * (hayBottom - hayTop - EGG_TARGET_BAND_INSET),
+    targetY: near
+      ? Math.max(tyMin, Math.min(tyMin + tyBand, near.targetY + hooks.rng() * 24 - 12))
+      : tyMin + hooks.rng() * tyBand,
     age: 0,
     claimed: false,
     bounced: false,
@@ -89,8 +103,13 @@ export function layEgg(state: SimState, species: number, hooks: SimHooks): void 
     ty: 0,
     basket: null,
   };
+  // Ostrich eggs are too big to sit still — they land rolling (see
+  // updateGround); sweeping one mid-roll smashes its neighbourhood along.
+  if (species === 4)
+    e.vx = (hooks.rng() < 0.5 ? -1 : 1) * (OSTRICH_ROLL_MIN + hooks.rng() * OSTRICH_ROLL_VAR);
   state.falling.push(e);
   emit(state, { type: "egg-laid", egg: e });
+  return e;
 }
 
 /** Drop the shimmer egg that starts a Golden Rush when swept. */
@@ -178,6 +197,20 @@ export function updateGround(state: SimState, dt: number): void {
   for (let k = state.ground.length - 1; k >= 0; k--) {
     const e = state.ground[k];
     e.age += dt;
+    if (e.vx) {
+      // Rolling ostrich egg: coast, rebound off the field edges, coast out.
+      e.x += e.vx * dt;
+      const drag = 1 - OSTRICH_ROLL_DRAG * dt;
+      e.vx *= drag > 0 ? drag : 0;
+      if (e.x < 14) {
+        e.x = 14;
+        e.vx = -e.vx;
+      } else if (e.x > state.layout.w - 14) {
+        e.x = state.layout.w - 14;
+        e.vx = -e.vx;
+      }
+      if (Math.abs(e.vx) < 8) e.vx = 0;
+    }
     if (e.age > (e.rush ? RUSH_EGG_LIFE : eggLife(state))) {
       releaseEgg(state, e);
       emit(state, { type: "egg-spoiled", egg: e });

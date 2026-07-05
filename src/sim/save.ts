@@ -45,6 +45,8 @@ export interface SaveData {
   treeView?: TreeView;
   /** Chefs hired per kitchen station — absent on pre-kitchen saves. */
   chefs?: number[];
+  /** Milestones already toasted — absent until the first one fires. */
+  ms?: Record<string, number>;
 }
 
 export function serialize(state: SimState, lastSeen: number, treeView?: TreeView): SaveData {
@@ -60,6 +62,7 @@ export function serialize(state: SimState, lastSeen: number, treeView?: TreeView
   };
   if (treeView) save.treeView = { ...treeView };
   if (state.kitchen.chefs.some((c) => c > 0)) save.chefs = [...state.kitchen.chefs];
+  if (Object.keys(state.milestones).length > 0) save.ms = { ...state.milestones };
   return save;
 }
 
@@ -99,6 +102,8 @@ export function restore(save: SaveData, opts: CreateSimOptions = {}): SimState |
   for (let i = 0; i < lvl(state, "hire"); i++) addCollector(state);
   if (Array.isArray(save.chefs) && save.chefs.length === state.kitchen.chefs.length && save.chefs.every(finiteNumber))
     state.kitchen.chefs = [...save.chefs];
+  if (typeof save.ms === "object" && save.ms !== null && Object.values(save.ms).every(finiteNumber))
+    state.milestones = { ...save.ms };
   return state;
 }
 

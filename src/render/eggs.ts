@@ -6,7 +6,7 @@ import { Sprite, type Container } from "pixi.js";
 import { EGG_ARC_LIFT, EGG_FADE_TIME, EGG_POOL_EXTRA } from "../config/constants";
 import { ECAP_PER_LVL } from "../config/economy";
 import { nodeById } from "../config/nodes";
-import { EGG_CAP, SPECIES } from "../config/species";
+import { EGG_CAP, GOOSE_SHINE_TIME, SPECIES } from "../config/species";
 import { eggLife, type Egg, type SimState } from "../sim";
 import { eggSpriteScale, type Textures } from "./textures";
 
@@ -100,7 +100,18 @@ export function createEggSprites(layer: Container, textures: Textures): EggSprit
             Math.floor(190 + 65 * Math.sin(t + 4.2));
         } else if (e.golden) {
           sp.scale.set(SPECIES[e.species].eggScale * 1.15 * (1 + Math.sin(now * 6) * 0.07));
+        } else if (e.species === 3) {
+          // Goose gimmick: fresh eggs sparkle for the +50% sweep window.
+          if (e.age < GOOSE_SHINE_TIME) {
+            sp.scale.set(SPECIES[3].eggScale * (1 + Math.sin(now * 7) * 0.08));
+            sp.tint = Math.sin(now * 7) > 0.2 ? 0xfff0bd : 0xffffff;
+          } else {
+            sp.tint = 0xffffff;
+            sp.scale.set(SPECIES[3].eggScale);
+          }
         }
+        // Ostrich gimmick: rolling eggs visibly tumble.
+        if (e.vx) sp.rotation += e.vx * 0.09 * dt;
       }
       for (const e of sim.flying) {
         const sp = spriteFor(e);

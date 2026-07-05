@@ -27,6 +27,12 @@ export interface Egg {
   bounced: boolean;
   /** A shimmer egg: sweeping it triggers a Golden Rush instead of value. */
   rush?: boolean;
+  /**
+   * Horizontal roll velocity — ostrich eggs land rolling (updateGround moves
+   * and decays it). Sweeping an egg that is still rolling smashes every
+   * ground egg within OSTRICH_SMASH_R into the baskets with it.
+   */
+  vx?: number;
   phase: EggPhase;
   /** Flight progress 0→1 (advances by dt / EGG_FLY_TIME). */
   flyT: number;
@@ -195,6 +201,10 @@ export type SimEvent =
   | { type: "bird-bought"; species: number; count: number }
   | { type: "rush-started"; duration: number; egg: Egg }
   | { type: "rush-ended" }
+  /** A rolling ostrich egg was swept — `count` neighbours flew with it. */
+  | { type: "strike"; egg: Egg; count: number }
+  /** One-shot progress toast (see sim/milestones.ts for the ids). */
+  | { type: "milestone"; id: string }
   | { type: "dish-cooked"; dish: Dish; perfect: boolean; station: number; target: "counter" | "delivery" }
   | { type: "customer-arrived"; customer: Customer }
   | { type: "customer-served"; money: number; feathers: number; customer: Customer }
@@ -238,6 +248,10 @@ export interface SimState {
   comboN: number;
   /** Golden Rush: seconds of frenzy left / countdown to the next shimmer egg. */
   rush: { active: number; next: number };
+  /** One-shot milestones already toasted (persisted so they never re-fire). */
+  milestones: Record<string, number>;
+  /** Toast spacing cooldown so milestone bursts don't stack. */
+  msCd: number;
   kitchen: KitchenState;
   /** Buffered events since the last drain — the render/audio seam. */
   events: SimEvent[];

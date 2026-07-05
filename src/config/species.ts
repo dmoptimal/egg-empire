@@ -27,3 +27,15 @@ export const EGG_LIFE = 25;       // seconds before a ground egg spoils
 export const BIRD_VIEW_CAP = 22;  // rendered birds per species (sim count may exceed)
 export const BASKET_BASE_CAP = 12;
 export const TRUCK_SCHEDULE = [0, 20, 14, 9, 6, 4]; // seconds, by ttime level (steepened: full baskets used to always preempt the countdown)
+
+// --- species gimmicks (fun pass, 2026-07-05) --------------------------------
+// Each later bird plays differently, not just bigger. All three reward the
+// active player; collectors and idle income are untouched.
+export const QUAIL_CLUSTER_PCT = 0.2; // chance a quail lay is a whole burst …
+export const QUAIL_CLUSTER_SIZE = 3;  // … of this many eggs, landing together
+export const GOOSE_SHINE_TIME = 6;    // a goose egg sparkles this long after landing
+export const GOOSE_SHINE_MULT = 1.5;  // sweep it while sparkling for +50%
+export const OSTRICH_ROLL_MIN = 30;   // px/s roll speed on landing …
+export const OSTRICH_ROLL_VAR = 50;   // … plus up to this much, random direction
+export const OSTRICH_ROLL_DRAG = 1.1; // fraction of roll speed lost per second
+export const OSTRICH_SMASH_R = 70;    // sweep a ROLLING egg: everything nearby flies too

@@ -43,6 +43,18 @@ import { createHud } from "./ui/hud";
 import { loadPixelFont, safeInsets } from "./ui/kit";
 import { createTree } from "./ui/tree";
 
+/** Toast copy for sim milestone ids (sim/milestones.ts fires them once). */
+const MILESTONE_TEXT: Record<string, string> = {
+  delivered_100: "Milestone: 100 delivered!",
+  delivered_1000: "Milestone: 1,000 delivered!",
+  delivered_10000: "Milestone: 10,000 delivered!",
+  delivered_100000: "Milestone: 100,000 delivered!",
+  delivered_1000000: "Milestone: 1,000,000 delivered! Egg empire indeed.",
+  quail_intro: "Quail lay in bursts — sweep a whole cluster for hot streaks!",
+  goose_intro: "Goose eggs sparkle while fresh — sweep fast for +50%!",
+  ostrich_intro: "Ostrich eggs roll! Sweep one mid-roll to smash everything nearby.",
+};
+
 async function boot(): Promise<void> {
   TextureSource.defaultOptions.scaleMode = "nearest";
   if (new URLSearchParams(location.search).get("gfx") === "1") {
@@ -309,6 +321,15 @@ async function boot(): Promise<void> {
         popups.spawn(W / 2, sim.layout.h * 0.33, "GOLDEN RUSH!", 0xffd24a, 22, textures.icons.star);
         break;
       case "rush-ended":
+        break;
+      case "strike":
+        SFX.perfect();
+        if (screen === "farm")
+          popups.spawn(ev.egg.x, ev.egg.y - 26, `STRIKE! ×${ev.count + 1}`, 0xffd24a, 17, textures.icons.star);
+        break;
+      case "milestone":
+        SFX.ding();
+        hud.toast(MILESTONE_TEXT[ev.id] ?? ev.id);
         break;
       case "won":
         SFX.win();

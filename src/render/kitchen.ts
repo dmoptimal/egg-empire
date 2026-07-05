@@ -67,6 +67,8 @@ interface CustomerView {
   bar: Graphics;
   id: number;
   lastFace: string;
+  /** Current bubble panel width — update() clamps it onto the screen. */
+  bubbleW: number;
 }
 
 export interface KitchenView {
@@ -166,10 +168,11 @@ export function createKitchenView(
     return { root: sroot, panel, pan, progress, hire, hireLabel };
   });
 
-  // chefs — one sprite per hire, standing at the pans, jogging dishes over ---
+  // chefs — one sprite per hire, standing at the pans, jogging dishes over.
+  // (Added to the tree AFTER the section panels so runners jog in FRONT of
+  // the counter instead of vanishing behind it.)
   const chefLayer = new Container();
   quiet(chefLayer);
-  root.addChild(chefLayer);
   const chefs: ChefView[] = [];
   for (let si = 0; si < STATIONS.length; si++) {
     for (let ci = 0; ci < CHEF_VIEW_CAP; ci++) {
@@ -211,7 +214,7 @@ export function createKitchenView(
   const deliveryDishes = new Container();
   for (const c of [counterPanel, counterLabel, counterCount, counterDishes, deliveryPanel, deliveryLabel, deliveryCount, deliveryDishes])
     quiet(c);
-  root.addChild(counterPanel, counterLabel, counterCount, counterDishes, deliveryPanel, deliveryLabel, deliveryCount, deliveryDishes);
+  root.addChild(counterPanel, counterLabel, counterCount, counterDishes, deliveryPanel, deliveryLabel, deliveryCount, deliveryDishes, chefLayer);
   const counterPool: Sprite[] = [];
   const deliveryPool: Sprite[] = [];
   for (let i = 0; i < DISH_SHOW_COUNTER; i++) {
@@ -277,6 +280,7 @@ export function createKitchenView(
       bar,
       id: -1,
       lastFace: "",
+      bubbleW: 40,
     };
     customers.push(view);
   }
@@ -289,6 +293,7 @@ export function createKitchenView(
     const kinds: number[] = [];
     for (let st = 0; st < c.needs.length; st++) if (c.needs[st] > 0) kinds.push(st);
     const w = c.vip ? 56 : Math.max(40, 10 + kinds.length * 34);
+    v.bubbleW = w;
     v.bubbleGfx.clear();
     pixelPanel(v.bubbleGfx, -w / 2, 0, w, 30, {
       face: c.vip ? 0x6a5218 : servable ? 0x2f6a3c : 0x4a4438,
@@ -331,6 +336,7 @@ export function createKitchenView(
 
   let railY = 290;
   let laneYv = 420;
+  let screenW = 390;
   let counterX = 8;
   let counterW = 220;
   let deliveryX = 240;
@@ -370,6 +376,7 @@ export function createKitchenView(
       bg.rect(0, roadY + 14, W, H - roadY - 14).fill(0x4a7c2f);
 
       railY = 290;
+      screenW = W;
       counterX = 8;
       counterW = Math.floor((W - 24) * 0.58);
       deliveryX = counterX + counterW + 8;
@@ -511,6 +518,11 @@ export function createKitchenView(
         v.bubble.visible = c.state !== "leave";
         if (c.state !== "leave") {
           drawBubble(v, c, c.state === "wait" && (c.vip || canServeCustomer(sim, c)));
+          // Keep the ticket on screen even while its owner walks in from
+          // off-stage — slide it along the edge instead of clipping.
+          const lo = 6 + v.bubbleW / 2 - c.x;
+          const hi = screenW - 6 - v.bubbleW / 2 - c.x;
+          v.bubble.x = lo > 0 ? lo : hi < 0 ? hi : 0;
           v.bar.clear();
           if (c.state === "wait") {
             const frac = Math.max(0, c.patience / (c.vip ? VIP_PATIENCE : CUSTOMER_PATIENCE));
@@ -556,10 +568,10 @@ export function createKitchenView(
       dropSeq++;
       if (target === "counter") {
         free.tx = counterX + 24 + (dropSeq % 5) * Math.max(24, (counterW - 48) / 4);
-        free.ty = railY + 96;
+        free.ty = railY + 72; // stands AT the counter face (runners render in front)
       } else {
         free.tx = deliveryX + 20 + (dropSeq % 3) * Math.max(20, (deliveryW - 40) / 2);
-        free.ty = railY + 96;
+        free.ty = railY + 72;
       }
     },
   };
