@@ -2,8 +2,9 @@
 // climb/steal/flee, sweep bounties, and the Night guard automation.
 
 import { describe, expect, it } from "vitest";
-import { DAY_LENGTH, GUARD_INTERVAL, NIGHT_LENGTH } from "../config/night";
+import { DAY_LENGTH, FOX_BIRD_CAP, FOX_BIRD_DEPTH, GUARD_INTERVAL, NIGHT_LENGTH } from "../config/night";
 import { sweepCollect } from "./collect";
+import { birdCost } from "./economy";
 import { drainEvents } from "./events";
 import { CYCLE_LENGTH, foxBounty } from "./night";
 import { createSim } from "./state";
@@ -112,6 +113,59 @@ describe("foxes", () => {
     expect(fox.state).toBe("flee");
     step(s, 2, constHooks(0.5));
     expect(s.foxes).toHaveLength(0);
+  });
+});
+
+describe("bird theft (an empty hay line lets foxes through)", () => {
+  it("takes a bird, drops the flock count AND the next bird's price", () => {
+    const s = quiet();
+    s.counts = [5, 0, 0, 0, 0];
+    atNight(s);
+    const fox = forgeFox(s, s.layout.hayBottom - 4); // past bare hay
+    const costBefore = birdCost(s, 0);
+    step(s, 10, constHooks(0.5)); // climbs on to the flock line
+    expect(fox.state).toBe("flee");
+    expect(fox.bird).toBe(0);
+    expect(s.counts[0]).toBe(4);
+    expect(birdCost(s, 0)).toBeLessThan(costBefore);
+    const evs = drainEvents(s);
+    expect(evs.some((e) => e.type === "fox-stole-bird")).toBe(true);
+    expect(evs.some((e) => e.type === "milestone" && e.id === "fox_bird_intro")).toBe(true);
+  });
+
+  it("an egg on the hay still buys the flock's safety", () => {
+    const s = quiet();
+    s.counts = [5, 0, 0, 0, 0];
+    atNight(s);
+    forgeGroundEgg(s, { x: 100, y: s.layout.hayBottom - 10 });
+    const fox = forgeFox(s, s.layout.hayBottom + 6);
+    step(s, 0.4, constHooks(0.5));
+    expect(fox.carrying).toBe(true); // egg, not bird
+    expect(s.counts[0]).toBe(5);
+  });
+
+  it("never takes a species' last bird", () => {
+    const s = quiet();
+    s.counts = [1, 0, 0, 0, 0];
+    atNight(s);
+    const fox = forgeFox(s, s.layout.hayBottom - 4);
+    step(s, 10, constHooks(0.5));
+    expect(fox.state).toBe("flee");
+    expect(fox.bird).toBeUndefined();
+    expect(s.counts[0]).toBe(1);
+  });
+
+  it("two birds a night, never more", () => {
+    const s = quiet();
+    s.counts = [9, 0, 0, 0, 0];
+    atNight(s);
+    const zone = s.layout.hayTop * FOX_BIRD_DEPTH;
+    forgeFox(s, zone + 3, 100);
+    forgeFox(s, zone + 3, 200);
+    forgeFox(s, zone + 3, 300);
+    step(s, 0.3, constHooks(0.5));
+    expect(s.counts[0]).toBe(9 - FOX_BIRD_CAP);
+    expect(s.foxes.every((f) => f.state === "flee")).toBe(true);
   });
 });
 

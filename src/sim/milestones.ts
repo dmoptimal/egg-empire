@@ -9,13 +9,15 @@ import type { SimState } from "./types";
 export const DELIVERED_STEPS = [100, 1000, 10000, 100000, 1000000];
 const MS_TOAST_GAP = 4;
 
-function fire(state: SimState, id: string): boolean {
+/** Fire a one-shot milestone immediately (event-driven callers, e.g. foxes). */
+export function fireMilestone(state: SimState, id: string): boolean {
   if (state.milestones[id]) return false;
   state.milestones[id] = 1;
   state.msCd = MS_TOAST_GAP;
   emit(state, { type: "milestone", id });
   return true;
 }
+const fire = fireMilestone;
 
 /** Called once per tick, after the trucks have paid out. */
 export function updateMilestones(state: SimState, dt: number): void {

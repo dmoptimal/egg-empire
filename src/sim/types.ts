@@ -108,6 +108,8 @@ export interface Fox {
   state: FoxState;
   /** It reached the hay and made off with an egg (render shows it). */
   carrying: boolean;
+  /** It got through an empty hay line and took a bird of this species. */
+  bird?: number;
 }
 
 export interface Layout {
@@ -234,6 +236,8 @@ export type SimEvent =
   | { type: "daybreak" }
   | { type: "fox-shooed"; fox: Fox; feathers: number; byGuard: boolean }
   | { type: "fox-stole"; fox: Fox; egg: Egg }
+  /** The flock is one bird short — counts (and so bird prices) already updated. */
+  | { type: "fox-stole-bird"; fox: Fox; species: number }
   | { type: "casino-drop"; ball: CasinoBall; auto: boolean }
   | { type: "casino-split"; ball: CasinoBall }
   | { type: "casino-payout"; ball: CasinoBall; bin: number; money: number }
@@ -293,6 +297,8 @@ export interface SimState {
   foxSeq: number;
   /** Night-guard auto-shoo cooldown. */
   guardT: number;
+  /** Birds lost tonight (capped at FOX_BIRD_CAP; resets at nightfall). */
+  nightBirdThefts: number;
   /** The Bird Casino (pachinko) — balls in flight + the auto-drop timer. */
   casino: { balls: CasinoBall[]; ballSeq: number; nextAuto: number };
   kitchen: KitchenState;

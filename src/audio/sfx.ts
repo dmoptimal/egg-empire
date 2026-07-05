@@ -196,6 +196,12 @@ export const SFX = {
   gulp(): void {
     tone(340, 0.14, { type: "sine", vol: 0.12, slide: -160 });
   },
+  /** A fox took a BIRD — distressed squawking on the way out. */
+  squawk(): void {
+    noise(0.12, { freq: 1400, vol: 0.16, q: 3, slide: -600 });
+    tone(620, 0.1, { type: "square", vol: 0.12, slide: -260 });
+    noise(0.1, { freq: 1100, vol: 0.12, q: 3, delay: 0.12, slide: -500 });
+  },
   /** Dusk: two low, soft tones under a breath of wind. */
   nightfall(): void {
     tone(196, 0.7, { type: "sine", vol: 0.09 });

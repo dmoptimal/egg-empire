@@ -17,3 +17,9 @@ export const FOX_BOUNTY_MULT = 8; //   feathers = this × featherPerEgg(best bir
 
 /** Seconds between automatic shoos, indexed by Night guard level (0 = none). */
 export const GUARD_INTERVAL = [0, 9, 6, 3];
+
+// A fox that crosses an EMPTY hay line presses on toward the flock itself
+// (Dan 2026-07-05: "irritating but not game ending" — hence the caps).
+export const FOX_BIRD_DEPTH = 0.35; // steals a bird at hayTop × this
+export const FOX_BIRD_CAP = 2; //     most birds lost per night
+

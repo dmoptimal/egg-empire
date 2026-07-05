@@ -59,6 +59,9 @@ export function createBirds(layer: Container, textures: Textures, getLayout: () 
     sync(sim: SimState): void {
       SPECIES.forEach((_, i) => {
         while (views[i].length < Math.min(sim.counts[i], BIRD_VIEW_CAP)) add(i);
+        // foxes can shrink the flock now — retire the extra sprites
+        while (views[i].length > Math.min(Math.max(sim.counts[i], 0), BIRD_VIEW_CAP))
+          views[i].pop()!.sp.destroy();
       });
     },
     // Keep every bird inside the tappable field, whatever size the canvas

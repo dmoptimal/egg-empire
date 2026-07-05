@@ -13,6 +13,8 @@ interface FoxView {
   root: Container;
   body: Sprite;
   egg: Sprite;
+  /** The stolen bird dangling from its jaws (fox-stole-bird). */
+  bird: Sprite;
   id: number;
 }
 
@@ -32,10 +34,16 @@ export function createFoxViews(layer: Container, textures: Textures): FoxViews {
     egg.scale.set(2);
     egg.y = -34;
     egg.visible = false;
-    root.addChild(body, egg);
+    const bird = new Sprite(textures.bird[0]);
+    bird.anchor.set(0.5);
+    bird.scale.set(1.4);
+    bird.y = -36;
+    bird.rotation = 0.5; // dangling, protesting
+    bird.visible = false;
+    root.addChild(body, egg, bird);
     root.visible = false;
     layer.addChild(root);
-    views.push({ root, body, egg, id: -1 });
+    views.push({ root, body, egg, bird, id: -1 });
   }
 
   return {
@@ -71,6 +79,7 @@ export function createFoxViews(layer: Container, textures: Textures): FoxViews {
           if (!v) continue; // pool exhausted — sim keeps counting, view skips
           v.id = f.id;
           v.egg.visible = false;
+          v.bird.visible = false;
           v.root.visible = true;
         }
         const fleeing = f.state === "flee";
@@ -78,6 +87,10 @@ export function createFoxViews(layer: Container, textures: Textures): FoxViews {
         v.root.y = f.y;
         v.body.scale.y = fleeing ? 2.4 : 3; // squashed sprint on the way out
         v.egg.visible = f.carrying;
+        if (f.bird !== undefined && !v.bird.visible) {
+          v.bird.texture = textures.bird[f.bird];
+          v.bird.visible = true;
+        }
       }
     },
   };

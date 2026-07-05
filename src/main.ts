@@ -62,6 +62,7 @@ const MILESTONE_TEXT: Record<string, string> = {
   goose_intro: "Goose eggs sparkle while fresh — sweep fast for +50%!",
   ostrich_intro: "Ostrich eggs roll! Sweep one mid-roll to smash everything nearby.",
   night_intro: "Night falls — the flock roosts, and foxes creep in. Tap foxes for feathers!",
+  fox_bird_intro: "A fox got through the bare hay and took a bird! Shoo them before they reach the flock.",
 };
 
 async function boot(): Promise<void> {
@@ -387,6 +388,12 @@ async function boot(): Promise<void> {
         eggSprites.release(ev.egg.id); // the egg leaves in a fox's mouth
         if (screen === "farm")
           popups.spawn(ev.fox.x, ev.fox.y - 44, "Stolen!", 0xff8a8a, 13);
+        break;
+      case "fox-stole-bird":
+        SFX.squawk();
+        if (screen === "farm")
+          popups.spawn(ev.fox.x, ev.fox.y - 48, `${SPECIES[ev.species].name} taken!`, 0xff8a8a, 16);
+        refreshAll(); // flock and bird prices both just changed
         break;
       case "casino-drop":
         if (screen === "casino") SFX.pop(ev.ball.golden);

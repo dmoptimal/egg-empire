@@ -5,6 +5,8 @@
 
 import {
   DAY_LENGTH,
+  FOX_BIRD_CAP,
+  FOX_BIRD_DEPTH,
   FOX_BOUNTY_MULT,
   FOX_CLIMB_SPEED,
   FOX_FLEE_SPEED,
@@ -19,6 +21,7 @@ import { segDist2 } from "./collect";
 import { featherPerEgg, lvl, unlocked } from "./economy";
 import { releaseEgg } from "./eggs";
 import { emit } from "./events";
+import { fireMilestone } from "./milestones";
 import type { Fox, SimState } from "./types";
 
 export const CYCLE_LENGTH = DAY_LENGTH + NIGHT_LENGTH;
@@ -32,8 +35,26 @@ export function updateClock(state: SimState, dt: number): void {
   if (night !== c.night) {
     c.night = night;
     emit(state, { type: night ? "nightfall" : "daybreak" });
-    if (!night) for (const f of state.foxes) f.state = "flee";
+    if (night) state.nightBirdThefts = 0;
+    else for (const f of state.foxes) f.state = "flee";
   }
+}
+
+/**
+ * Which bird a break-through fox grabs: weighted by flock size, and never
+ * a species' last bird (income can shrink, never die). -1 = nothing to take.
+ */
+function pickBird(state: SimState, rng: () => number): number {
+  let total = 0;
+  for (let i = 0; i < SPECIES.length; i++) if (state.counts[i] > 1) total += state.counts[i];
+  if (total === 0) return -1;
+  let pick = Math.floor(rng() * total);
+  for (let i = 0; i < SPECIES.length; i++) {
+    if (state.counts[i] <= 1) continue;
+    if (pick < state.counts[i]) return i;
+    pick -= state.counts[i];
+  }
+  return -1;
 }
 
 function bestSpecies(state: SimState): number {
@@ -108,14 +129,29 @@ export function updateFoxes(state: SimState, dt: number, rng: () => number): voi
     if (f.state === "climb") {
       f.y -= FOX_CLIMB_SPEED * dt;
       if (f.y <= hayBottom) {
-        // made it to the hay: grab the oldest unclaimed egg and bolt
+        // made it to the hay: grab the oldest unclaimed egg and bolt …
         const egg = state.ground.find((e) => !e.rush && !e.claimed);
         if (egg) {
           releaseEgg(state, egg);
           f.carrying = true;
+          f.state = "flee";
           emit(state, { type: "fox-stole", fox: f, egg });
+        } else if (f.y <= state.layout.hayTop * FOX_BIRD_DEPTH) {
+          // … but an EMPTY hay line lets it through to the flock itself.
+          // Capped per night and never a species' last bird — irritating,
+          // not game ending (bird prices drop with the count, too).
+          if (state.nightBirdThefts < FOX_BIRD_CAP) {
+            const species = pickBird(state, rng);
+            if (species >= 0) {
+              state.counts[species]--;
+              state.nightBirdThefts++;
+              f.bird = species;
+              emit(state, { type: "fox-stole-bird", fox: f, species });
+              fireMilestone(state, "fox_bird_intro");
+            }
+          }
+          f.state = "flee";
         }
-        f.state = "flee";
       }
     } else {
       f.y += FOX_FLEE_SPEED * dt;
