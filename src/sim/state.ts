@@ -37,6 +37,7 @@ export function createSim(opts: CreateSimOptions = {}): SimState {
     comboN: 0,
     rush: { active: 0, next: 0 },
     milestones: {},
+    stats: {},
     msCd: 0,
     clock: { t: 0, night: false },
     foxes: [],

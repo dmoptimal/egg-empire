@@ -51,19 +51,7 @@ import { createSettings } from "./ui/settings";
 import { loadPixelFont, safeInsets } from "./ui/kit";
 import { createTree } from "./ui/tree";
 
-/** Toast copy for sim milestone ids (sim/milestones.ts fires them once). */
-const MILESTONE_TEXT: Record<string, string> = {
-  delivered_100: "Milestone: 100 delivered!",
-  delivered_1000: "Milestone: 1,000 delivered!",
-  delivered_10000: "Milestone: 10,000 delivered!",
-  delivered_100000: "Milestone: 100,000 delivered!",
-  delivered_1000000: "Milestone: 1,000,000 delivered! Egg empire indeed.",
-  quail_intro: "Quail lay in bursts — sweep a whole cluster for hot streaks!",
-  goose_intro: "Goose eggs sparkle while fresh — sweep fast for +50%!",
-  ostrich_intro: "Ostrich eggs roll! Sweep one mid-roll to smash everything nearby.",
-  night_intro: "Night falls — the flock roosts, and foxes creep in. Tap foxes for feathers!",
-  fox_bird_intro: "A fox got through the bare hay and took a bird! Shoo them before they reach the flock.",
-};
+import { MILESTONE_TEXT } from "./ui/milestoneText";
 
 async function boot(): Promise<void> {
   TextureSource.defaultOptions.scaleMode = "nearest";
@@ -144,6 +132,7 @@ async function boot(): Promise<void> {
   const settings = createSettings({
     layer: layers.uiTop,
     textures,
+    sim,
     onReset: () => loadState(null),
   });
   const bar = createBar({

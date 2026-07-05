@@ -34,6 +34,7 @@ import { GOLDEN_VALUE_MULT } from "../config/constants";
 import { SPECIES } from "../config/species";
 import { lvl, unlocked, worthMult } from "./economy";
 import { emit } from "./events";
+import { bump } from "./stats";
 import type { CasinoBall, SimState } from "./types";
 
 export const casinoUnlocked = (s: SimState): boolean => lvl(s, "casino") >= 1;
@@ -95,6 +96,7 @@ export function dropBall(state: SimState, rng: () => number, auto = false): bool
     splits: 0,
   };
   state.casino.balls.push(ball);
+  bump(state, "drops");
   emit(state, { type: "casino-drop", ball, auto });
   return true;
 }
@@ -193,6 +195,7 @@ export function updateCasino(state: SimState, dt: number, rng: () => number): vo
         const bin = Math.max(0, Math.min(BIN_MULTS.length - 1, Math.floor((b.x / BOARD_W) * BIN_MULTS.length)));
         const money = Math.round(b.value * binMult(state, bin));
         state.money += money;
+        if (money > (state.stats.casinoBest ?? 0)) state.stats.casinoBest = money;
         c.balls.splice(i, 1);
         emit(state, { type: "casino-payout", ball: b, bin, money });
       }

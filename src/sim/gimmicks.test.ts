@@ -112,6 +112,18 @@ describe("ostrich rollers", () => {
   });
 });
 
+describe("lifetime stats", () => {
+  it("count banked eggs and survive a save round-trip", () => {
+    const s = quiet();
+    forgeGroundEgg(s, { x: 100, y: 400, value: 10 });
+    sweepCollect(s, 100, 400, 100, 400);
+    step(s, 1.5, constHooks(0.5)); // flight lands in the basket
+    expect(s.stats.eggs).toBe(1);
+    const back = restore(serialize(s, 0))!;
+    expect(back.stats.eggs).toBe(1);
+  });
+});
+
 describe("milestones", () => {
   it("delivered milestones fire once each, spaced out, and persist", () => {
     const s = quiet();

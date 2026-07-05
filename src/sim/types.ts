@@ -288,6 +288,8 @@ export interface SimState {
   rush: { active: number; next: number };
   /** One-shot milestones already toasted (persisted so they never re-fire). */
   milestones: Record<string, number>;
+  /** Lifetime counters for the stats screen (persisted; see sim/stats.ts). */
+  stats: Record<string, number>;
   /** Toast spacing cooldown so milestone bursts don't stack. */
   msCd: number;
   /** Day/night cycle: seconds into the cycle; night = past DAY_LENGTH. */

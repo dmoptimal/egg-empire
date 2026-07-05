@@ -47,6 +47,8 @@ export interface SaveData {
   chefs?: number[];
   /** Milestones already toasted — absent until the first one fires. */
   ms?: Record<string, number>;
+  /** Lifetime stat counters — absent on older saves. */
+  st?: Record<string, number>;
 }
 
 export function serialize(state: SimState, lastSeen: number, treeView?: TreeView): SaveData {
@@ -63,6 +65,7 @@ export function serialize(state: SimState, lastSeen: number, treeView?: TreeView
   if (treeView) save.treeView = { ...treeView };
   if (state.kitchen.chefs.some((c) => c > 0)) save.chefs = [...state.kitchen.chefs];
   if (Object.keys(state.milestones).length > 0) save.ms = { ...state.milestones };
+  if (Object.keys(state.stats).length > 0) save.st = { ...state.stats };
   return save;
 }
 
@@ -104,6 +107,8 @@ export function restore(save: SaveData, opts: CreateSimOptions = {}): SimState |
     state.kitchen.chefs = [...save.chefs];
   if (typeof save.ms === "object" && save.ms !== null && Object.values(save.ms).every(finiteNumber))
     state.milestones = { ...save.ms };
+  if (typeof save.st === "object" && save.st !== null && Object.values(save.st).every(finiteNumber))
+    state.stats = { ...save.st };
   return state;
 }
 

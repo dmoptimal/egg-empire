@@ -50,6 +50,7 @@ import {
   truckSpeedOut,
 } from "./economy";
 import { emit } from "./events";
+import { bump } from "./stats";
 import type { BagEgg, CookJob, Customer, SimState } from "./types";
 
 export const kitchenUnlocked = (s: SimState): boolean => lvl(s, "kitchen") >= 1;
@@ -216,6 +217,8 @@ function plateJob(state: SimState, job: CookJob, perfect: boolean): void {
   };
   const target = k.counter.length < counterCap(state) ? "counter" : "delivery";
   (target === "counter" ? k.counter : k.delivery).push(dish);
+  bump(state, "dishes");
+  if (perfect) bump(state, "perfects");
   emit(state, { type: "dish-cooked", dish, perfect, station: job.station, target });
 }
 
@@ -316,6 +319,7 @@ export function serveCustomer(state: SimState, customerId: number): boolean {
     customer.state = "leave";
     customer.happy = true;
     k.krush.active = krushDuration(state);
+    bump(state, "dinnerRushes");
     emit(state, { type: "krush-started", duration: k.krush.active, customer });
     return true;
   }
@@ -344,6 +348,7 @@ export function serveCustomer(state: SimState, customerId: number): boolean {
   state.totalDelivered += dishes;
   customer.state = "leave";
   customer.happy = true;
+  bump(state, "customers");
   emit(state, { type: "customer-served", money, feathers, customer });
   return true;
 }

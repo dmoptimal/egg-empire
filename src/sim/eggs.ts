@@ -28,6 +28,7 @@ import {
 import { eggCap, eggLife, featherGolden, featherPerEgg, goldenPct, worthMult } from "./economy";
 import { RUSH_EGG_LIFE } from "../config/economy";
 import { emit } from "./events";
+import { bump } from "./stats";
 import type { Basket, Egg, SimHooks, SimState, SpawnPoint } from "./types";
 
 /** Remove an egg from every list and mark it gone (pool release equivalent). */
@@ -168,6 +169,8 @@ function depositEgg(state: SimState, e: Egg): void {
   b.value += e.value;
   b.feathers += e.golden ? featherGolden(state, e.species) : featherPerEgg(state, e.species);
   b.load.push({ value: e.value, golden: e.golden, species: e.species });
+  bump(state, "eggs");
+  if (e.golden) bump(state, "golden");
   releaseEgg(state, e);
   emit(state, { type: "egg-deposited", egg: e, basket: b });
 }

@@ -23,6 +23,7 @@ import { featherPerEgg, lvl, unlocked } from "./economy";
 import { releaseEgg } from "./eggs";
 import { emit } from "./events";
 import { fireMilestone } from "./milestones";
+import { bump } from "./stats";
 import type { Fox, SimState } from "./types";
 
 export const CYCLE_LENGTH = DAY_LENGTH + NIGHT_LENGTH;
@@ -36,8 +37,12 @@ export function updateClock(state: SimState, dt: number): void {
   if (night !== c.night) {
     c.night = night;
     emit(state, { type: night ? "nightfall" : "daybreak" });
-    if (night) state.nightBirdThefts = 0;
-    else for (const f of state.foxes) f.state = "flee";
+    if (night) {
+      state.nightBirdThefts = 0;
+    } else {
+      bump(state, "nights");
+      for (const f of state.foxes) f.state = "flee";
+    }
   }
 }
 
@@ -74,6 +79,7 @@ function shooFox(state: SimState, fox: Fox, byGuard: boolean): void {
   fox.state = "flee";
   const feathers = foxBounty(state);
   state.feathers += feathers;
+  bump(state, "foxes");
   emit(state, { type: "fox-shooed", fox, feathers, byGuard });
 }
 
@@ -143,6 +149,7 @@ export function updateFoxes(state: SimState, dt: number, rng: () => number): voi
             if (species >= 0) {
               state.counts[species]--;
               state.nightBirdThefts++;
+              bump(state, "birdsLost");
               f.bird = species;
               emit(state, { type: "fox-stole-bird", fox: f, species });
               fireMilestone(state, "fox_bird_intro");

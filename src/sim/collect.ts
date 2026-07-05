@@ -7,6 +7,7 @@ import { COMBO_WINDOW, GOLD2_BONUS_FEATHERS, RUSH_COMBO_MULT } from "../config/e
 import { GOOSE_SHINE_MULT, GOOSE_SHINE_TIME, OSTRICH_SMASH_R } from "../config/species";
 import { basketWithSpace } from "./baskets";
 import { shooFoxesAlong } from "./night";
+import { bump } from "./stats";
 import { comboValueMult, lvl, rushDuration, sweepRadius } from "./economy";
 import { collectEgg, releaseEgg } from "./eggs";
 import { emit } from "./events";
@@ -45,6 +46,7 @@ function sweepPickup(state: SimState, e: Egg, b: Basket): void {
     // The shimmer egg starts the Golden Rush instead of banking value.
     releaseEgg(state, e);
     state.rush.active = rushDuration(state);
+    bump(state, "rushes");
     emit(state, { type: "rush-started", duration: state.rush.active, egg: e });
     return;
   }

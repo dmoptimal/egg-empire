@@ -192,7 +192,7 @@ export function createHud(deps: HudDeps): Hud {
     applyTabAlpha();
     clockGfx.clear();
     pixelPanel(clockGfx, 0, 0, 66, 24, { face: CHIP_FACE, faceAlpha: 0.92, frame: CHIP_FRAME });
-    clockRoot.position.set(8, top + TAB + 8);
+    clockRoot.position.set(W - 8 - 66, top + CHIP_H + 8); // under the chips, clear of the dev panel
     // … and the chips right-aligned so the two never meet
     moneyChip.width = Math.ceil(moneyText.width) + CHIP_PAD * 2;
     featherChip.width = Math.ceil(featherText.width + 6 + featherGlyph.width) + CHIP_PAD * 2;
