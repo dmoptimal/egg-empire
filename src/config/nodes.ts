@@ -61,8 +61,8 @@ export const NODES: NodeDef[] = [
   ...sp(0, 1, 0, 1),
   ...sp(1, 2, 130, -1),
   ...sp(2, 3, 520, -1),
-  ...sp(3, 4, 650, -1),
-  ...sp(4, 5, 780, 1),
+  ...sp(3, 4, 760, -1),
+  ...sp(4, 5, 880, 1),
 
   // Farm block — hangs off Ducks' opposite side.
   { id: "bsize",  nm: "Bigger baskets",  x: 120, y: 260, max: 5, par: "sp1",   cur: "feathers", edge: "straight",
@@ -95,17 +95,17 @@ export const NODES: NodeDef[] = [
     cost: farmCost("fth"), dsc: "All feather income ×2 at level 1, up to ×6 at max." },
 
   // Active-play branch off Quail (Phase 3).
-  { id: "sweep",  nm: "Wider sweep",     x: -60, y: 590, max: 3, par: "sp2",   cur: "feathers", edge: "straight",
+  { id: "sweep",  nm: "Wider sweep",     x: -60, y: 640, max: 3, par: "sp2",   cur: "feathers", edge: "straight",
     cost: farmCost("sweep"), dsc: "Your swipe reaches +8px further per level." },
-  { id: "combo",  nm: "Hot streak",      x: -45, y: 690, max: 3, par: "sweep", cur: "feathers", edge: "straight",
+  { id: "combo",  nm: "Hot streak",      x: -150, y: 640, max: 3, par: "sweep", cur: "feathers",
     cost: farmCost("combo"), dsc: "Streak-swiped eggs are worth +5% per level." },
 
   // Golden Rush — the active-play capstone (unlockable event, 2026-07-05).
-  { id: "rush",   nm: "Golden rush",       x: -105, y: 780, max: 3, par: "combo", cur: "feathers", edge: "straight",
+  { id: "rush",   nm: "Golden rush",       x: -240, y: 640, max: 3, par: "combo", cur: "feathers",
     cost: farmCost("rush"), dsc: "A shimmer egg lands now and then — sweep it and every bird lays ×5, streaks pay double. +4s per level." },
 
   // Golden filler off the quail golden branch (Phase 3).
-  { id: "gold2",  nm: "Midas flock",     x: -330, y: 590, max: 1, par: "g2",   cur: "feathers", edge: "straight",
+  { id: "gold2",  nm: "Midas flock",     x: -390, y: 620, max: 1, par: "g2",   cur: "feathers", edge: "straight",
     cost: farmCost("gold2"), dsc: "Swept golden eggs drop a bonus feather instantly." },
 
   // The Kitchen gate (PLAN Phase 4) — the kitchen sub-tree hangs here in Phase 6.
@@ -138,7 +138,7 @@ export const NODES: NodeDef[] = [
     cost: farmCost("chefs2"), dsc: "+1 chef slot at every station per level." },
 
   // Flock economics off Geese (Phase 3).
-  { id: "birdlot", nm: "Bulk deals",     x: 90,  y: 720, max: 3, par: "sp3",   cur: "feathers", edge: "straight",
+  { id: "birdlot", nm: "Bulk deals",     x: 120, y: 760, max: 3, par: "sp3",   cur: "feathers",
     cost: farmCost("birdlot"), dsc: "Bird cost growth −0.02 per level, all species." },
 ];
 
