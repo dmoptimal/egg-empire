@@ -76,7 +76,7 @@ export const NODES: NodeDef[] = [
 
   // Hay fillers under the baskets (Phase 3).
   { id: "ecap",   nm: "Roomier hay",     x: 120, y: 350, max: 4, par: "bsize", cur: "feathers",
-    cost: farmCost("ecap"), dsc: "+20 eggs can wait on the hay per level." },
+    cost: farmCost("ecap"), dsc: "+25 eggs can wait on the hay per level." },
   { id: "espoil", nm: "Fresh eggs",      x: 120, y: 440, max: 4, par: "ecap",  cur: "feathers",
     cost: farmCost("espoil"), dsc: "Eggs stay fresh +5s per level." },
 

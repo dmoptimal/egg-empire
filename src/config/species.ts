@@ -22,7 +22,7 @@ export const SPECIES: SpeciesDef[] = [
 ];
 
 // Gameplay caps and constants (see CLAUDE.md before changing)
-export const EGG_CAP = 80;        // ground + falling eggs; oldest spoils beyond this
+export const EGG_CAP = 120;       // ground + falling eggs; oldest spoils beyond this (doubles during a Golden Rush)
 export const EGG_LIFE = 25;       // seconds before a ground egg spoils
 export const BIRD_VIEW_CAP = 22;  // rendered birds per species (sim count may exceed)
 export const BASKET_BASE_CAP = 12;

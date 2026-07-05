@@ -93,8 +93,9 @@ export const featherGolden = (s: SimState, species: number): number =>
 export const totalBirds = (s: SimState): number => s.counts.reduce((a, b) => a + b, 0);
 
 // --- Phase 3 support-node effects ---
-/** Ground+falling egg cap: 80 base, +20 per Roomier hay level. */
-export const eggCap = (s: SimState): number => EGG_CAP + ECAP_PER_LVL * lvl(s, "ecap");
+/** Ground+falling egg cap; doubles while a Golden Rush floods the field. */
+export const eggCap = (s: SimState): number =>
+  (EGG_CAP + ECAP_PER_LVL * lvl(s, "ecap")) * (s.rush.active > 0 ? 2 : 1);
 
 /** Seconds before a ground egg spoils: 25 base, +5 per Fresh eggs level. */
 export const eggLife = (s: SimState): number => EGG_LIFE + ESPOIL_PER_LVL * lvl(s, "espoil");

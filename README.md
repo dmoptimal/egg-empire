@@ -95,5 +95,6 @@ branches, 5–15min species unlocks — tune tables until they pass).
 
 ## Performance budget
 
-60fps on a mid-range phone with: 80 eggs, ~40 bird sprites, 60 popups,
-4 trucks, 5 collectors. Zero per-frame allocation in steady state.
+60fps on a mid-range phone with: up to 440 eggs (Golden Rush at max
+Roomier hay), ~110 bird sprites, 60 popups, 4 trucks, 5 collectors.
+Zero per-frame allocation in steady state — check ?dev=1's fps readout.

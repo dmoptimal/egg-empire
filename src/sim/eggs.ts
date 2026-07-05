@@ -35,9 +35,12 @@ export function releaseEgg(state: SimState, e: Egg): void {
   }
 }
 
-/** Oldest ground egg (or oldest falling egg) silently vanishes at the cap. */
+/**
+ * Oldest ground egg (or oldest falling egg) silently vanishes at the cap.
+ * Shimmer eggs are exempt — a rush trigger must never be churned away.
+ */
 function despawnOldest(state: SimState): void {
-  const e = state.ground[0] ?? state.falling[0];
+  const e = state.ground.find((x) => !x.rush) ?? state.falling.find((x) => !x.rush);
   if (!e) return;
   releaseEgg(state, e);
   emit(state, { type: "egg-despawned", egg: e });

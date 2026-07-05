@@ -22,7 +22,8 @@ export function createEggSprites(layer: Container, textures: Textures): EggSprit
   const slotByEgg = new Map<number, number>();
   // Fixed pool sized for the LARGEST possible sim cap (Roomier hay maxed) —
   // still allocated once at boot, zero allocation in the loop.
-  const POOL = EGG_CAP + ECAP_PER_LVL * nodeById.ecap.max + EGG_POOL_EXTRA;
+  // Max cap × the rush doubling, plus the in-flight allowance.
+  const POOL = (EGG_CAP + ECAP_PER_LVL * nodeById.ecap.max) * 2 + EGG_POOL_EXTRA;
   for (let i = 0; i < POOL; i++) {
     const sp = new Sprite(textures.egg[0]);
     sp.anchor.set(0.5);
@@ -47,6 +48,7 @@ export function createEggSprites(layer: Container, textures: Textures): EggSprit
       sp.scale.set(eggSpriteScale(SPECIES[egg.species].eggScale, egg.golden));
       sp.alpha = 1;
       sp.rotation = 0;
+      sp.tint = 0xffffff; // pooled sprite may carry a stale shimmer tint
       sp.position.set(egg.x, egg.y);
       sp.visible = true;
     },

@@ -16,6 +16,8 @@ export interface DevPanelDeps {
   setSpeed(x: number): void;
   /** Write a save (null = wipe) and reload with autosave stood down. */
   loadState(save: SaveData | null): void;
+  /** Live render/sim stats for the header readout. */
+  getStats(): { fps: number; eggs: number };
 }
 
 export function createDevPanel(deps: DevPanelDeps): void {
@@ -32,12 +34,18 @@ export function createDevPanel(deps: DevPanelDeps): void {
   const headTitle = document.createElement("span");
   headTitle.textContent = "dev";
   headTitle.style.cssText = "opacity:.7;font-weight:700";
+  const stats = document.createElement("span");
+  stats.style.cssText = "opacity:.9;color:#8fe3d0;font-variant-numeric:tabular-nums";
+  setInterval(() => {
+    const st = deps.getStats();
+    stats.textContent = `${st.fps}fps · ${st.eggs}`;
+  }, 500);
   const foldBtn = document.createElement("button");
   foldBtn.id = "devfold";
   foldBtn.textContent = "–";
   foldBtn.style.cssText =
     "font:inherit;color:#fff;background:#444;border:0;border-radius:6px;padding:1px 8px";
-  head.append(headTitle, foldBtn);
+  head.append(headTitle, stats, foldBtn);
   panel.appendChild(head);
   const body = document.createElement("div");
   body.style.cssText = "display:flex;flex-direction:column;gap:4px";

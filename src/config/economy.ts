@@ -16,7 +16,7 @@ export const FEATHERS_BY_TIER = [1, 6, 34, 500, 7500];
 export const FEATHER_GOLDEN_MULT = 15;
 
 // --- Phase 3 support-node effects ------------------------------------------
-export const ECAP_PER_LVL = 20; //      Roomier hay: +20 ground egg cap
+export const ECAP_PER_LVL = 25; //      Roomier hay: +25 ground egg cap
 export const ESPOIL_PER_LVL = 5; //     Fresh eggs: +5s spoil time
 export const SWEEP_R_PER_LVL = 8; //    Wider sweep: +8px swipe radius
 export const COMBO_VALUE_PER_LVL = 0.05; // Hot streak: swiped streak eggs +5%

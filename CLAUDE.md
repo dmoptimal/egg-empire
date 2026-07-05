@@ -25,7 +25,9 @@ match it.
    tweens/particles are render-side, mapped from that list.
 2. **Visual counts are capped independently of sim values.** Bird sprites
    cap at 22/species regardless of owned count; ground+falling eggs cap at
-   80 (oldest spoils); popups pool at 60. Sim numbers never size a pool.
+   120 base (+25/Roomier-hay level, ×2 during a Golden Rush — the sprite
+   pool is sized for the maximum; oldest spoils); popups pool at 60. Sim
+   numbers never size a pool.
 
 ## Performance rules
 

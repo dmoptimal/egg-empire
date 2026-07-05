@@ -19,22 +19,28 @@ function quiet() {
 }
 
 describe("ecap — Roomier hay", () => {
-  it("raises the ground cap by 20 per level, to 160 at max", () => {
+  it("raises the ground cap by 25 per level, to 220 at max", () => {
     const s = createSim();
     expect(eggCap(s)).toBe(EGG_CAP);
     s.n.ecap = 4;
-    expect(eggCap(s)).toBe(160);
+    expect(eggCap(s)).toBe(220);
+  });
+
+  it("a Golden Rush doubles the cap so the flood actually lands", () => {
+    const s = createSim();
+    s.rush.active = 5;
+    expect(eggCap(s)).toBe(EGG_CAP * 2);
   });
 
   it("the flooded field actually holds more eggs", () => {
     const s = createSim();
     s.n.sp2 = 1;
     s.n.ecap = 4;
-    s.counts = [0, 0, 100, 0, 0];
-    step(s, 4, constHooks(0.5));
+    s.counts = [0, 0, 150, 0, 0];
+    step(s, 5, constHooks(0.5));
     const onField = s.ground.length + s.falling.length;
     expect(onField).toBeGreaterThan(EGG_CAP);
-    expect(onField).toBeLessThanOrEqual(160);
+    expect(onField).toBeLessThanOrEqual(220);
   });
 });
 
@@ -174,6 +180,15 @@ describe("rush — Golden Rush", () => {
     tick(s, 0.1, constHooks(0.5));
     sweepCollect(s, 300, 400, 300, 400);
     expect(b.value).toBe(120); // 1 + 0.10x2 (rush) instead of 110
+  });
+
+  it("cap eviction never eats the shimmer egg", () => {
+    const s = quiet();
+    s.n.sp2 = 1;
+    s.counts = [0, 0, 150, 0, 0];
+    const shimmer = forgeGroundEgg(s, { x: 100, y: 400, rush: true, value: 0 });
+    step(s, 6, constHooks(0.5)); // way past cap churn; shimmer spoils at 12s
+    expect(shimmer.phase).toBe("ground");
   });
 
   it("shimmer eggs spoil fast and collectors ignore them", () => {

@@ -421,6 +421,10 @@ async function boot(): Promise<void> {
         devSpeed = x;
       },
       loadState,
+      getStats: () => ({
+        fps: Math.round(app.ticker.FPS),
+        eggs: sim.ground.length + sim.falling.length + sim.flying.length,
+      }),
     });
   }
 }
