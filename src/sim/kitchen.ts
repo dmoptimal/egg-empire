@@ -18,8 +18,16 @@ import {
   CKVAL_PER_LVL,
   COUNTER_BASE_CAP,
   COUNTER_CAP_PER_LVL,
+  ORDER_FEATHER_MULT,
+  ORDER_INTERVAL_MIN,
+  ORDER_INTERVAL_VAR,
+  ORDER_MAX,
+  ORDER_MONEY_MULT,
+  ORDER_TTL,
   PANTRY_BASE_CAP,
   PANTRY_CAP_PER_LVL,
+  PERFECT_MULT,
+  PLATE_WINDOW,
   STATIONS,
 } from "../config/kitchen";
 import {
@@ -32,7 +40,7 @@ import {
   truckSpeedOut,
 } from "./economy";
 import { emit } from "./events";
-import type { BagEgg, CookJob, SimState } from "./types";
+import type { BagEgg, CookJob, Order, SimState } from "./types";
 
 export const kitchenUnlocked = (s: SimState): boolean => lvl(s, "kitchen") >= 1;
 
@@ -170,20 +178,121 @@ function updateKitchenTruck(state: SimState, dt: number): void {
   }
 }
 
+/** Move a finished job onto the counter, at +50% if it was a Perfect tap. */
+function plateJob(state: SimState, job: CookJob, perfect: boolean): void {
+  const k = state.kitchen;
+  const idx = k.cooking.indexOf(job);
+  if (idx >= 0) k.cooking.splice(idx, 1);
+  const dish = {
+    station: job.station,
+    value: perfect ? Math.round(job.value * PERFECT_MULT) : job.value,
+    feathers: job.feathers,
+    golden: job.golden,
+  };
+  k.counter.push(dish);
+  emit(state, { type: "dish-cooked", dish, perfect, station: job.station });
+}
+
+/**
+ * Tap a station: plate its most overdue READY dish for the Perfect bonus.
+ * Returns false when nothing is sizzling there.
+ */
+export function plateStation(state: SimState, station: number): boolean {
+  if (!kitchenUnlocked(state)) return false;
+  let best: CookJob | null = null;
+  for (const job of state.kitchen.cooking)
+    if (job.station === station && job.t <= 0 && (best === null || job.t < best.t)) best = job;
+  if (!best) return false;
+  plateJob(state, best, true);
+  return true;
+}
+
+/** A ready dish sizzles at this station (drives the tap-me visuals). */
+export function stationReady(state: SimState, station: number): boolean {
+  return state.kitchen.cooking.some((j) => j.station === station && j.t <= 0);
+}
+
+/** Whether the counter currently holds everything a ticket needs. */
+export function canFillOrder(state: SimState, order: Order): boolean {
+  return order.needs.every((qty, st) => {
+    if (qty === 0) return true;
+    let have = 0;
+    for (const d of state.kitchen.counter) if (d.station === st) have++;
+    return have >= qty;
+  });
+}
+
+/**
+ * Fulfil a ticket from the counter: consumes the dishes and pays their
+ * values ×ORDER_MONEY_MULT (feathers ×ORDER_FEATHER_MULT).
+ */
+export function fillOrder(state: SimState, orderId: number): boolean {
+  const k = state.kitchen;
+  const order = k.orders.find((o) => o.id === orderId);
+  if (!order || !canFillOrder(state, order)) return false;
+  let money = 0;
+  let feathers = 0;
+  for (let st = 0; st < order.needs.length; st++) {
+    let left = order.needs[st];
+    for (let i = 0; i < k.counter.length && left > 0; ) {
+      if (k.counter[i].station === st) {
+        money += k.counter[i].value;
+        feathers += k.counter[i].feathers;
+        k.counter.splice(i, 1);
+        left--;
+      } else {
+        i++;
+      }
+    }
+  }
+  money = Math.round(money * ORDER_MONEY_MULT);
+  feathers = Math.round(feathers * ORDER_FEATHER_MULT);
+  state.money += money;
+  state.feathers += feathers;
+  k.orders.splice(k.orders.indexOf(order), 1);
+  emit(state, { type: "order-filled", money, feathers });
+  return true;
+}
+
+function updateOrders(state: SimState, dt: number, rng: () => number): void {
+  const k = state.kitchen;
+  for (let i = k.orders.length - 1; i >= 0; i--) {
+    k.orders[i].expires -= dt;
+    if (k.orders[i].expires <= 0) {
+      emit(state, { type: "order-expired", order: k.orders[i] });
+      k.orders.splice(i, 1);
+    }
+  }
+  const openStations: number[] = [];
+  for (let st = 0; st < STATIONS.length; st++) if (stationUnlocked(state, st)) openStations.push(st);
+  if (openStations.length === 0 || k.orders.length >= ORDER_MAX) return;
+  if (k.nextOrderIn <= 0) k.nextOrderIn = ORDER_INTERVAL_MIN + rng() * ORDER_INTERVAL_VAR;
+  k.nextOrderIn -= dt;
+  if (k.nextOrderIn > 0) return;
+  k.nextOrderIn = ORDER_INTERVAL_MIN + rng() * ORDER_INTERVAL_VAR;
+  const needs = STATIONS.map(() => 0);
+  const kinds = 1 + (rng() < 0.4 && openStations.length > 1 ? 1 : 0);
+  for (let n = 0; n < kinds; n++) {
+    const st = openStations[Math.floor(rng() * openStations.length)];
+    needs[st] += 1 + Math.floor(rng() * 2);
+  }
+  const order: Order = { id: k.orderSeq++, needs, expires: ORDER_TTL };
+  k.orders.push(order);
+  emit(state, { type: "order-posted", order });
+}
+
 /** One kitchen step — called from tick() after the farm trucks. */
-export function updateKitchen(state: SimState, dt: number): void {
+export function updateKitchen(state: SimState, dt: number, rng: () => number = Math.random): void {
   if (!kitchenUnlocked(state)) return;
   const k = state.kitchen;
   startCooks(state);
   for (let i = k.cooking.length - 1; i >= 0; i--) {
     const job = k.cooking[i];
     job.t -= dt;
-    if (job.t <= 0) {
-      k.cooking.splice(i, 1);
-      const dish = { station: job.station, value: job.value, feathers: job.feathers, golden: job.golden };
-      k.counter.push(dish);
-      emit(state, { type: "dish-cooked", dish });
-    }
+    // Ready dishes sizzle for PLATE_WINDOW awaiting a Perfect tap, then
+    // auto-plate at base value so idle play never loses food.
+    if (job.t <= -PLATE_WINDOW) plateJob(state, job, false);
   }
+  updateOrders(state, dt, rng);
   updateKitchenTruck(state, dt);
 }

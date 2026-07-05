@@ -158,6 +158,17 @@ export const SFX = {
     lastSizzleT = now;
     noise(0.35, { freq: 5200, vol: 0.028, q: 1.4 });
   },
+  /** Perfect plate: bright double-hit. */
+  perfect(): void {
+    tone(1568, 0.07, { type: "square", vol: 0.14 });
+    tone(2349, 0.12, { type: "square", vol: 0.12, delay: 0.06 });
+    noise(0.15, { freq: 8000, vol: 0.06, q: 3, delay: 0.04 });
+  },
+  /** New order ticket: a polite double knock. */
+  order(): void {
+    tone(660, 0.06, { type: "square", vol: 0.12 });
+    tone(880, 0.08, { type: "square", vol: 0.12, delay: 0.09 });
+  },
   /** Plate ding on dish completion. */
   ding(): void {
     tone(1568, 0.09, { type: "sine", vol: 0.12 });

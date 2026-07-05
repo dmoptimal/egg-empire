@@ -111,11 +111,23 @@ export interface Dish {
 
 export interface CookJob {
   station: number;
-  /** Seconds of cooking left. */
+  /**
+   * Seconds of cooking left. At t ≤ 0 the dish sizzles READY in the pan:
+   * tap the station within PLATE_WINDOW for a Perfect (+50%) plate, or it
+   * auto-plates at base value when t reaches -PLATE_WINDOW (idle-safe).
+   */
   t: number;
   value: number;
   feathers: number;
   golden: boolean;
+}
+
+export interface Order {
+  id: number;
+  /** Dishes required per station index. */
+  needs: number[];
+  /** Seconds until the ticket expires. */
+  expires: number;
 }
 
 export interface KitchenTruck {
@@ -133,6 +145,10 @@ export interface KitchenState {
   cooking: CookJob[];
   counter: Dish[];
   truck: KitchenTruck;
+  /** Customer tickets awaiting dishes from the counter. */
+  orders: Order[];
+  nextOrderIn: number;
+  orderSeq: number;
 }
 
 export type SimEvent =
@@ -155,7 +171,10 @@ export type SimEvent =
   | { type: "bird-bought"; species: number; count: number }
   | { type: "rush-started"; duration: number; egg: Egg }
   | { type: "rush-ended" }
-  | { type: "dish-cooked"; dish: Dish }
+  | { type: "dish-cooked"; dish: Dish; perfect: boolean; station: number }
+  | { type: "order-posted"; order: Order }
+  | { type: "order-filled"; money: number; feathers: number }
+  | { type: "order-expired"; order: Order }
   | { type: "chef-hired"; station: number; count: number }
   | { type: "kitchen-truck-dispatched" }
   | { type: "kitchen-payout"; money: number; feathers: number; dishes: number }

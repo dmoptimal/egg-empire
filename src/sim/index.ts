@@ -68,4 +68,8 @@ export {
   hireChef,
   routeToPantry,
   updateKitchen,
+  plateStation,
+  stationReady,
+  canFillOrder,
+  fillOrder,
 } from "./kitchen";

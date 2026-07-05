@@ -8,15 +8,18 @@ import { COUNTER_BASE_CAP, COUNTER_CAP_PER_LVL, STATIONS } from "../config/kitch
 import { fmtMoney } from "../config/format";
 import { nodeById } from "../config/nodes";
 import {
+  canFillOrder,
   chefCost,
   chefSlots,
   cookTime,
   counterCap,
   pantryCap,
   stationUnlocked,
+  type Order,
   type SimState,
 } from "../sim";
-import { FONT, HOT_FONT, pixelButton, pixelPanel, type PixelButton } from "../ui/kit";
+import { ORDER_TTL, PLATE_WINDOW } from "../config/kitchen";
+import { attachTap, FONT, HOT_FONT, pixelButton, pixelPanel, type PixelButton } from "../ui/kit";
 import type { Textures } from "./textures";
 
 const STATION_W = 72;
@@ -43,6 +46,8 @@ export interface KitchenView {
 
 export interface KitchenDeps {
   onHireChef(station: number): void;
+  onPlate(station: number): void;
+  onFillOrder(orderId: number): void;
 }
 
 export function createKitchenView(
@@ -111,6 +116,11 @@ export function createKitchenView(
     });
     hire.root.position.set(4, STATION_H - 26);
     sroot.addChild(panel, name, pan, progress, hire.root);
+    // Tap the pan area to Perfect-plate a sizzling dish (fun pass #3).
+    const plateHit = new Graphics();
+    plateHit.rect(0, 0, STATION_W, STATION_H - 30).fill({ color: 0xffffff, alpha: 0.001 });
+    sroot.addChildAt(plateHit, 1);
+    attachTap(plateHit, { onTap: () => deps.onPlate(i) });
     sroot.visible = false;
     stationsRow.addChild(sroot);
     return { root: sroot, panel, pan, progress, chefs, hire, hireLabel };
@@ -136,6 +146,81 @@ export function createKitchenView(
     d.visible = false;
     railDishes.addChild(d);
     dishPool.push(d);
+  }
+
+  // order tickets (fun pass #4) ----------------------------------------------
+  interface TicketView {
+    root: Container;
+    gfx: Graphics;
+    icons: Sprite[];
+    counts: BitmapText[];
+    reward: BitmapText;
+    ttl: Graphics;
+    orderId: number;
+  }
+  const tickets: TicketView[] = [];
+  for (let t = 0; t < 2; t++) {
+    const troot = new Container();
+    const gfx = new Graphics();
+    const ttl = new Graphics();
+    troot.addChild(gfx, ttl);
+    const icons: Sprite[] = [];
+    const counts: BitmapText[] = [];
+    for (let d = 0; d < 2; d++) {
+      const ic = new Sprite(textures.dish[0]);
+      ic.scale.set(1.8);
+      ic.position.set(8 + d * 52, 8);
+      const ct = new BitmapText({ text: "", style: { fontFamily: HOT_FONT, fontSize: 9 } });
+      ct.position.set(30 + d * 52, 12);
+      troot.addChild(ic, ct);
+      icons.push(ic);
+      counts.push(ct);
+    }
+    const reward = new BitmapText({ text: "×2.5", style: { fontFamily: HOT_FONT, fontSize: 9 } });
+    reward.tint = 0xffd24a;
+    reward.position.set(8, 34);
+    troot.addChild(reward);
+    troot.visible = false;
+    root.addChild(troot);
+    const view: TicketView = { root: troot, gfx, icons, counts, reward, ttl, orderId: -1 };
+    attachTap(troot, { onTap: () => deps.onFillOrder(view.orderId) });
+    tickets.push(view);
+  }
+
+  function updateTickets(sim: SimState, _now: number): void {
+    const orders = sim.kitchen.orders;
+    for (let t = 0; t < tickets.length; t++) {
+      const view = tickets[t];
+      const order = orders[t] as Order | undefined;
+      if (!order) {
+        view.root.visible = false;
+        view.orderId = -1;
+        continue;
+      }
+      view.root.visible = true;
+      view.orderId = order.id;
+      const fillable = canFillOrder(sim, order);
+      view.gfx.clear();
+      pixelPanel(view.gfx, 0, 0, 112, 56, {
+        face: fillable ? 0x2f6a3c : 0x4a4438,
+        frame: fillable ? 0x7ef25d : 0x2a261e,
+      });
+      let slot = 0;
+      for (let st = 0; st < order.needs.length && slot < 2; st++) {
+        if (order.needs[st] === 0) continue;
+        view.icons[slot].texture = textures.dish[st];
+        view.icons[slot].visible = true;
+        view.counts[slot].text = `×${order.needs[st]}`;
+        view.counts[slot].visible = true;
+        slot++;
+      }
+      for (; slot < 2; slot++) {
+        view.icons[slot].visible = false;
+        view.counts[slot].visible = false;
+      }
+      view.ttl.clear();
+      view.ttl.rect(8, 48, 96 * Math.max(0, order.expires / ORDER_TTL), 3).fill(0x8fe3d0);
+    }
   }
 
   // kitchen truck --------------------------------------------------------------
@@ -168,6 +253,8 @@ export function createKitchenView(
       railLabel.position.set(20, railY + 8);
       railCount.position.set(88, railY + 6);
       railDishes.position.set(20, railY + 32);
+      tickets[0].root.position.set(W - 124, 58);
+      tickets[1].root.position.set(W - 124, 122);
       truck.y = roadY - 10;
       lastCounter = -1; // force rail re-sync after a relayout
       lastPantry = -1;
@@ -196,7 +283,7 @@ export function createKitchenView(
         lastPantry = k.pantry.length;
         pantryText.text = `${k.pantry.length}/${pantryCap(sim)}`;
       }
-      // stations: pan bob + progress of the soonest-done job
+      // stations: pan bob + progress; READY pans flash gold and beg a tap
       for (let i = 0; i < STATIONS.length; i++) {
         const v = stations[i];
         if (!v.root.visible) continue;
@@ -204,14 +291,23 @@ export function createKitchenView(
         for (const job of k.cooking)
           if (job.station === i && (best === null || job.t < best)) best = job.t;
         v.progress.clear();
-        if (best !== null) {
+        if (best !== null && best <= 0) {
+          // sizzling: window bar drains gold, pan jumps and flashes
+          const left = Math.max(0, 1 + best / PLATE_WINDOW);
+          v.progress.rect(8, 50, (STATION_W - 16) * left, 4).fill(0xffd24a);
+          v.pan.y = 32 + Math.sin(now * 22 + i) * 3;
+          v.pan.tint = (Math.sin(now * 14) > 0 ? 0xffd24a : 0xffffff);
+        } else if (best !== null) {
           const frac = 1 - best / cookTime(sim, i);
           v.progress.rect(8, 50, (STATION_W - 16) * Math.max(0, Math.min(1, frac)), 4).fill(0x7ef25d);
           v.pan.y = 34 + Math.sin(now * 10 + i) * 1.5;
+          v.pan.tint = 0xffffff;
         } else {
           v.pan.y = 34;
+          v.pan.tint = 0xffffff;
         }
       }
+      updateTickets(sim, now);
       // counter rail
       if (k.counter.length !== lastCounter) {
         lastCounter = k.counter.length;

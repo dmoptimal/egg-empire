@@ -37,6 +37,18 @@ export const CKSPD_FACTOR = 0.9; //      Phase 6 "Faster pans" per level
 export const CKVAL_PER_LVL = 0.1; //     Phase 6 "Secret seasoning" per level
 export const CHEFS2_SLOTS_PER_LVL = 1; // Phase 6 "Sous chefs" per level
 
+// --- tap-to-plate (fun pass #3, Dan's design) -------------------------------
+export const PLATE_WINDOW = 3; //   seconds a finished dish sizzles awaiting a tap
+export const PERFECT_MULT = 1.5; // tapped-in-time dishes pay +50%
+
+// --- order tickets (fun pass #4) --------------------------------------------
+export const ORDER_MAX = 2; //          tickets on the rail at once
+export const ORDER_INTERVAL_MIN = 40; // seconds between new tickets …
+export const ORDER_INTERVAL_VAR = 35; // … plus up to this much
+export const ORDER_TTL = 90; //         unfilled tickets vanish after this
+export const ORDER_MONEY_MULT = 2.5; // fulfilled dishes pay ×2.5 money …
+export const ORDER_FEATHER_MULT = 2; // … and ×2 feathers
+
 /**
  * Chef hire prices per station (money), growing per chef already hired
  * there. Era-indexed to when each station typically unlocks; Phase 6's

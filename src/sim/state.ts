@@ -42,6 +42,9 @@ export function createSim(opts: CreateSimOptions = {}): SimState {
       cooking: [],
       counter: [],
       truck: { truckState: "idle", truckX: TRUCK_START_X, truckPause: 0, sched: 0 },
+      orders: [],
+      nextOrderIn: 0,
+      orderSeq: 1,
     },
     events: [],
   };

@@ -42,6 +42,23 @@ export function createLayers(stage: Container): Layers {
   layers.tree.visible = false;
   layers.win.visible = false;
   layers.kitchen.visible = false;
+  // Purely visual layers must not swallow taps meant for layers beneath
+  // them (the full-screen rush overlay in fx was eating the kitchen's hire
+  // buttons — default eventMode participates in hit-testing).
+  for (const l of [
+    layers.bg,
+    layers.birds,
+    layers.eggs,
+    layers.baskets,
+    layers.collectors,
+    layers.trucks,
+    layers.fx,
+    layers.win,
+    layers.start,
+  ]) {
+    l.eventMode = "none";
+    l.interactiveChildren = false;
+  }
   stage.addChild(
     layers.bg,
     layers.birds,

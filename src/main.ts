@@ -10,8 +10,10 @@ import {
   buyBird,
   createSim,
   estimateOfflineIncome,
+  fillOrder,
   hireChef,
   kitchenUnlocked,
+  plateStation,
   resize,
   restore,
   savedTreeView,
@@ -120,6 +122,12 @@ async function boot(): Promise<void> {
   const kitchenView = createKitchenView(layers.kitchen, textures, {
     onHireChef(station) {
       if (hireChef(sim, station)) refreshAll();
+    },
+    onPlate(station) {
+      plateStation(sim, station); // dish-cooked event handles the rest
+    },
+    onFillOrder(orderId) {
+      fillOrder(sim, orderId); // order-filled event handles the rest
     },
   });
   const refreshAll = (): void => {
@@ -262,13 +270,31 @@ async function boot(): Promise<void> {
         refreshAll();
         break;
       case "dish-cooked": {
-        SFX.ding();
+        if (ev.perfect) SFX.perfect();
+        else SFX.ding();
         if (screen === "kitchen") {
-          const pos = kitchenView.stationPos(ev.dish.station);
+          const pos = kitchenView.stationPos(ev.station);
+          if (ev.perfect) popups.spawn(pos.x, pos.y - 26, "PERFECT!", 0xffd24a, 13, textures.icons.star);
           popups.spawn(pos.x, pos.y - 10, "+" + fmtMoney(ev.dish.value), ev.dish.golden ? 0xffd24a : 0xfff3da, 12);
         }
         break;
       }
+      case "order-posted":
+        SFX.order();
+        if (screen === "kitchen")
+          popups.spawn(sim.layout.w - 68, 44, "New order!", 0x8fe3d0, 12);
+        break;
+      case "order-filled":
+        SFX.kachingUp();
+        if (screen === "kitchen") {
+          popups.spawn(sim.layout.w - 68, 96, "+" + fmtMoney(ev.money), 0x7ef25d, 16);
+          popups.spawn(sim.layout.w - 68, 118, `+${fmt(ev.feathers)}`, 0x8fe3d0, 13, textures.icons.feather);
+        }
+        refreshAll();
+        break;
+      case "order-expired":
+        SFX.spoil();
+        break;
       case "rush-started":
         eggSprites.release(ev.egg.id); // the shimmer egg is consumed, not collected
         SFX.rush();

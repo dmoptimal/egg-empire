@@ -71,5 +71,5 @@ export function tick(
   updateFlying(state, dt);
   for (const c of state.collectors) updateCollector(state, c, dt);
   for (const b of state.baskets) updateTruck(state, b, dt);
-  updateKitchen(state, dt); // both sims always run (no-op until unlocked)
+  updateKitchen(state, dt, hooks.rng); // both sims always run (no-op until unlocked)
 }

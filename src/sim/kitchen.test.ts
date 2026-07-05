@@ -2,17 +2,21 @@
 // recipes, golden premium dishes, counter/truck flow — all headless.
 
 import { describe, expect, it } from "vitest";
-import { COUNTER_BASE_CAP, PANTRY_BASE_CAP, STATIONS } from "../config/kitchen";
+import { COUNTER_BASE_CAP, ORDER_INTERVAL_MIN, ORDER_INTERVAL_VAR, ORDER_TTL, PANTRY_BASE_CAP, PLATE_WINDOW, STATIONS } from "../config/kitchen";
 import { drainEvents } from "./events";
 import {
+  canFillOrder,
   chefCost,
   chefSlots,
   cookTime,
   counterCap,
   dishValueMult,
+  fillOrder,
   hireChef,
   pantryCap,
+  plateStation,
   routeToPantry,
+  stationReady,
   updateKitchen,
 } from "./kitchen";
 import { restore, serialize } from "./save";
@@ -85,7 +89,7 @@ describe("cooking", () => {
     expect(s.kitchen.counter).toHaveLength(0);
     expect(s.kitchen.cooking).toHaveLength(1);
     expect(s.kitchen.pantry).toHaveLength(0); // eggs leave the pantry at pan-time
-    step(s, 0.3, constHooks(0.5));
+    step(s, 0.3 + PLATE_WINDOW, constHooks(0.5)); // sizzle window, then auto-plate
     expect(s.kitchen.counter).toEqual([{ station: 0, value: 30, feathers: 1, golden: false }]);
     expect(drainEvents(s).filter((e) => e.type === "dish-cooked")).toHaveLength(1);
   });
@@ -93,7 +97,7 @@ describe("cooking", () => {
   it("scrambled takes 2 eggs and omelette 3, valuing the sum", () => {
     const s = kitchenSim([2, 4], { 2: 1, 4: 1 });
     s.kitchen.pantry.push(egg(10), egg(20), egg(30), egg(40), egg(50));
-    step(s, 18.2, constHooks(0.5));
+    step(s, 18.2 + PLATE_WINDOW, constHooks(0.5));
     // scrambled: 10+20 → ×9 = 270 (8s); omelette: 30+40+50 → ×45 = 5400 (18s)
     expect(s.kitchen.counter).toContainEqual({ station: 2, value: 270, feathers: 2, golden: false });
     expect(s.kitchen.counter).toContainEqual({ station: 4, value: 5400, feathers: 3, golden: false });
@@ -102,15 +106,15 @@ describe("cooking", () => {
   it("golden eggs cook into premium dishes (×10 already in the value)", () => {
     const s = kitchenSim();
     s.kitchen.pantry.push(egg(100, true)); // golden chicken egg
-    step(s, 4.2, constHooks(0.5));
+    step(s, 4.2 + PLATE_WINDOW, constHooks(0.5));
     expect(s.kitchen.counter).toEqual([{ station: 0, value: 300, feathers: 15, golden: true }]);
   });
 
   it("one chef works one pan; more chefs cook in parallel", () => {
     const s = kitchenSim([0], { 0: 2 });
     s.kitchen.pantry.push(egg(10), egg(10), egg(10));
-    step(s, 4.2, constHooks(0.5));
-    expect(s.kitchen.counter).toHaveLength(2); // two pans finished together
+    step(s, 4.2 + PLATE_WINDOW, constHooks(0.5));
+    expect(s.kitchen.counter).toHaveLength(2); // two pans auto-plated together
     expect(s.kitchen.cooking).toHaveLength(1); // third egg started when a pan freed
   });
 
@@ -156,6 +160,94 @@ describe("the kitchen truck", () => {
   });
 });
 
+describe("tap-to-plate (fun pass #3)", () => {
+  it("a finished dish sizzles; a tap inside the window plates it Perfect", () => {
+    const s = kitchenSim();
+    s.kitchen.pantry.push(egg(10));
+    step(s, 4.5, constHooks(0.5)); // cooked at 4s, now sizzling
+    expect(s.kitchen.counter).toHaveLength(0);
+    expect(stationReady(s, 0)).toBe(true);
+    expect(plateStation(s, 0)).toBe(true);
+    expect(s.kitchen.counter).toEqual([{ station: 0, value: 45, feathers: 1, golden: false }]); // 30 × 1.5
+    const evs = drainEvents(s);
+    const cooked = evs.find((e) => e.type === "dish-cooked");
+    expect(cooked && "perfect" in cooked && cooked.perfect).toBe(true);
+    expect(stationReady(s, 0)).toBe(false);
+  });
+
+  it("untapped dishes auto-plate at base value after the window", () => {
+    const s = kitchenSim();
+    s.kitchen.pantry.push(egg(10));
+    step(s, 4 + PLATE_WINDOW + 0.3, constHooks(0.5));
+    expect(s.kitchen.counter).toEqual([{ station: 0, value: 30, feathers: 1, golden: false }]);
+    const cooked = drainEvents(s).find((e) => e.type === "dish-cooked");
+    expect(cooked && "perfect" in cooked && cooked.perfect).toBe(false);
+  });
+
+  it("a sizzling pan blocks the chef until it is plated", () => {
+    const s = kitchenSim();
+    s.kitchen.pantry.push(egg(10), egg(10));
+    step(s, 5, constHooks(0.5)); // first dish ready, chef waiting
+    expect(s.kitchen.pantry).toHaveLength(1);
+    plateStation(s, 0);
+    step(s, 0.2, constHooks(0.5)); // pan free → second egg starts
+    expect(s.kitchen.pantry).toHaveLength(0);
+    expect(s.kitchen.cooking).toHaveLength(1);
+  });
+
+  it("tapping an idle station is a no-op", () => {
+    const s = kitchenSim();
+    expect(plateStation(s, 0)).toBe(false);
+  });
+});
+
+describe("order tickets (fun pass #4)", () => {
+  it("tickets post on the cadence, only for unlocked stations, capped at 2", () => {
+    const s = kitchenSim([0], {});
+    const interval = ORDER_INTERVAL_MIN + 0.5 * ORDER_INTERVAL_VAR;
+    step(s, interval + 1, constHooks(0.5));
+    expect(s.kitchen.orders).toHaveLength(1);
+    expect(s.kitchen.orders[0].needs[0]).toBeGreaterThan(0);
+    expect(s.kitchen.orders[0].needs.slice(1).every((q) => q === 0)).toBe(true);
+    step(s, 400, constHooks(0.5));
+    expect(s.kitchen.orders.length).toBeLessThanOrEqual(2);
+  });
+
+  it("filling an order consumes the dishes and pays the multipliers", () => {
+    const s = kitchenSim([0], {});
+    s.kitchen.counter.push(
+      { station: 0, value: 30, feathers: 2, golden: false },
+      { station: 0, value: 30, feathers: 2, golden: false },
+      { station: 1, value: 99, feathers: 9, golden: false },
+    );
+    s.kitchen.orders.push({ id: 7, needs: [2, 0, 0, 0, 0], expires: 60 });
+    expect(canFillOrder(s, s.kitchen.orders[0])).toBe(true);
+    expect(fillOrder(s, 7)).toBe(true);
+    expect(s.money).toBe(150); // (30+30) × 2.5
+    expect(s.feathers).toBe(8); // (2+2) × 2
+    expect(s.kitchen.counter).toEqual([{ station: 1, value: 99, feathers: 9, golden: false }]);
+    expect(s.kitchen.orders).toHaveLength(0);
+    expect(drainEvents(s).some((e) => e.type === "order-filled")).toBe(true);
+  });
+
+  it("cannot fill without the dishes", () => {
+    const s = kitchenSim([0], {});
+    s.kitchen.orders.push({ id: 3, needs: [2, 0, 0, 0, 0], expires: 60 });
+    s.kitchen.counter.push({ station: 0, value: 30, feathers: 2, golden: false });
+    expect(fillOrder(s, 3)).toBe(false);
+    expect(s.money).toBe(0);
+    expect(s.kitchen.orders).toHaveLength(1);
+  });
+
+  it("unfilled tickets expire", () => {
+    const s = kitchenSim([0], {});
+    s.kitchen.orders.push({ id: 9, needs: [1, 0, 0, 0, 0], expires: ORDER_TTL });
+    step(s, ORDER_TTL + 1, constHooks(0.5));
+    expect(s.kitchen.orders.find((o) => o.id === 9)).toBeUndefined();
+    expect(drainEvents(s).some((e) => e.type === "order-expired")).toBe(true);
+  });
+});
+
 describe("Phase 6 support nodes", () => {
   it("wire their effects: pantry, counter, ckspd, ckval, chefs2", () => {
     const s = kitchenSim();
@@ -181,7 +273,7 @@ describe("Phase 6 support nodes", () => {
     s.n.ckspd = 5; // 4s → 2.36s
     s.n.ckval = 5; // ×1.5
     s.kitchen.pantry.push(egg(10));
-    step(s, 2.5, constHooks(0.5));
+    step(s, 2.5 + PLATE_WINDOW, constHooks(0.5));
     expect(s.kitchen.counter).toEqual([{ station: 0, value: 45, feathers: 1, golden: false }]);
   });
 });
