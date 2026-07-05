@@ -49,6 +49,8 @@ export interface Textures {
     trophy: Texture;
     star: Texture;
     gear: Texture;
+    sun: Texture;
+    moon: Texture;
   };
 }
 
@@ -138,6 +140,8 @@ export function makeTextures(renderer: Renderer): Textures {
       tag: tex([[0, 2, 5, 4, 0xd9b45a], [5, 3, 1, 2, 0xd9b45a], [6, 4, 1, 1, 0xd9b45a], [1, 3, 1, 1, 0x6a5a48]]),
       trophy: tex([[0, 1, 1, 2, 0xffd24a], [7, 1, 1, 2, 0xffd24a], [1, 0, 6, 1, 0xffd24a], [1, 1, 6, 3, 0xe8b431], [2, 4, 4, 1, 0xffd24a], [3, 5, 2, 2, 0xe8b431], [2, 7, 4, 1, 0xffd24a]]),
       gear: tex([[3, 0, 3, 2, 0xc8c8d0], [3, 7, 3, 2, 0xc8c8d0], [0, 3, 2, 3, 0xc8c8d0], [7, 3, 2, 3, 0xc8c8d0], [2, 2, 5, 5, 0xc8c8d0], [3, 3, 3, 3, 0x9a9aa8], [4, 4, 1, 1, 0x2b2b2b]]),
+      sun: tex([[3, 0, 3, 1, 0xffd94a], [3, 8, 3, 1, 0xffd94a], [0, 3, 1, 3, 0xffd94a], [8, 3, 1, 3, 0xffd94a], [2, 2, 5, 5, 0xffd94a], [3, 3, 3, 3, 0xffe38a], [1, 1, 1, 1, 0xffd94a], [7, 1, 1, 1, 0xffd94a], [1, 7, 1, 1, 0xffd94a], [7, 7, 1, 1, 0xffd94a]]),
+      moon: tex([[2, 0, 4, 1, 0xdfefff], [1, 1, 2, 1, 0xdfefff], [0, 2, 2, 4, 0xdfefff], [1, 6, 2, 1, 0xdfefff], [2, 7, 4, 1, 0xdfefff], [5, 1, 2, 1, 0xbfd4e8], [6, 2, 1, 1, 0xbfd4e8]]),
       star: tex([[3, 0, 1, 2, 0xffd24a], [3, 5, 1, 2, 0xffd24a], [0, 3, 2, 1, 0xffd24a], [5, 3, 2, 1, 0xffd24a], [2, 2, 3, 3, 0xffe38a], [3, 3, 1, 1, 0xffffff]]),
     },
   };

@@ -6,6 +6,7 @@
 import { BitmapText, Container, Graphics, Rectangle, Sprite, Text } from "pixi.js";
 import { audioInit } from "../audio/sfx";
 import { fmt, fmtMoney } from "../config/format";
+import { DAY_LENGTH, NIGHT_LENGTH } from "../config/night";
 import { casinoUnlocked, kitchenUnlocked, type SimState } from "../sim";
 import type { Textures } from "../render/textures";
 import { attachTap, FONT, HOT_FONT, pixelButton, pixelPanel, safeInsets } from "./kit";
@@ -115,6 +116,18 @@ export function createHud(deps: HudDeps): Hud {
     tabCasino.root.alpha = activeScreen === "casino" ? 1 : 0.55;
   };
 
+  // day/night clock — sun/moon + a bar draining through the current phase
+  const clockRoot = new Container();
+  clockRoot.eventMode = "none";
+  const clockGfx = new Graphics();
+  const clockIcon = new Sprite(textures.icons.sun);
+  clockIcon.scale.set(1.6);
+  clockIcon.position.set(5, 5);
+  const clockBar = new Graphics();
+  clockRoot.addChild(clockGfx, clockIcon, clockBar);
+  layer.addChild(clockRoot);
+  let wasNight = false;
+
   // hint --------------------------------------------------------------
   const hint = new Text({
     text: "Tap or swipe across the eggs to collect them!",
@@ -177,6 +190,9 @@ export function createHud(deps: HudDeps): Hud {
       tx += TAB + 6;
     }
     applyTabAlpha();
+    clockGfx.clear();
+    pixelPanel(clockGfx, 0, 0, 66, 24, { face: CHIP_FACE, faceAlpha: 0.92, frame: CHIP_FRAME });
+    clockRoot.position.set(8, top + TAB + 8);
     // … and the chips right-aligned so the two never meet
     moneyChip.width = Math.ceil(moneyText.width) + CHIP_PAD * 2;
     featherChip.width = Math.ceil(featherText.width + 6 + featherGlyph.width) + CHIP_PAD * 2;
@@ -218,6 +234,18 @@ export function createHud(deps: HudDeps): Hud {
     },
     layout: layoutChips,
     update(dt: number): void {
+      // day/night clock: icon flips at the transitions, bar drains the phase
+      const clock = sim.clock;
+      if (clock.night !== wasNight) {
+        wasNight = clock.night;
+        clockIcon.texture = clock.night ? textures.icons.moon : textures.icons.sun;
+      }
+      const frac = clock.night
+        ? Math.max(0, (DAY_LENGTH + NIGHT_LENGTH - clock.t) / NIGHT_LENGTH)
+        : Math.max(0, (DAY_LENGTH - clock.t) / DAY_LENGTH);
+      clockBar.clear();
+      clockBar.rect(24, 10, 34, 4).fill({ color: 0xffffff, alpha: 0.15 });
+      clockBar.rect(24, 10, 34 * Math.min(1, frac), 4).fill(clock.night ? 0xbfd4e8 : 0xffd94a);
       hint.alpha += (hintTarget - hint.alpha) * Math.min(1, dt * 5);
       if (toastTimer > 0) {
         toastTimer -= dt;

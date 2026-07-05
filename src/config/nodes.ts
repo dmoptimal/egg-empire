@@ -46,117 +46,105 @@ const farmCost = (kind: keyof typeof FARM_NODE_COSTS) => {
 
 /** One species hub + its upgrade fan. side=+1 fans right, −1 left. */
 const sp = (i: number, tier: number, y: number, side: 1 | -1): NodeDef[] => [
-  { id: `sp${i}`, nm: SPECIES[i].plural, x: 0, y, max: 1, par: i === 0 ? null : `sp${i - 1}`, cur: "money",
+  { id: `sp${i}`, nm: SPECIES[i].plural, x: 0, y, max: 1, par: i === 0 ? null : `sp${i - 1}`, cur: "money", edge: "straight",
     cost: () => SPECIES[i].unlock, dsc: `Unlock ${SPECIES[i].plural.toLowerCase()}.` },
-  { id: `w${i}`, nm: "Egg worth", x: 90 * side, y, max: 5, par: `sp${i}`, cur: "feathers",
+  { id: `w${i}`, nm: "Egg worth", x: 100 * side, y, max: 5, par: `sp${i}`, cur: "feathers",
     cost: speciesCost("w", tier), dsc: "Eggs sell for +50% per level." },
-  { id: `s${i}`, nm: "Lay speed", x: 180 * side, y, max: 5, par: `w${i}`, cur: "feathers",
+  { id: `s${i}`, nm: "Lay speed", x: 200 * side, y, max: 5, par: `w${i}`, cur: "feathers",
     cost: speciesCost("s", tier), dsc: "Lays 10% faster per level." },
-  { id: `g${i}`, nm: "Golden egg", x: 270 * side, y, max: 5, par: `s${i}`, cur: "feathers",
+  { id: `g${i}`, nm: "Golden egg", x: 300 * side, y, max: 5, par: `s${i}`, cur: "feathers",
     cost: speciesCost("g", tier), dsc: "+2% golden egg chance per level." },
 ];
 
 export const NODES: NodeDef[] = [
-  // Species spine (zig-zagging fans) — the farm block occupies the right
-  // flank between Ducks and Quail, so those two fan left.
+  // Species spine — fans alternate sides; every block sits on a 100px grid
+  // with straight radial edges so nothing ever crosses (nodes.test.ts
+  // enforces spacing, edge clearance AND edge-edge crossings).
   ...sp(0, 1, 0, 1),
-  ...sp(1, 2, 130, -1),
-  ...sp(2, 3, 520, -1),
-  ...sp(3, 4, 760, -1),
-  ...sp(4, 5, 880, 1),
+  ...sp(1, 2, 150, -1),
+  ...sp(2, 3, 600, -1),
+  ...sp(3, 4, 930, -1),
+  ...sp(4, 5, 1120, 1),
 
-  // Farm block — hangs off Ducks' opposite side.
-  { id: "bsize",  nm: "Bigger baskets",  x: 120, y: 260, max: 5, par: "sp1",   cur: "feathers", edge: "straight",
+  // FARM block — a tidy grid on Ducks' right flank.
+  { id: "bsize",  nm: "Bigger baskets",  x: 110, y: 240, max: 5, par: "sp1",   cur: "feathers", edge: "straight",
     cost: farmCost("bsize"), dsc: "Every basket holds +8 more eggs per level." },
-  { id: "bextra", nm: "Extra basket",    x: 210, y: 260, max: 3, par: "bsize", cur: "money",
+  { id: "bextra", nm: "Extra basket",    x: 210, y: 240, max: 3, par: "bsize", cur: "money",
     cost: l => BASKET_COSTS[l], dsc: "Adds a basket with its own truck." },
-  { id: "tspd",   nm: "Truck speed",     x: 300, y: 260, max: 5, par: "bextra", cur: "feathers",
+  { id: "tspd",   nm: "Truck speed",     x: 310, y: 240, max: 5, par: "bextra", cur: "feathers",
     cost: farmCost("tspd"), dsc: "Trucks drive and load 30% faster per level." },
-  { id: "ttime",  nm: "Truck schedule",  x: 300, y: 350, max: 5, par: "tspd",  cur: "feathers",
+  { id: "ttime",  nm: "Truck schedule",  x: 310, y: 340, max: 5, par: "tspd",  cur: "feathers", edge: "straight",
     cost: farmCost("ttime"), dsc: "Trucks collect part-full baskets on a countdown (30s → 10s)." },
-  { id: "guard",  nm: "Night guard",     x: 300, y: 440, max: 3, par: "ttime", cur: "feathers", edge: "straight",
+  { id: "guard",  nm: "Night guard",     x: 310, y: 440, max: 3, par: "ttime", cur: "feathers", edge: "straight",
     cost: farmCost("guard"), dsc: "A watchman holds the line below the roost, shooing the fox that crosses it (bounty still pays you) — then recharges. More levels: faster watch." },
-
-  // Hay fillers under the baskets (Phase 3).
-  { id: "ecap",   nm: "Roomier hay",     x: 120, y: 350, max: 4, par: "bsize", cur: "feathers",
+  { id: "ecap",   nm: "Roomier hay",     x: 110, y: 340, max: 4, par: "bsize", cur: "feathers", edge: "straight",
     cost: farmCost("ecap"), dsc: "+25 eggs can wait on the hay per level." },
-  { id: "espoil", nm: "Fresh eggs",      x: 120, y: 440, max: 4, par: "ecap",  cur: "feathers",
+  { id: "espoil", nm: "Fresh eggs",      x: 110, y: 440, max: 4, par: "ecap",  cur: "feathers", edge: "straight",
     cost: farmCost("espoil"), dsc: "Eggs stay fresh +5s per level." },
-
-  // Collector chain snakes below the farm block.
-  { id: "coll",   nm: "Collectors",      x: 35,  y: 350, max: 1, par: "bsize", cur: "feathers",
+  { id: "coll",   nm: "Collectors",      x: 210, y: 340, max: 1, par: "bsize", cur: "feathers", edge: "straight",
     cost: farmCost("coll"), dsc: "Unlock farmhands who gather eggs for you." },
-  { id: "hire",   nm: "Hire collector",  x: 35,  y: 440, max: 5, par: "coll",  cur: "money",
+  { id: "hire",   nm: "Hire collector",  x: 210, y: 440, max: 5, par: "coll",  cur: "money", edge: "straight",
     cost: l => HIRE_COSTS[l], dsc: "Adds a collector to the crew." },
-  { id: "cspd",   nm: "Collector speed", x: 120, y: 530, max: 5, par: "hire",  cur: "feathers",
+  { id: "cspd",   nm: "Collector speed", x: 210, y: 540, max: 5, par: "hire",  cur: "feathers", edge: "straight",
     cost: farmCost("cspd"), dsc: "Collectors move 25% faster per level." },
-  { id: "cbag",   nm: "Bigger bag",      x: 210, y: 530, max: 5, par: "cspd",  cur: "feathers",
+  { id: "cbag",   nm: "Bigger bag",      x: 310, y: 540, max: 5, par: "cspd",  cur: "feathers",
     cost: farmCost("cbag"), dsc: "Collectors carry +1 egg per trip per level." },
-  { id: "cval",   nm: "Gentle hands",    x: 210, y: 620, max: 5, par: "cbag",  cur: "feathers",
+  { id: "cval",   nm: "Gentle hands",    x: 310, y: 640, max: 5, par: "cbag",  cur: "feathers", edge: "straight",
     cost: farmCost("cval"), dsc: "Collector-gathered eggs are worth +10% per level." },
-  { id: "fth",    nm: "Feathered eggs",  x: 120, y: 620, max: 5, par: "cval",  cur: "feathers",
+  { id: "fth",    nm: "Feathered eggs",  x: 210, y: 640, max: 5, par: "cval",  cur: "feathers",
     cost: farmCost("fth"), dsc: "All feather income ×2 at level 1, up to ×6 at max." },
 
-  // Active-play branch off Quail (Phase 3).
-  { id: "sweep",  nm: "Wider sweep",     x: -60, y: 640, max: 3, par: "sp2",   cur: "feathers", edge: "straight",
-    cost: farmCost("sweep"), dsc: "Your swipe reaches +8px further per level." },
-  { id: "combo",  nm: "Hot streak",      x: -150, y: 640, max: 3, par: "sweep", cur: "feathers",
-    cost: farmCost("combo"), dsc: "Streak-swiped eggs are worth +5% per level." },
-
-  // Golden Rush — the active-play capstone (unlockable event, 2026-07-05).
-  { id: "rush",   nm: "Golden rush",       x: -240, y: 640, max: 3, par: "combo", cur: "feathers",
-    cost: farmCost("rush"), dsc: "A shimmer egg lands now and then — sweep it and every bird lays ×5, streaks pay double. +4s per level." },
-
-  // Golden filler off the quail golden branch (Phase 3).
-  { id: "gold2",  nm: "Midas flock",     x: -390, y: 620, max: 1, par: "g2",   cur: "feathers", edge: "straight",
-    cost: farmCost("gold2"), dsc: "Swept golden eggs drop a bonus feather instantly." },
-
-  // The Kitchen gate (PLAN Phase 4) — the kitchen sub-tree hangs here in Phase 6.
-  { id: "kitchen", nm: "The Kitchen",   x: -120, y: 260, max: 1, par: "sp1",  cur: "money", edge: "straight",
+  // KITCHEN block — a 4×3 grid on Ducks' left flank.
+  { id: "kitchen", nm: "The Kitchen",       x: -110, y: 240, max: 1, par: "sp1",     cur: "money", edge: "straight",
     cost: () => KITCHEN_UNLOCK_COST, dsc: "Unlock the kitchen: route eggs to chefs and sell dishes." },
-
-  // Kitchen stations (Phase 6 sub-tree, unlocks pulled forward for Phase 5) —
-  // a chain hanging off the gate, each unlocking the next pan.
-  { id: "st_boil", nm: "Boiled station",    x: -210, y: 350, max: 1, par: "kitchen", cur: "money", edge: "straight",
+  { id: "st_boil", nm: "Boiled station",    x: -210, y: 240, max: 1, par: "kitchen", cur: "money",
     cost: () => STATION_COSTS[0], dsc: `Unlock ${STATIONS[0].name}: 1 egg, ×${STATIONS[0].valueMult}.` },
-  { id: "st_fry",  nm: "Fried station",     x: -210, y: 440, max: 1, par: "st_boil", cur: "money",
+  { id: "ckspd",   nm: "Faster pans",       x: -310, y: 240, max: 5, par: "st_boil", cur: "feathers",
+    cost: farmCost("ckspd"), dsc: "Chefs cook 10% faster per level." },
+  { id: "krush",   nm: "Dinner rush",       x: -410, y: 240, max: 3, par: "ckspd",   cur: "feathers",
+    cost: farmCost("krush"), dsc: "A VIP guest drops by now and then — greet them and the kitchen goes wild: pans cook ×2, customers pour in. +4s per level." },
+  { id: "pantry",  nm: "Bigger pantry",     x: -110, y: 340, max: 5, par: "kitchen", cur: "feathers", edge: "straight",
+    cost: farmCost("pantry"), dsc: "The pantry holds +30 more eggs per level." },
+  { id: "st_fry",  nm: "Fried station",     x: -210, y: 340, max: 1, par: "st_boil", cur: "money", edge: "straight",
     cost: () => STATION_COSTS[1], dsc: `Unlock ${STATIONS[1].name}: 1 egg, ×${STATIONS[1].valueMult}.` },
-  { id: "st_scr",  nm: "Scrambled station", x: -300, y: 440, max: 1, par: "st_fry",  cur: "money",
+  { id: "st_scr",  nm: "Scrambled station", x: -310, y: 340, max: 1, par: "st_fry",  cur: "money",
     cost: () => STATION_COSTS[2], dsc: `Unlock ${STATIONS[2].name}: 2 eggs, ×${STATIONS[2].valueMult}.` },
-  { id: "st_poa",  nm: "Poached station",   x: -390, y: 440, max: 1, par: "st_scr",  cur: "money",
+  { id: "chefs2",  nm: "Sous chefs",        x: -410, y: 340, max: 2, par: "st_scr",  cur: "feathers",
+    cost: farmCost("chefs2"), dsc: "+1 chef slot at every station per level." },
+  { id: "counter", nm: "Long counter",      x: -110, y: 440, max: 3, par: "pantry",  cur: "feathers", edge: "straight",
+    cost: farmCost("counter"), dsc: "Counter and delivery shelf each hold +20 more dishes per level." },
+  { id: "ckval",   nm: "Secret seasoning",  x: -210, y: 440, max: 5, par: "st_fry",  cur: "feathers", edge: "straight",
+    cost: farmCost("ckval"), dsc: "Dishes are worth +10% per level." },
+  { id: "st_poa",  nm: "Poached station",   x: -310, y: 440, max: 1, par: "st_scr",  cur: "money", edge: "straight",
     cost: () => STATION_COSTS[3], dsc: `Unlock ${STATIONS[3].name}: 1 egg, ×${STATIONS[3].valueMult}.` },
-  { id: "st_oml",  nm: "Omelette station",  x: -390, y: 530, max: 1, par: "st_poa",  cur: "money",
+  { id: "st_oml",  nm: "Omelette station",  x: -410, y: 440, max: 1, par: "st_poa",  cur: "money",
     cost: () => STATION_COSTS[4], dsc: `Unlock ${STATIONS[4].name}: 3 eggs, ×${STATIONS[4].valueMult}.` },
 
-  // Kitchen support nodes (Phase 6) — the sub-tree filling out the cluster.
-  { id: "pantry",  nm: "Bigger pantry",     x: -120, y: 350, max: 5, par: "kitchen", cur: "feathers",
-    cost: farmCost("pantry"), dsc: "The pantry holds +30 more eggs per level." },
-  { id: "counter", nm: "Long counter",      x: -120, y: 440, max: 3, par: "pantry",  cur: "feathers",
-    cost: farmCost("counter"), dsc: "Counter and delivery shelf each hold +20 more dishes per level." },
-  { id: "krush",   nm: "Dinner rush",       x: -300, y: 260, max: 3, par: "ckspd", cur: "feathers", edge: "straight",
-    cost: farmCost("krush"), dsc: "A VIP guest drops by now and then — greet them and the kitchen goes wild: pans cook ×2, customers pour in. +4s per level." },
-  { id: "ckspd",   nm: "Faster pans",       x: -300, y: 350, max: 5, par: "st_boil", cur: "feathers",
-    cost: farmCost("ckspd"), dsc: "Chefs cook 10% faster per level." },
-  { id: "ckval",   nm: "Secret seasoning",  x: -450, y: 530, max: 5, par: "st_fry",  cur: "feathers",
-    cost: farmCost("ckval"), dsc: "Dishes are worth +10% per level." },
-  { id: "chefs2",  nm: "Sous chefs",        x: -330, y: 530, max: 2, par: "st_scr",  cur: "feathers",
-    cost: farmCost("chefs2"), dsc: "+1 chef slot at every station per level." },
+  // ACTIVE-PLAY row below Quail (left) + Midas filler off its golden branch.
+  { id: "sweep",  nm: "Wider sweep",     x: -100, y: 700, max: 3, par: "sp2",   cur: "feathers", edge: "straight",
+    cost: farmCost("sweep"), dsc: "Your swipe reaches +8px further per level." },
+  { id: "combo",  nm: "Hot streak",      x: -200, y: 700, max: 3, par: "sweep", cur: "feathers",
+    cost: farmCost("combo"), dsc: "Streak-swiped eggs are worth +5% per level." },
+  { id: "rush",   nm: "Golden rush",     x: -300, y: 700, max: 3, par: "combo", cur: "feathers",
+    cost: farmCost("rush"), dsc: "A shimmer egg lands now and then — sweep it and every bird lays ×5, streaks pay double. +4s per level." },
+  { id: "gold2",  nm: "Midas flock",     x: -400, y: 700, max: 1, par: "g2",    cur: "feathers", edge: "straight",
+    cost: farmCost("gold2"), dsc: "Swept golden eggs drop a bonus feather instantly." },
 
-  // Flock economics off Geese (Phase 3).
-  { id: "birdlot", nm: "Bulk deals",     x: 120, y: 760, max: 3, par: "sp3",   cur: "feathers",
-    cost: farmCost("birdlot"), dsc: "Bird cost growth −0.02 per level, all species." },
-
-  // The Bird Casino (Lily's design) — pachinko gate off Quail, upgrades below.
-  { id: "casino",  nm: "Bird Casino",    x: 60, y: 640, max: 1, par: "sp2",    cur: "money",
+  // CASINO block below Quail (right).
+  { id: "casino",  nm: "Bird Casino",    x: 100, y: 700, max: 1, par: "sp2",    cur: "money", edge: "straight",
     cost: () => CASINO_UNLOCK_COST, dsc: "Unlock the casino: drop eggs down the pachinko board into multiplier baskets." },
-  { id: "pval",    nm: "Loaded baskets", x: 60, y: 730, max: 3, par: "casino", cur: "feathers", edge: "straight",
+  { id: "pval",    nm: "Loaded baskets", x: 100, y: 800, max: 3, par: "casino", cur: "feathers", edge: "straight",
     cost: farmCost("pval"), dsc: "Every pachinko basket multiplier is +20% richer per level." },
-  { id: "pbounce", nm: "Bouncy pins",    x: -60, y: 700, max: 3, par: "pval",  cur: "feathers",
+  { id: "pbounce", nm: "Bouncy pins",    x: 200, y: 800, max: 3, par: "pval",   cur: "feathers",
     cost: farmCost("pbounce"), dsc: "Adds springy BLUE pins to the board — eggs rocket off them for extra value." },
-  { id: "pdup",    nm: "Double yolk",    x: -60, y: 820, max: 3, par: "pbounce", cur: "feathers", edge: "straight",
+  { id: "pdup",    nm: "Double yolk",    x: 300, y: 800, max: 3, par: "pbounce", cur: "feathers",
     cost: farmCost("pdup"), dsc: "Adds PINK twin-pins — an egg that hits one can split in two, both halves paying." },
-  { id: "pauto",   nm: "Roost dropper",  x: 60, y: 820, max: 3, par: "pval",   cur: "feathers", edge: "straight",
+  { id: "pauto",   nm: "Roost dropper",  x: 100, y: 900, max: 3, par: "pval",   cur: "feathers", edge: "straight",
     cost: farmCost("pauto"), dsc: "A hen roosts on the machine and drops eggs herself — faster per level." },
+
+  // Flock economics off Geese.
+  { id: "birdlot", nm: "Bulk deals",     x: 110, y: 1010, max: 3, par: "sp3",   cur: "feathers", edge: "straight",
+    cost: farmCost("birdlot"), dsc: "Bird cost growth −0.02 per level, all species." },
 ];
 
 export const nodeById: Record<string, NodeDef> =
