@@ -13,9 +13,12 @@ import {
   PIN_COLS,
   PIN_R,
   PIN_ROWS,
+  ROULETTE_BETS,
+  ROULETTE_MULTS,
+  WHEEL_R,
 } from "../config/casino";
 import { fmtMoney } from "../config/format";
-import { binMult, dropCost, lvl, pinAt, pinKind, type SimState } from "../sim";
+import { binMult, dropCost, lvl, pinAt, pinKind, rouletteSlice, type SimState } from "../sim";
 import { FONT, HOT_FONT, pixelButton, pixelPanel, type PixelButton } from "../ui/kit";
 import type { Textures } from "./textures";
 
@@ -25,10 +28,15 @@ export interface CasinoView {
   update(sim: SimState, now: number): void;
   /** Screen position of a payout basket — win popups spawn here. */
   binPos(bin: number): { x: number; y: number };
+  /** Centre of the roulette wheel — spin results pop up here. */
+  wheelPos(): { x: number; y: number };
 }
 
 export interface CasinoDeps {
   onDrop(): void;
+  onSpin(chips: number): void;
+  /** The wheel clacked past a slice divider (spin ratchet SFX). */
+  onTick(): void;
 }
 
 export function createCasinoView(
@@ -46,12 +54,23 @@ export function createCasinoView(
   root.addChild(bg);
 
   const title = new Text({
-    text: "Bird Casino — Pachinko",
+    text: "Bird Casino",
     style: { fontFamily: FONT, fontSize: 15, fontWeight: "700", fill: "#f2cf5d" },
   });
   title.anchor.set(0.5, 0);
   quiet(title);
   root.addChild(title);
+
+  // cabinet tabs: Pachinko | Roulette
+  let mode: "pachinko" | "roulette" = "pachinko";
+  const tabLabel = (s: string): Text => {
+    const t = new Text({ text: s, style: { fontFamily: FONT, fontSize: 13, fontWeight: "700", fill: "#fff" } });
+    t.anchor.set(0.5);
+    return t;
+  };
+  const tabPach = pixelButton({ w: 120, h: 30, face: 0x3a5a2f, content: tabLabel("Pachinko"), onTap: () => setMode("pachinko") });
+  const tabRoul = pixelButton({ w: 120, h: 30, face: 0x3a5a2f, content: tabLabel("Roulette"), onTap: () => setMode("roulette") });
+  root.addChild(tabPach.root, tabRoul.root);
 
   // the board: felt panel, pins, bin dividers — all in one static Graphics
   const board = new Container();
@@ -130,8 +149,95 @@ export function createCasinoView(
   });
   root.addChild(drop.root);
 
+  // --- the roulette cabinet ---------------------------------------------------
+  const wheelGroup = new Container();
+  wheelGroup.visible = false;
+  root.addChild(wheelGroup);
+  const MULT_COLORS: Record<number, number> = { 8: 0xffd24a, 3: 0x8a5ab5, 2: 0x3aa8a0, 1: 0x2f9d5c };
+  const rim = new Graphics();
+  rim.circle(0, 0, WHEEL_R + 8).fill(0x0d1a12);
+  quiet(rim);
+  const wheelRot = new Container();
+  quiet(wheelRot);
+  const wheelGfx = new Graphics();
+  const step = (Math.PI * 2) / ROULETTE_MULTS.length;
+  for (let i = 0; i < ROULETTE_MULTS.length; i++) {
+    const m = ROULETTE_MULTS[i];
+    const a0 = -Math.PI / 2 + i * step;
+    const color = m > 0 ? MULT_COLORS[m] ?? 0x3aa8a0 : i % 2 === 0 ? 0x1d3a2a : 0x16301f;
+    wheelGfx.moveTo(0, 0).arc(0, 0, WHEEL_R, a0, a0 + step).lineTo(0, 0).fill(color);
+  }
+  wheelGfx.circle(0, 0, 26).fill(0x0d1a12);
+  wheelGfx.circle(0, 0, 20).fill(0x24402c);
+  wheelRot.addChild(wheelGfx);
+  for (let i = 0; i < ROULETTE_MULTS.length; i++) {
+    const m = ROULETTE_MULTS[i];
+    if (m === 0) continue;
+    const mid = -Math.PI / 2 + (i + 0.5) * step;
+    const t = new BitmapText({ text: `×${m}`, style: { fontFamily: HOT_FONT, fontSize: 10 } });
+    t.tint = m === 8 ? 0x241a2e : 0xfff3da;
+    t.anchor.set(0.5);
+    t.position.set(Math.cos(mid) * (WHEEL_R - 26), Math.sin(mid) * (WHEEL_R - 26));
+    t.rotation = mid + Math.PI / 2;
+    wheelRot.addChild(t);
+  }
+  const pointer = new Graphics();
+  pointer.moveTo(-10, -WHEEL_R - 12).lineTo(10, -WHEEL_R - 12).lineTo(0, -WHEEL_R + 8).closePath().fill(0xffd24a);
+  quiet(pointer);
+  const wheelEgg = new Sprite(textures.egg[0]);
+  wheelEgg.anchor.set(0.5);
+  wheelEgg.scale.set(2.4);
+  quiet(wheelEgg);
+  wheelGroup.addChild(rim, wheelRot, pointer, wheelEgg);
+
+  // stake chips + SPIN
+  let chipSel = 0;
+  const chipBtns: PixelButton[] = ROULETTE_BETS.map((mult, i) => {
+    const label = new BitmapText({ text: `×${mult}`, style: { fontFamily: HOT_FONT, fontSize: 10 } });
+    label.anchor.set(0.5);
+    const b = pixelButton({
+      w: 64,
+      h: 34,
+      face: 0x37476b,
+      content: label,
+      onTap: () => {
+        chipSel = i;
+        for (let c = 0; c < chipBtns.length; c++) chipBtns[c].root.alpha = c === chipSel ? 1 : 0.55;
+        if (simRef) spinLabel.text = `SPIN  -${fmtMoney(dropCost(simRef) * ROULETTE_BETS[chipSel])}`;
+      },
+    });
+    b.root.alpha = i === 0 ? 1 : 0.55;
+    root.addChild(b.root);
+    return b;
+  });
+  const spinLabel = new BitmapText({ text: "", style: { fontFamily: HOT_FONT, fontSize: 11 } });
+  spinLabel.anchor.set(0.5);
+  const spin: PixelButton = pixelButton({
+    w: 190,
+    h: 46,
+    face: 0xb5892a,
+    content: spinLabel,
+    onTap: () => deps.onSpin(ROULETTE_BETS[chipSel]),
+  });
+  root.addChild(spin.root);
+  let simRef: SimState | null = null;
+  let lastSlice = -1;
+
+  function setMode(next: "pachinko" | "roulette"): void {
+    mode = next;
+    board.visible = next === "pachinko";
+    drop.root.visible = next === "pachinko";
+    wheelGroup.visible = next === "roulette";
+    spin.root.visible = next === "roulette";
+    for (const c of chipBtns) c.root.visible = next === "roulette";
+    tabPach.root.alpha = next === "pachinko" ? 1 : 0.55;
+    tabRoul.root.alpha = next === "roulette" ? 1 : 0.55;
+  }
+
   let ox = 20;
   let oy = 96;
+  let wcx = 195;
+  let wcy = 300;
 
   return {
     layout(sim: SimState): void {
@@ -141,18 +247,29 @@ export function createCasinoView(
       for (let y = 22; y < H; y += 44)
         for (let x = ((y / 44) % 2) * 22; x < W; x += 44) bg.rect(x, y, 22, 22);
       bg.fill(0x2b2036);
-      title.position.set(W / 2, 52);
+      title.position.set(W / 2, 36);
+      tabPach.root.position.set(Math.round(W / 2) - 124, 58);
+      tabRoul.root.position.set(Math.round(W / 2) + 4, 58);
       ox = Math.round((W - BOARD_W) / 2);
-      oy = 96;
+      oy = 100;
       board.position.set(ox, oy);
       hen.position.set(BOARD_W / 2, 12);
       drop.root.position.set(Math.round(W / 2 - 95), Math.min(oy + BOARD_H + 52, H - 56));
+      wcx = Math.round(W / 2);
+      wcy = oy + WHEEL_R + 20;
+      wheelGroup.position.set(wcx, wcy);
+      const chipsX = Math.round(W / 2) - 106;
+      chipBtns.forEach((c, i) => c.root.position.set(chipsX + i * 74, wcy + WHEEL_R + 26));
+      spin.root.position.set(Math.round(W / 2 - 95), Math.min(wcy + WHEEL_R + 72, H - 56));
+      setMode(mode);
     },
     refresh(sim: SimState): void {
+      simRef = sim;
       redrawPins(sim);
       const cost = dropCost(sim);
       dropLabel.text = `DROP  -${fmtMoney(cost)}`;
       drop.setDisabled(sim.money < cost);
+      spinLabel.text = `SPIN  -${fmtMoney(cost * ROULETTE_BETS[chipSel])}`;
       for (let b = 0; b < binLabels.length; b++) {
         const m = binMult(sim, b);
         binLabels[b].text = `×${m >= 10 ? Math.round(m) : m.toFixed(1).replace(/\.0$/, "")}`;
@@ -201,10 +318,30 @@ export function createCasinoView(
       }
       hen.x = BOARD_W / 2 + Math.sin(now * 1.3) * 60;
       hen.scale.x = Math.cos(now * 1.3) > 0 ? 2.4 : -2.4;
+      // the wheel — sim owns the angle, the egg orbits against the spin
+      const r = sim.casino.roulette;
+      wheelRot.rotation = r.angle;
+      if (r.vel > 0) {
+        const ea = -r.angle * 0.85 - Math.PI / 2;
+        wheelEgg.position.set(Math.cos(ea) * (WHEEL_R - 16), Math.sin(ea) * (WHEEL_R - 16));
+        wheelEgg.rotation += 0.4;
+        const sl = rouletteSlice(r.angle);
+        if (sl !== lastSlice) {
+          lastSlice = sl;
+          if (wheelGroup.visible) deps.onTick();
+        }
+      } else {
+        wheelEgg.position.set(0, -WHEEL_R + 18);
+        wheelEgg.rotation = 0;
+      }
+      spin.setDisabled(r.vel > 0 || sim.money < dropCost(sim) * ROULETTE_BETS[chipSel]);
     },
     binPos(bin: number): { x: number; y: number } {
       const binW2 = BOARD_W / BIN_MULTS.length;
       return { x: ox + bin * binW2 + binW2 / 2, y: oy + BOARD_H - 24 };
+    },
+    wheelPos(): { x: number; y: number } {
+      return { x: wcx, y: wcy };
     },
   };
 }

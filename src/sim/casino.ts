@@ -26,6 +26,10 @@ import {
   PIN_TOP,
   PVAL_PER_LVL,
   RESTITUTION,
+  ROULETTE_MULTS,
+  SPIN_DECEL,
+  SPIN_VEL_MIN,
+  SPIN_VEL_VAR,
   SPLIT_PER_LVL,
   SPLIT_PIN_PCT,
   SPLIT_PINS,
@@ -145,9 +149,52 @@ function bounce(
   }
 }
 
+/**
+ * Launch the wheel with `chips × dropCost` on the line. Rejected while it is
+ * still turning or the stake can't be covered.
+ */
+export function spinRoulette(state: SimState, rng: () => number, chips: number): boolean {
+  if (!casinoUnlocked(state)) return false;
+  const r = state.casino.roulette;
+  if (r.vel > 0) return false;
+  const bet = dropCost(state) * Math.max(1, Math.round(chips));
+  if (state.money < bet) return false;
+  state.money -= bet;
+  r.bet = bet;
+  r.vel = SPIN_VEL_MIN + rng() * SPIN_VEL_VAR;
+  bump(state, "spins");
+  emit(state, { type: "roulette-spun", bet });
+  return true;
+}
+
+/** The slice currently under the top pointer. */
+export function rouletteSlice(angle: number): number {
+  const step = (Math.PI * 2) / ROULETTE_MULTS.length;
+  const a = ((Math.PI * 2 - (angle % (Math.PI * 2))) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+  return Math.min(ROULETTE_MULTS.length - 1, Math.floor(a / step));
+}
+
+function updateRoulette(state: SimState, dt: number): void {
+  const r = state.casino.roulette;
+  if (r.vel <= 0) return;
+  r.angle += r.vel * dt;
+  r.vel -= SPIN_DECEL * dt;
+  if (r.vel > 0) return;
+  r.vel = 0;
+  r.angle %= Math.PI * 2;
+  const slice = rouletteSlice(r.angle);
+  const mult = ROULETTE_MULTS[slice];
+  const money = Math.round(r.bet * mult);
+  state.money += money;
+  if (money > (state.stats.rouletteBest ?? 0)) state.stats.rouletteBest = money;
+  emit(state, { type: "roulette-stopped", slice, mult, money, bet: r.bet });
+  r.bet = 0;
+}
+
 export function updateCasino(state: SimState, dt: number, rng: () => number): void {
   if (!casinoUnlocked(state)) return;
   const c = state.casino;
+  updateRoulette(state, dt);
 
   // Roost dropper: a hen feeds the machine, pausing on a thin bankroll so
   // an unlucky streak can never drain the farm while you sleep.

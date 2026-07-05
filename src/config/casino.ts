@@ -45,3 +45,14 @@ export const SPLIT_PIN_PCT = 0.5; // split chance on a pink-pin hit
 
 export const AUTO_DROP_INTERVAL = [0, 8, 5, 3]; // Roost dropper cadence by level
 export const AUTO_MIN_BANKROLL = 20; // auto pauses under this many drop-costs
+
+// --- Roulette (Lily's second cabinet, 2026-07-05) ----------------------------
+// 16 equal slices; the pointer takes whatever the wheel stops on. Multipliers
+// sum to 16, so the wheel is exactly fair — the thrill machine, while an
+// upgraded pachinko board stays the engine.
+export const ROULETTE_MULTS = [8, 0, 2, 0, 1, 0, 3, 0, 2, 0, 0, 0, 0, 0, 0, 0];
+export const ROULETTE_BETS = [1, 10, 100]; // stake = dropCost × one of these
+export const SPIN_VEL_MIN = 9; //  rad/s at launch …
+export const SPIN_VEL_VAR = 5; //  … plus up to this much
+export const SPIN_DECEL = 1.5; //  rad/s² of felt friction
+export const WHEEL_R = 150; //     design px (render draws it 1:1)

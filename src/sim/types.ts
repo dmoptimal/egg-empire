@@ -241,6 +241,8 @@ export type SimEvent =
   | { type: "casino-drop"; ball: CasinoBall; auto: boolean }
   | { type: "casino-split"; ball: CasinoBall }
   | { type: "casino-payout"; ball: CasinoBall; bin: number; money: number }
+  | { type: "roulette-spun"; bet: number }
+  | { type: "roulette-stopped"; slice: number; mult: number; money: number; bet: number }
   /** One-shot progress toast (see sim/milestones.ts for the ids). */
   | { type: "milestone"; id: string }
   | { type: "dish-cooked"; dish: Dish; perfect: boolean; station: number; target: "counter" | "delivery" }
@@ -301,8 +303,14 @@ export interface SimState {
   guardT: number;
   /** Birds lost tonight (capped at FOX_BIRD_CAP; resets at nightfall). */
   nightBirdThefts: number;
-  /** The Bird Casino (pachinko) — balls in flight + the auto-drop timer. */
-  casino: { balls: CasinoBall[]; ballSeq: number; nextAuto: number };
+  /** The Bird Casino — pachinko balls, the auto-drop timer, and the wheel. */
+  casino: {
+    balls: CasinoBall[];
+    ballSeq: number;
+    nextAuto: number;
+    /** Roulette: wheel angle (rad), spin velocity (0 = at rest), live stake. */
+    roulette: { angle: number; vel: number; bet: number };
+  };
   kitchen: KitchenState;
   /** Buffered events since the last drain — the render/audio seam. */
   events: SimEvent[];

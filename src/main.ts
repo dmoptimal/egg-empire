@@ -22,6 +22,7 @@ import {
   savedTreeView,
   serialize,
   serveCustomer,
+  spinRoulette,
   sweepCollect,
   tick,
   totalBirds,
@@ -162,6 +163,12 @@ async function boot(): Promise<void> {
   const casinoView = createCasinoView(layers.casino, textures, {
     onDrop() {
       if (dropBall(sim, Math.random)) refreshAll(); // casino-drop event does the rest
+    },
+    onSpin(chips) {
+      if (spinRoulette(sim, Math.random, chips)) refreshAll();
+    },
+    onTick() {
+      SFX.tick();
     },
   });
   const refreshAll = (): void => {
@@ -391,6 +398,21 @@ async function boot(): Promise<void> {
       case "casino-split":
         if (screen === "casino") SFX.perfect();
         break;
+      case "roulette-spun":
+        break; // the ratchet ticks carry the drama
+      case "roulette-stopped": {
+        if (ev.mult >= 8) SFX.rush();
+        else if (ev.mult >= 1) SFX.kaching();
+        else SFX.donk();
+        if (screen === "casino") {
+          const pos = casinoView.wheelPos();
+          if (ev.mult > 0)
+            popups.spawn(pos.x, pos.y - 30, `×${ev.mult}  +${fmtMoney(ev.money)}`, ev.mult >= 8 ? 0xffd24a : 0x7ef25d, ev.mult >= 8 ? 22 : 17);
+          else popups.spawn(pos.x, pos.y - 30, "House wins", 0x9a8f80, 13);
+        }
+        refreshAll();
+        break;
+      }
       case "casino-payout": {
         const won = ev.money >= ev.ball.value;
         if (screen === "casino") {

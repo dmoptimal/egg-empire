@@ -8,9 +8,10 @@ import {
   BIN_MULTS,
   BOUNCY_PER_LVL,
   MAX_BALLS,
+  ROULETTE_MULTS,
   SPLIT_PER_LVL,
 } from "../config/casino";
-import { binMult, casinoUnlocked, dropBall, dropCost, pinKind } from "./casino";
+import { binMult, casinoUnlocked, dropBall, dropCost, pinKind, spinRoulette } from "./casino";
 import { drainEvents } from "./events";
 import { createSim } from "./state";
 import { constHooks, step } from "./test-helpers";
@@ -68,6 +69,34 @@ describe("drops", () => {
     expect(pay.money).toBe(Math.round(pay.ball.value * binMult(s, pay.bin)));
     expect(pay.ball.value).toBeGreaterThanOrEqual(10); // pin hits only add value
     expect(s.money).toBe(1e9 - 10 + pay.money);
+  });
+});
+
+describe("roulette", () => {
+  it("the wheel is exactly fair (multipliers average ×1)", () => {
+    expect(ROULETTE_MULTS.reduce((a, b) => a + b, 0)).toBe(ROULETTE_MULTS.length);
+  });
+
+  it("a spin stakes chips × one egg and pays the slice it stops on", () => {
+    const s = casinoSim();
+    expect(spinRoulette(s, () => 0.5, 10)).toBe(true);
+    expect(s.money).toBe(1e9 - 100); // 10 chips × the $10 chicken egg
+    expect(spinRoulette(s, () => 0.5, 1)).toBe(false); // still turning
+    step(s, 12, constHooks(0.5)); // 11.5 rad/s over 1.5 rad/s² ≈ 7.7s
+    expect(s.casino.roulette.vel).toBe(0);
+    const ev = drainEvents(s).find(
+      (e): e is Extract<SimEvent, { type: "roulette-stopped" }> => e.type === "roulette-stopped",
+    )!;
+    expect(ev).toBeDefined();
+    expect(ev.money).toBe(Math.round(100 * ROULETTE_MULTS[ev.slice]));
+    expect(s.money).toBe(1e9 - 100 + ev.money);
+  });
+
+  it("rejects a stake the bankroll can't cover", () => {
+    const s = casinoSim();
+    s.money = 5;
+    expect(spinRoulette(s, () => 0.5, 1)).toBe(false);
+    expect(s.money).toBe(5);
   });
 });
 

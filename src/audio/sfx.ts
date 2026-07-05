@@ -212,6 +212,10 @@ export const SFX = {
   daybreak(): void {
     [392, 494, 587].forEach((f, i) => tone(f, 0.14, { type: "triangle", vol: 0.12, delay: i * 0.09 }));
   },
+  /** Roulette ratchet — one clack per slice divider. */
+  tick(): void {
+    tone(1700, 0.025, { type: "square", vol: 0.05 });
+  },
   /** Golden Rush fanfare: a fast rising arpeggio with shimmer. */
   rush(): void {
     [523, 659, 784, 1046, 1318, 1568].forEach((f, i) =>

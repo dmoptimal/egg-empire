@@ -144,6 +144,7 @@ export function createHud(deps: HudDeps): Hud {
   });
   hint.anchor.set(0.5);
   hint.alpha = 0;
+  hint.eventMode = "none"; // decorative — must never swallow taps
   let hintTarget = 0;
   layer.addChild(hint);
 
@@ -151,6 +152,7 @@ export function createHud(deps: HudDeps): Hud {
   const combo = new BitmapText({ text: "", style: { fontFamily: HOT_FONT, fontSize: 12 } });
   combo.anchor.set(0.5);
   combo.alpha = 0;
+  combo.eventMode = "none";
   layer.addChild(combo);
   let lastComboN = 0;
   let comboPop = 1;
@@ -161,6 +163,7 @@ export function createHud(deps: HudDeps): Hud {
   rushText.tint = 0xffd24a;
   rushText.anchor.set(0.5);
   rushText.visible = false;
+  rushText.eventMode = "none";
   layer.addChild(rushText);
 
   // toast ---------------------------------------------------------------
@@ -173,6 +176,9 @@ export function createHud(deps: HudDeps): Hud {
   toastText.anchor.set(0.5);
   toastRoot.addChild(toastGfx, toastText);
   toastRoot.visible = false;
+  // Decorative: a toast hovering over the room tabs was eating their taps.
+  toastRoot.eventMode = "none";
+  toastRoot.interactiveChildren = false;
   let toastTimer = 0;
   layer.addChild(toastRoot);
 
