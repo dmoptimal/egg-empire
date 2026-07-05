@@ -14,6 +14,7 @@ import {
   HIRE_COSTS,
   SPECIES_NODE_COSTS,
 } from "./economy";
+import { CASINO_UNLOCK_COST } from "./casino";
 import { KITCHEN_UNLOCK_COST, STATION_COSTS, STATIONS } from "./kitchen";
 import { SPECIES } from "./species";
 
@@ -144,6 +145,18 @@ export const NODES: NodeDef[] = [
   // Flock economics off Geese (Phase 3).
   { id: "birdlot", nm: "Bulk deals",     x: 120, y: 760, max: 3, par: "sp3",   cur: "feathers",
     cost: farmCost("birdlot"), dsc: "Bird cost growth −0.02 per level, all species." },
+
+  // The Bird Casino (Lily's design) — pachinko gate off Quail, upgrades below.
+  { id: "casino",  nm: "Bird Casino",    x: 60, y: 640, max: 1, par: "sp2",    cur: "money",
+    cost: () => CASINO_UNLOCK_COST, dsc: "Unlock the casino: drop eggs down the pachinko board into multiplier baskets." },
+  { id: "pval",    nm: "Loaded baskets", x: 60, y: 730, max: 3, par: "casino", cur: "feathers", edge: "straight",
+    cost: farmCost("pval"), dsc: "Every pachinko basket multiplier is +20% richer per level." },
+  { id: "pbounce", nm: "Bouncy pins",    x: -60, y: 700, max: 3, par: "pval",  cur: "feathers",
+    cost: farmCost("pbounce"), dsc: "Eggs bounce livelier — more pin hits, more value per drop." },
+  { id: "pdup",    nm: "Double yolk",    x: -60, y: 820, max: 3, par: "pbounce", cur: "feathers", edge: "straight",
+    cost: farmCost("pdup"), dsc: "Pin hits can split an egg in two — both halves pay out." },
+  { id: "pauto",   nm: "Roost dropper",  x: 60, y: 820, max: 3, par: "pval",   cur: "feathers", edge: "straight",
+    cost: farmCost("pauto"), dsc: "A hen roosts on the machine and drops eggs herself — faster per level." },
 ];
 
 export const nodeById: Record<string, NodeDef> =

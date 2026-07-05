@@ -43,6 +43,7 @@ export function createSim(opts: CreateSimOptions = {}): SimState {
     nextFoxIn: 0,
     foxSeq: 1,
     guardT: 0,
+    casino: { balls: [], ballSeq: 1, nextAuto: 0 },
     kitchen: {
       pantry: [],
       chefs: STATIONS.map(() => 0),

@@ -199,6 +199,16 @@ export function createTree(deps: TreeDeps): TreeUI {
     } else if (id.startsWith("st_")) {
       const idx = ["st_boil", "st_fry", "st_scr", "st_poa", "st_oml"].indexOf(id);
       c.addChild(spriteIcon(textures.dish[idx], 2.4));
+    } else if (id === "casino") {
+      c.addChild(spriteIcon(textures.icons.coin, 2.6));
+    } else if (id === "pval") {
+      c.addChild(spriteIcon(textures.basket, 1.7));
+    } else if (id === "pbounce") {
+      c.addChild(spriteIcon(textures.icons.bolt, 2.2));
+    } else if (id === "pdup") {
+      c.addChild(spriteIcon(textures.egg[0], 3));
+    } else if (id === "pauto") {
+      c.addChild(spriteIcon(textures.bird[0], 1.8));
     } else if (id === "pantry") {
       c.addChild(spriteIcon(textures.crate, 1.8));
     } else if (id === "counter") {

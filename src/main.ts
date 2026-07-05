@@ -10,7 +10,9 @@ import { SPECIES } from "./config/species";
 import { fmt, fmtMoney } from "./config/format";
 import {
   buyBird,
+  casinoUnlocked,
   createSim,
+  dropBall,
   estimateOfflineIncome,
   hireChef,
   kitchenUnlocked,
@@ -31,6 +33,7 @@ import {
 } from "./sim";
 import { clearSave, loadSave, writeSave } from "./storage";
 import { drawBackground } from "./render/background";
+import { createCasinoView } from "./render/casino";
 import { createFoxViews } from "./render/foxes";
 import { createKitchenView } from "./render/kitchen";
 import { createBasketViews } from "./render/baskets";
@@ -41,7 +44,7 @@ import { createLayers } from "./render/layers";
 import { createPopups } from "./render/popups";
 import { createStartScreen, createWinScreen } from "./render/screens";
 import { makeTextures } from "./render/textures";
-import { BAR_H, createBar } from "./ui/bar";
+import { BAR_H, createBar, type Screen } from "./ui/bar";
 import { createDevPanel } from "./ui/devpanel";
 import { createHud } from "./ui/hud";
 import { loadPixelFont, safeInsets } from "./ui/kit";
@@ -152,19 +155,27 @@ async function boot(): Promise<void> {
       serveCustomer(sim, customerId); // customer-served/krush events handle the rest
     },
   });
+  const casinoView = createCasinoView(layers.casino, textures, {
+    onDrop() {
+      if (dropBall(sim, Math.random)) refreshAll(); // casino-drop event does the rest
+    },
+  });
   const refreshAll = (): void => {
     hud.refresh();
     bar.refresh();
     kitchenView.refresh(sim);
+    casinoView.refresh(sim);
   };
   // Screens are views over the always-running sims (PLAN Phase 5).
-  let screen: "farm" | "kitchen" = "farm";
+  let screen: Screen = "farm";
   const farmLayers = [layers.bg, layers.birds, layers.eggs, layers.baskets, layers.collectors, layers.trucks, layers.foxes];
-  function setScreen(next: "farm" | "kitchen"): void {
+  function setScreen(next: Screen): void {
     if (next === "kitchen" && !kitchenUnlocked(sim)) return;
+    if (next === "casino" && !casinoUnlocked(sim)) return;
     pointers.clear(); // a held sweep must not survive a screen change
     screen = next;
     layers.kitchen.visible = next === "kitchen";
+    layers.casino.visible = next === "casino";
     for (const l of farmLayers) l.visible = next === "farm";
     bar.setScreen(next);
   }
@@ -208,6 +219,7 @@ async function boot(): Promise<void> {
     hud.layout();
     bar.layout(W, H, safe.bottom);
     kitchenView.layout(sim);
+    casinoView.layout(sim);
     if (startScreen.visible) startScreen.position(sim.layout);
   }
 
@@ -361,6 +373,23 @@ async function boot(): Promise<void> {
         if (screen === "farm")
           popups.spawn(ev.fox.x, ev.fox.y - 44, "Stolen!", 0xff8a8a, 13);
         break;
+      case "casino-drop":
+        if (screen === "casino") SFX.pop(ev.ball.golden);
+        break;
+      case "casino-split":
+        if (screen === "casino") SFX.perfect();
+        break;
+      case "casino-payout": {
+        const won = ev.money >= ev.ball.value;
+        if (screen === "casino") {
+          if (won) SFX.kaching();
+          else SFX.donk();
+          const pos = casinoView.binPos(ev.bin);
+          popups.spawn(pos.x, pos.y - 12, "+" + fmtMoney(ev.money), won ? 0x7ef25d : 0x9a8f80, won ? 16 : 12);
+        }
+        refreshAll();
+        break;
+      }
       case "milestone":
         SFX.ding();
         hud.toast(MILESTONE_TEXT[ev.id] ?? ev.id);
@@ -461,6 +490,7 @@ async function boot(): Promise<void> {
       kitchenView.update(sim, now, dt);
       if (sim.kitchen.cooking.length > 0) SFX.sizzle();
     }
+    if (screen === "casino") casinoView.update(sim, now);
     rushOverlay.alpha = sim.rush.active > 0 && screen === "farm" ? 0.06 + 0.03 * Math.sin(now * 8) : 0;
     // Night wash: fade through dusk/dawn; the kitchen stays lamp-lit.
     const clock = sim.clock;

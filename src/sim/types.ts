@@ -83,6 +83,21 @@ export interface Collector {
   dest: Basket | null;
 }
 
+/** A pachinko egg mid-fall (the Bird Casino). */
+export interface CasinoBall {
+  id: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  /** Current worth — grows a touch per pin hit, multiplied by the bin. */
+  value: number;
+  species: number;
+  golden: boolean;
+  /** Double-yolk splits used (children can't split again). */
+  splits: number;
+}
+
 export type FoxState = "climb" | "flee";
 
 /** A night fox — sim-owned position like eggs/collectors/customers. */
@@ -219,6 +234,9 @@ export type SimEvent =
   | { type: "daybreak" }
   | { type: "fox-shooed"; fox: Fox; feathers: number; byGuard: boolean }
   | { type: "fox-stole"; fox: Fox; egg: Egg }
+  | { type: "casino-drop"; ball: CasinoBall; auto: boolean }
+  | { type: "casino-split"; ball: CasinoBall }
+  | { type: "casino-payout"; ball: CasinoBall; bin: number; money: number }
   /** One-shot progress toast (see sim/milestones.ts for the ids). */
   | { type: "milestone"; id: string }
   | { type: "dish-cooked"; dish: Dish; perfect: boolean; station: number; target: "counter" | "delivery" }
@@ -275,6 +293,8 @@ export interface SimState {
   foxSeq: number;
   /** Night-guard auto-shoo cooldown. */
   guardT: number;
+  /** The Bird Casino (pachinko) — balls in flight + the auto-drop timer. */
+  casino: { balls: CasinoBall[]; ballSeq: number; nextAuto: number };
   kitchen: KitchenState;
   /** Buffered events since the last drain — the render/audio seam. */
   events: SimEvent[];

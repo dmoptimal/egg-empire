@@ -16,6 +16,8 @@ export interface Layers {
   foxes: Container;
   /** The kitchen screen (own opaque bg) — shown instead of the farm layers. */
   kitchen: Container;
+  /** The Bird Casino screen — same arrangement as the kitchen. */
+  casino: Container;
   fx: Container;
   tree: Container;
   win: Container;
@@ -35,6 +37,7 @@ export function createLayers(stage: Container): Layers {
     trucks: new Container(),
     foxes: new Container(),
     kitchen: new Container(),
+    casino: new Container(),
     fx: new Container(),
     tree: new Container(),
     win: new Container(),
@@ -45,6 +48,7 @@ export function createLayers(stage: Container): Layers {
   layers.tree.visible = false;
   layers.win.visible = false;
   layers.kitchen.visible = false;
+  layers.casino.visible = false;
   // Purely visual layers must not swallow taps meant for layers beneath
   // them (the full-screen rush overlay in fx was eating the kitchen's hire
   // buttons — default eventMode participates in hit-testing).
@@ -72,6 +76,7 @@ export function createLayers(stage: Container): Layers {
     layers.trucks,
     layers.foxes,
     layers.kitchen,
+    layers.casino,
     layers.fx,
     layers.tree,
     layers.win,

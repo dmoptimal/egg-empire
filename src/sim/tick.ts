@@ -15,6 +15,7 @@ import { layEgg, layRushEgg, updateFalling, updateFlying, updateGround } from ".
 import { emit } from "./events";
 import { updateKitchen } from "./kitchen";
 import { updateMilestones } from "./milestones";
+import { updateCasino } from "./casino";
 import { updateClock, updateFoxes } from "./night";
 import { DEFAULT_HOOKS } from "./state";
 import type { SimHooks, SimState } from "./types";
@@ -84,5 +85,6 @@ export function tick(
   for (const b of state.baskets) updateTruck(state, b, dt);
   updateFoxes(state, dt, hooks.rng);
   updateKitchen(state, dt, hooks.rng); // both sims always run (no-op until unlocked)
+  updateCasino(state, dt, hooks.rng);
   updateMilestones(state, dt);
 }

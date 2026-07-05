@@ -12,7 +12,7 @@ export const WORTH_PER_LVL = 1.5;
  * PLAN's opening targets were [1,4,10,25,60]; steepened so late-era feather
  * income keeps pace with the 12^tier cost indexing (bands are the spec).
  */
-export const FEATHERS_BY_TIER = [1, 6, 34, 500, 7500];
+export const FEATHERS_BY_TIER = [1, 6, 34, 500, 8800]; // ostrich +17% (2026-07-05: casino cluster joined the win condition; completion stays in the 3-5h band)
 export const FEATHER_GOLDEN_MULT = 15;
 
 // --- Phase 3 support-node effects ------------------------------------------
@@ -70,6 +70,11 @@ export const FARM_NODE_COSTS = {
   rush: { base: 12000, growth: 3 },
   krush: { base: 100000, growth: 3 },
   guard: { base: 14000, growth: 2.6 },
+  // Bird Casino upgrades (goose-era feathers)
+  pval: { base: 150000, growth: 2.2 },
+  pbounce: { base: 100000, growth: 3 },
+  pdup: { base: 100000, growth: 3 },
+  pauto: { base: 110000, growth: 3 },
 } as const;
 
 /** Extra basket prices (money), one per bextra level (duck/quail/goose era). */
@@ -164,6 +169,7 @@ export const CHECKPOINTS: Checkpoint[] = [
       ecap: 3, espoil: 1, sweep: 2, combo: 2, gold2: 1, birdlot: 1, kitchen: 1,
       st_boil: 1, st_fry: 1, st_scr: 1,
       pantry: 2, ckspd: 2, ckval: 1, counter: 1, rush: 1, krush: 1,
+      casino: 1, pval: 1,
     },
   },
   {
@@ -184,6 +190,7 @@ export const CHECKPOINTS: Checkpoint[] = [
       ecap: 4, espoil: 4, sweep: 3, combo: 3, gold2: 1, birdlot: 3, kitchen: 1,
       st_boil: 1, st_fry: 1, st_scr: 1, st_poa: 1, st_oml: 1,
       pantry: 5, ckspd: 5, ckval: 5, chefs2: 2, counter: 3, rush: 3, krush: 3,
+      casino: 1, pval: 3, pbounce: 3, pdup: 3, pauto: 3,
     },
   },
 ];

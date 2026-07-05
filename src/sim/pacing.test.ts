@@ -44,6 +44,8 @@ const NODE_ERA: Record<string, string> = {
   // Kitchen support nodes (feathers)
   pantry: "quail", ckspd: "quail", ckval: "goose", counter: "goose", chefs2: "ostrich",
   rush: "quail", krush: "goose", guard: "quail",
+  // Bird Casino upgrades
+  pval: "goose", pbounce: "goose", pdup: "goose", pauto: "goose",
 };
 
 /** Money nodes are one big purchase per level, each landing in its own era. */
@@ -57,6 +59,7 @@ const UNLOCK_ERAS: Record<string, string> = {
   sp1: "fresh", sp2: "ducks", sp3: "quail", sp4: "goose",
   kitchen: "ducks", // the gate should land like a species unlock (PLAN Phase 4)
   st_oml: "ostrich", // the omelette spike lands like a species unlock too
+  casino: "quail", // the Bird Casino gate lands like a species unlock
 };
 
 const secsLabel = (s: number) => `${Math.round(s)}s (${(s / 60).toFixed(1)}min)`;
