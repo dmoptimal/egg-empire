@@ -38,6 +38,11 @@ export function createSim(opts: CreateSimOptions = {}): SimState {
     rush: { active: 0, next: 0 },
     milestones: {},
     msCd: 0,
+    clock: { t: 0, night: false },
+    foxes: [],
+    nextFoxIn: 0,
+    foxSeq: 1,
+    guardT: 0,
     kitchen: {
       pantry: [],
       chefs: STATIONS.map(() => 0),

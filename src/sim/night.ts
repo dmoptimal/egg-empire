@@ -1,0 +1,125 @@
+// Day/night + foxes (Lily's design). Headless like everything in src/sim:
+// the clock gates laying (tick.ts), foxes are plain entities the render
+// maps sprites onto, and shooing runs through the same sweep segments as
+// egg collection. See src/config/night.ts for every number.
+
+import {
+  DAY_LENGTH,
+  FOX_BOUNTY_MULT,
+  FOX_CLIMB_SPEED,
+  FOX_FLEE_SPEED,
+  FOX_SPAWN_MIN,
+  FOX_SPAWN_VAR,
+  FOX_TAP_R,
+  GUARD_INTERVAL,
+  NIGHT_LENGTH,
+} from "../config/night";
+import { SPECIES } from "../config/species";
+import { segDist2 } from "./collect";
+import { featherPerEgg, lvl, unlocked } from "./economy";
+import { releaseEgg } from "./eggs";
+import { emit } from "./events";
+import type { Fox, SimState } from "./types";
+
+export const CYCLE_LENGTH = DAY_LENGTH + NIGHT_LENGTH;
+
+/** Advance the sun. Emits nightfall/daybreak; dawn scatters the foxes. */
+export function updateClock(state: SimState, dt: number): void {
+  const c = state.clock;
+  c.t += dt;
+  if (c.t >= CYCLE_LENGTH) c.t -= CYCLE_LENGTH;
+  const night = c.t >= DAY_LENGTH;
+  if (night !== c.night) {
+    c.night = night;
+    emit(state, { type: night ? "nightfall" : "daybreak" });
+    if (!night) for (const f of state.foxes) f.state = "flee";
+  }
+}
+
+function bestSpecies(state: SimState): number {
+  for (let i = SPECIES.length - 1; i >= 0; i--)
+    if (unlocked(state, i) && state.counts[i] > 0) return i;
+  return 0;
+}
+
+/** Feathers a shooed fox drops — scales with your best flock's feather rate. */
+export function foxBounty(state: SimState): number {
+  return Math.max(1, Math.round(FOX_BOUNTY_MULT * featherPerEgg(state, bestSpecies(state))));
+}
+
+function shooFox(state: SimState, fox: Fox, byGuard: boolean): void {
+  if (fox.state !== "climb") return;
+  fox.state = "flee";
+  const feathers = foxBounty(state);
+  state.feathers += feathers;
+  emit(state, { type: "fox-shooed", fox, feathers, byGuard });
+}
+
+/** Sweeps shoo foxes too — called from sweepCollect before the egg pass. */
+export function shooFoxesAlong(
+  state: SimState,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+): void {
+  const r2 = FOX_TAP_R * FOX_TAP_R;
+  for (let i = state.foxes.length - 1; i >= 0; i--) {
+    const f = state.foxes[i];
+    if (f.state === "climb" && segDist2(f.x, f.y, x1, y1, x2, y2) <= r2) shooFox(state, f, false);
+  }
+}
+
+export function updateFoxes(state: SimState, dt: number, rng: () => number): void {
+  const { h, w, hayBottom } = state.layout;
+  if (state.clock.night) {
+    // new foxes slink in from below the road
+    if (state.nextFoxIn <= 0) state.nextFoxIn = FOX_SPAWN_MIN + rng() * FOX_SPAWN_VAR;
+    state.nextFoxIn -= dt;
+    if (state.nextFoxIn <= 0) {
+      state.nextFoxIn = FOX_SPAWN_MIN + rng() * FOX_SPAWN_VAR;
+      state.foxes.push({
+        id: state.foxSeq++,
+        x: 30 + rng() * Math.max(w - 60, 60),
+        y: h + 24,
+        state: "climb",
+        carrying: false,
+      });
+    }
+    // the Night guard shoos the fox nearest the hay on a level-set cadence
+    const g = lvl(state, "guard");
+    if (g >= 1) {
+      state.guardT -= dt;
+      if (state.guardT <= 0) {
+        let best: Fox | null = null;
+        for (const f of state.foxes)
+          if (f.state === "climb" && (best === null || f.y < best.y)) best = f;
+        if (best) {
+          shooFox(state, best, true);
+          state.guardT = GUARD_INTERVAL[Math.min(g, GUARD_INTERVAL.length - 1)];
+        } else {
+          state.guardT = 0.5; // nothing to shoo — peek again shortly
+        }
+      }
+    }
+  }
+  for (let i = state.foxes.length - 1; i >= 0; i--) {
+    const f = state.foxes[i];
+    if (f.state === "climb") {
+      f.y -= FOX_CLIMB_SPEED * dt;
+      if (f.y <= hayBottom) {
+        // made it to the hay: grab the oldest unclaimed egg and bolt
+        const egg = state.ground.find((e) => !e.rush && !e.claimed);
+        if (egg) {
+          releaseEgg(state, egg);
+          f.carrying = true;
+          emit(state, { type: "fox-stole", fox: f, egg });
+        }
+        f.state = "flee";
+      }
+    } else {
+      f.y += FOX_FLEE_SPEED * dt;
+      if (f.y > h + 40) state.foxes.splice(i, 1);
+    }
+  }
+}

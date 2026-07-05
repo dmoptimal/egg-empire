@@ -43,7 +43,7 @@ const NODE_ERA: Record<string, string> = {
   st_boil: "ducks", st_fry: "quail", st_scr: "goose", st_poa: "ostrich",
   // Kitchen support nodes (feathers)
   pantry: "quail", ckspd: "quail", ckval: "goose", counter: "goose", chefs2: "ostrich",
-  rush: "quail", krush: "goose",
+  rush: "quail", krush: "goose", guard: "quail",
 };
 
 /** Money nodes are one big purchase per level, each landing in its own era. */

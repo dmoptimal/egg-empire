@@ -28,4 +28,5 @@ export function updateMilestones(state: SimState, dt: number): void {
   if (state.counts[2] > 0 && fire(state, "quail_intro")) return;
   if (state.counts[3] > 0 && fire(state, "goose_intro")) return;
   if (state.counts[4] > 0 && fire(state, "ostrich_intro")) return;
+  if (state.clock.night && fire(state, "night_intro")) return;
 }

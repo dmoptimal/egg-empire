@@ -12,6 +12,8 @@ export interface Layers {
   baskets: Container;
   collectors: Container;
   trucks: Container;
+  /** Night foxes — in front of the trucks, they cross the road. */
+  foxes: Container;
   /** The kitchen screen (own opaque bg) — shown instead of the farm layers. */
   kitchen: Container;
   fx: Container;
@@ -31,6 +33,7 @@ export function createLayers(stage: Container): Layers {
     baskets: new Container(),
     collectors: new Container(),
     trucks: new Container(),
+    foxes: new Container(),
     kitchen: new Container(),
     fx: new Container(),
     tree: new Container(),
@@ -52,6 +55,7 @@ export function createLayers(stage: Container): Layers {
     layers.baskets,
     layers.collectors,
     layers.trucks,
+    layers.foxes,
     layers.fx,
     layers.win,
     layers.start,
@@ -66,6 +70,7 @@ export function createLayers(stage: Container): Layers {
     layers.baskets,
     layers.collectors,
     layers.trucks,
+    layers.foxes,
     layers.kitchen,
     layers.fx,
     layers.tree,

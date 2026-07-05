@@ -4,7 +4,8 @@
 
 import { Application, Graphics, TextureSource, type FederatedPointerEvent } from "pixi.js";
 import { audioInit, SFX } from "./audio/sfx";
-import { musicSetPaused, musicStart } from "./audio/music";
+import { musicSetNight, musicSetPaused, musicStart } from "./audio/music";
+import { DAY_LENGTH, NIGHT_FADE } from "./config/night";
 import { SPECIES } from "./config/species";
 import { fmt, fmtMoney } from "./config/format";
 import {
@@ -23,12 +24,14 @@ import {
   tick,
   totalBirds,
   type HeldPointer,
+  CYCLE_LENGTH,
   type SaveData,
   type SimEvent,
   type SimHooks,
 } from "./sim";
 import { clearSave, loadSave, writeSave } from "./storage";
 import { drawBackground } from "./render/background";
+import { createFoxViews } from "./render/foxes";
 import { createKitchenView } from "./render/kitchen";
 import { createBasketViews } from "./render/baskets";
 import { createBirds } from "./render/birds";
@@ -54,6 +57,7 @@ const MILESTONE_TEXT: Record<string, string> = {
   quail_intro: "Quail lay in bursts — sweep a whole cluster for hot streaks!",
   goose_intro: "Goose eggs sparkle while fresh — sweep fast for +50%!",
   ostrich_intro: "Ostrich eggs roll! Sweep one mid-roll to smash everything nearby.",
+  night_intro: "Night falls — the flock roosts, and foxes creep in. Tap foxes for feathers!",
 };
 
 async function boot(): Promise<void> {
@@ -110,9 +114,12 @@ async function boot(): Promise<void> {
   const eggSprites = createEggSprites(layers.eggs, textures);
   const basketViews = createBasketViews(layers.baskets, layers.trucks, textures);
   const collectorViews = createCollectorViews(layers.collectors, textures);
-  // Gold wash over the farm while a rush runs (behind the popups).
+  const foxViews = createFoxViews(layers.foxes, textures);
+  // Gold wash over the farm while a rush runs (behind the popups), and the
+  // deep-blue night wash above it (day/night cycle).
   const rushOverlay = new Graphics();
-  layers.fx.addChild(rushOverlay);
+  const nightOverlay = new Graphics();
+  layers.fx.addChild(rushOverlay, nightOverlay);
   const popups = createPopups(layers.fx);
   const startScreen = createStartScreen(layers.start, textures);
   const winScreen = createWinScreen(layers.win, textures);
@@ -152,7 +159,7 @@ async function boot(): Promise<void> {
   };
   // Screens are views over the always-running sims (PLAN Phase 5).
   let screen: "farm" | "kitchen" = "farm";
-  const farmLayers = [layers.bg, layers.birds, layers.eggs, layers.baskets, layers.collectors, layers.trucks];
+  const farmLayers = [layers.bg, layers.birds, layers.eggs, layers.baskets, layers.collectors, layers.trucks, layers.foxes];
   function setScreen(next: "farm" | "kitchen"): void {
     if (next === "kitchen" && !kitchenUnlocked(sim)) return;
     pointers.clear(); // a held sweep must not survive a screen change
@@ -193,6 +200,9 @@ async function boot(): Promise<void> {
     rushOverlay.clear();
     rushOverlay.rect(0, 0, W, sim.layout.h).fill(0xffd24a);
     rushOverlay.alpha = 0;
+    nightOverlay.clear();
+    nightOverlay.rect(0, 0, W, H).fill(0x0a1433);
+    nightOverlay.alpha = 0;
     basketViews.layout(sim);
     birds.clamp(sim.layout);
     hud.layout();
@@ -331,6 +341,25 @@ async function boot(): Promise<void> {
         if (screen === "farm")
           popups.spawn(ev.egg.x, ev.egg.y - 26, `STRIKE! ×${ev.count + 1}`, 0xffd24a, 17, textures.icons.star);
         break;
+      case "nightfall":
+        SFX.nightfall();
+        musicSetNight(true);
+        break;
+      case "daybreak":
+        SFX.daybreak();
+        musicSetNight(false);
+        break;
+      case "fox-shooed":
+        SFX.foxYip();
+        if (screen === "farm")
+          popups.spawn(ev.fox.x, ev.fox.y - 44, `+${fmt(ev.feathers)}`, 0x8fe3d0, 15, textures.icons.feather);
+        break;
+      case "fox-stole":
+        SFX.gulp();
+        eggSprites.release(ev.egg.id); // the egg leaves in a fox's mouth
+        if (screen === "farm")
+          popups.spawn(ev.fox.x, ev.fox.y - 44, "Stolen!", 0xff8a8a, 13);
+        break;
       case "milestone":
         SFX.ding();
         hud.toast(MILESTONE_TEXT[ev.id] ?? ev.id);
@@ -432,11 +461,18 @@ async function boot(): Promise<void> {
       if (sim.kitchen.cooking.length > 0) SFX.sizzle();
     }
     rushOverlay.alpha = sim.rush.active > 0 && screen === "farm" ? 0.06 + 0.03 * Math.sin(now * 8) : 0;
+    // Night wash: fade through dusk/dawn; the kitchen stays lamp-lit.
+    const clock = sim.clock;
+    const na = clock.night
+      ? Math.min(1, (clock.t - DAY_LENGTH) / NIGHT_FADE, (CYCLE_LENGTH - clock.t) / NIGHT_FADE)
+      : 0;
+    nightOverlay.alpha = (screen === "farm" ? 0.45 : 0.12) * na;
 
     eggSprites.update(sim, now, dt);
     basketViews.update(sim, dt);
     collectorViews.update(sim);
-    birds.update(now);
+    foxViews.update(sim, now);
+    birds.update(now, dt, clock.night);
     popups.update(dt);
 
     hudAcc += dt;

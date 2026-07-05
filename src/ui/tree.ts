@@ -190,6 +190,8 @@ export function createTree(deps: TreeDeps): TreeUI {
       c.addChild(spriteIcon(textures.icons.tag, 2.6));
     } else if (id === "rush") {
       c.addChild(spriteIcon(textures.icons.star, 2.6));
+    } else if (id === "guard") {
+      c.addChild(spriteIcon(textures.fox, 1.8));
     } else if (id === "krush") {
       c.addChild(spriteIcon(textures.vip, 2));
     } else if (id === "kitchen") {

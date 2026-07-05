@@ -15,6 +15,7 @@ import { layEgg, layRushEgg, updateFalling, updateFlying, updateGround } from ".
 import { emit } from "./events";
 import { updateKitchen } from "./kitchen";
 import { updateMilestones } from "./milestones";
+import { updateClock, updateFoxes } from "./night";
 import { DEFAULT_HOOKS } from "./state";
 import type { SimHooks, SimState } from "./types";
 
@@ -32,9 +33,12 @@ export function tick(
 ): void {
   if (state.fullWarnCd > 0) state.fullWarnCd -= dt;
   state.comboT = Math.min(state.comboT + dt, 999);
+  updateClock(state, dt);
+  const night = state.clock.night;
 
   // Golden Rush: shimmer eggs drop on a randomised cadence once unlocked;
-  // sweeping one sets rush.active (see collect.ts).
+  // sweeping one sets rush.active (see collect.ts). The cadence holds its
+  // breath at night — a shimmer egg under a roosting flock would be wasted.
   if (state.rush.active > 0) {
     state.rush.active -= dt;
     if (state.rush.active <= 0) {
@@ -42,7 +46,7 @@ export function tick(
       emit(state, { type: "rush-ended" });
     }
   }
-  if (lvl(state, "rush") >= 1) {
+  if (!night && lvl(state, "rush") >= 1) {
     if (state.rush.next <= 0) state.rush.next = RUSH_INTERVAL_MIN + hooks.rng() * RUSH_INTERVAL_VAR;
     state.rush.next -= dt;
     if (state.rush.next <= 0) {
@@ -53,21 +57,23 @@ export function tick(
   const layMult = state.rush.active > 0 ? RUSH_LAY_MULT : 1;
 
   // Fixed-accumulator laying: fractional eggs-owed build up per species and
-  // are laid in bursts of at most LAY_BURST_MAX per frame.
-  for (let i = 0; i < SPECIES.length; i++) {
-    if (!unlocked(state, i) || state.counts[i] === 0) continue;
-    state.layAcc[i] += (dt * state.counts[i] * layMult) / layIntv(state, i);
-    let n = Math.min(Math.floor(state.layAcc[i]), LAY_BURST_MAX);
-    while (n-- > 0) {
-      const laid = layEgg(state, i, hooks);
-      state.layAcc[i]--;
-      // Quail gimmick: sometimes a lay is a whole burst, landing together —
-      // one sweep grabs the lot, which is what hot streaks are made of.
-      if (laid && i === 2 && hooks.rng() < QUAIL_CLUSTER_PCT)
-        for (let c = 1; c < QUAIL_CLUSTER_SIZE; c++) layEgg(state, i, hooks, laid);
+  // are laid in bursts of at most LAY_BURST_MAX per frame. Roosting birds
+  // lay nothing — night income is fox bounties (and the kitchen).
+  if (!night)
+    for (let i = 0; i < SPECIES.length; i++) {
+      if (!unlocked(state, i) || state.counts[i] === 0) continue;
+      state.layAcc[i] += (dt * state.counts[i] * layMult) / layIntv(state, i);
+      let n = Math.min(Math.floor(state.layAcc[i]), LAY_BURST_MAX);
+      while (n-- > 0) {
+        const laid = layEgg(state, i, hooks);
+        state.layAcc[i]--;
+        // Quail gimmick: sometimes a lay is a whole burst, landing together —
+        // one sweep grabs the lot, which is what hot streaks are made of.
+        if (laid && i === 2 && hooks.rng() < QUAIL_CLUSTER_PCT)
+          for (let c = 1; c < QUAIL_CLUSTER_SIZE; c++) layEgg(state, i, hooks, laid);
+      }
+      state.layAcc[i] = Math.min(state.layAcc[i], LAY_ACC_MAX);
     }
-    state.layAcc[i] = Math.min(state.layAcc[i], LAY_ACC_MAX);
-  }
 
   if (held) for (const p of held) sweepCollect(state, p.x, p.y, p.x, p.y);
 
@@ -76,6 +82,7 @@ export function tick(
   updateFlying(state, dt);
   for (const c of state.collectors) updateCollector(state, c, dt);
   for (const b of state.baskets) updateTruck(state, b, dt);
+  updateFoxes(state, dt, hooks.rng);
   updateKitchen(state, dt, hooks.rng); // both sims always run (no-op until unlocked)
   updateMilestones(state, dt);
 }

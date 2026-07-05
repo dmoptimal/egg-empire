@@ -73,6 +73,8 @@ export const NODES: NodeDef[] = [
     cost: farmCost("tspd"), dsc: "Trucks drive and load 30% faster per level." },
   { id: "ttime",  nm: "Truck schedule",  x: 300, y: 350, max: 5, par: "tspd",  cur: "feathers",
     cost: farmCost("ttime"), dsc: "Trucks collect part-full baskets on a countdown (30s → 10s)." },
+  { id: "guard",  nm: "Night guard",     x: 300, y: 440, max: 3, par: "ttime", cur: "feathers", edge: "straight",
+    cost: farmCost("guard"), dsc: "A guard shoos night foxes for you — faster per level. Their bounty still pays you." },
 
   // Hay fillers under the baskets (Phase 3).
   { id: "ecap",   nm: "Roomier hay",     x: 120, y: 350, max: 4, par: "bsize", cur: "feathers",

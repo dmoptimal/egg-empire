@@ -187,6 +187,25 @@ export const SFX = {
     noise(0.18, { freq: 8000, vol: 0.08, q: 2, delay: 0.05 });
     tone(112, 0.1, { type: "sine", vol: 0.14 });
   },
+  /** Fox shooed: two quick descending yips. */
+  foxYip(): void {
+    tone(1250, 0.06, { type: "square", vol: 0.12, slide: -500 });
+    tone(950, 0.08, { type: "square", vol: 0.1, slide: -400, delay: 0.08 });
+  },
+  /** A fox made off with an egg. */
+  gulp(): void {
+    tone(340, 0.14, { type: "sine", vol: 0.12, slide: -160 });
+  },
+  /** Dusk: two low, soft tones under a breath of wind. */
+  nightfall(): void {
+    tone(196, 0.7, { type: "sine", vol: 0.09 });
+    tone(147, 0.9, { type: "sine", vol: 0.07, delay: 0.25 });
+    noise(0.6, { freq: 900, vol: 0.02, q: 1, delay: 0.1 });
+  },
+  /** Dawn: a gentle rising triad. */
+  daybreak(): void {
+    [392, 494, 587].forEach((f, i) => tone(f, 0.14, { type: "triangle", vol: 0.12, delay: i * 0.09 }));
+  },
   /** Golden Rush fanfare: a fast rising arpeggio with shimmer. */
   rush(): void {
     [523, 659, 784, 1046, 1318, 1568].forEach((f, i) =>

@@ -83,6 +83,18 @@ export interface Collector {
   dest: Basket | null;
 }
 
+export type FoxState = "climb" | "flee";
+
+/** A night fox — sim-owned position like eggs/collectors/customers. */
+export interface Fox {
+  id: number;
+  x: number;
+  y: number;
+  state: FoxState;
+  /** It reached the hay and made off with an egg (render shows it). */
+  carrying: boolean;
+}
+
 export interface Layout {
   w: number;
   h: number;
@@ -203,6 +215,10 @@ export type SimEvent =
   | { type: "rush-ended" }
   /** A rolling ostrich egg was swept — `count` neighbours flew with it. */
   | { type: "strike"; egg: Egg; count: number }
+  | { type: "nightfall" }
+  | { type: "daybreak" }
+  | { type: "fox-shooed"; fox: Fox; feathers: number; byGuard: boolean }
+  | { type: "fox-stole"; fox: Fox; egg: Egg }
   /** One-shot progress toast (see sim/milestones.ts for the ids). */
   | { type: "milestone"; id: string }
   | { type: "dish-cooked"; dish: Dish; perfect: boolean; station: number; target: "counter" | "delivery" }
@@ -252,6 +268,13 @@ export interface SimState {
   milestones: Record<string, number>;
   /** Toast spacing cooldown so milestone bursts don't stack. */
   msCd: number;
+  /** Day/night cycle: seconds into the cycle; night = past DAY_LENGTH. */
+  clock: { t: number; night: boolean };
+  foxes: Fox[];
+  nextFoxIn: number;
+  foxSeq: number;
+  /** Night-guard auto-shoo cooldown. */
+  guardT: number;
   kitchen: KitchenState;
   /** Buffered events since the last drain — the render/audio seam. */
   events: SimEvent[];

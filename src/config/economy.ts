@@ -69,6 +69,7 @@ export const FARM_NODE_COSTS = {
   counter: { base: 100000, growth: 3 },
   rush: { base: 12000, growth: 3 },
   krush: { base: 100000, growth: 3 },
+  guard: { base: 14000, growth: 2.6 },
 } as const;
 
 /** Extra basket prices (money), one per bextra level (duck/quail/goose era). */
@@ -158,7 +159,7 @@ export const CHECKPOINTS: Checkpoint[] = [
       w1: 5, s1: 4, g1: 3,
       w2: 5, s2: 3, g2: 2,
       w3: 4, s3: 3, g3: 2,
-      bsize: 4, bextra: 3, tspd: 3, ttime: 2,
+      bsize: 4, bextra: 3, tspd: 3, ttime: 2, guard: 1,
       coll: 1, hire: 3, cspd: 3, cbag: 2, cval: 1, fth: 1,
       ecap: 3, espoil: 1, sweep: 2, combo: 2, gold2: 1, birdlot: 1, kitchen: 1,
       st_boil: 1, st_fry: 1, st_scr: 1,
@@ -178,7 +179,7 @@ export const CHECKPOINTS: Checkpoint[] = [
       w2: 5, s2: 5, g2: 5,
       w3: 5, s3: 5, g3: 5,
       w4: 5, s4: 5, g4: 5,
-      bsize: 5, bextra: 3, tspd: 5, ttime: 5,
+      bsize: 5, bextra: 3, tspd: 5, ttime: 5, guard: 3,
       coll: 1, hire: 5, cspd: 5, cbag: 5, cval: 5, fth: 5,
       ecap: 4, espoil: 4, sweep: 3, combo: 3, gold2: 1, birdlot: 3, kitchen: 1,
       st_boil: 1, st_fry: 1, st_scr: 1, st_poa: 1, st_oml: 1,
