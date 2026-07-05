@@ -8,7 +8,7 @@ import { BitmapText, Container, Graphics, Rectangle, Sprite, Text, type Federate
 import { audioInit } from "../audio/sfx";
 import { fmtMoney } from "../config/format";
 import { SPECIES } from "../config/species";
-import { birdCost, casinoUnlocked, kitchenUnlocked, unlocked, type SimState } from "../sim";
+import { birdCost, unlocked, type SimState } from "../sim";
 import type { Textures } from "../render/textures";
 import { FONT, HOT_FONT, pixelButton, pixelPanel } from "./kit";
 
@@ -33,12 +33,9 @@ interface ShopBtn {
   pressed: boolean;
 }
 
-export type Screen = "farm" | "kitchen" | "casino";
-
 export interface Bar {
   refresh(): void;
   layout(w: number, h: number, safeBottom: number): void;
-  setScreen(screen: Screen): void;
 }
 
 export interface BarDeps {
@@ -47,7 +44,6 @@ export interface BarDeps {
   textures: Textures;
   onBuyBird(species: number): void;
   onToggleTree(): void;
-  onScreen(screen: Screen): void;
 }
 
 const darken = (c: number, f: number): number => {
@@ -90,43 +86,6 @@ export function createBar(deps: BarDeps): Bar {
     },
   });
   layer.addChild(treeBtn.root);
-
-  // Farm/Kitchen/Casino tabs — each appears when its gate node is bought.
-  const TAB_W = 44;
-  const makeTab = (icon: Sprite, screen: Screen) => {
-    const label = icon;
-    label.anchor.set(0.5);
-    const b = pixelButton({
-      w: TAB_W,
-      h: BTN_H,
-      face: 0x3a5a2f,
-      frame: FRAME,
-      content: label,
-      onTap: () => {
-        audioInit();
-        deps.onScreen(screen);
-      },
-    });
-    b.root.visible = false;
-    layer.addChild(b.root);
-    return b;
-  };
-  const farmIcon = new Sprite(deps.textures.bird[0]);
-  farmIcon.scale.set(2);
-  const kitchenIcon = new Sprite(deps.textures.pan);
-  kitchenIcon.scale.set(2.2);
-  const casinoIcon = new Sprite(deps.textures.icons.coin);
-  casinoIcon.scale.set(2.6);
-  const tabFarm = makeTab(farmIcon, "farm");
-  const tabKitchen = makeTab(kitchenIcon, "kitchen");
-  const tabCasino = makeTab(casinoIcon, "casino");
-  let activeScreen: Screen = "farm";
-  let tabsKey = ""; // which gates are open, e.g. "k", "kc"
-  const applyTabAlpha = (): void => {
-    tabFarm.root.alpha = activeScreen === "farm" ? 1 : 0.55;
-    tabKitchen.root.alpha = activeScreen === "kitchen" ? 1 : 0.55;
-    tabCasino.root.alpha = activeScreen === "casino" ? 1 : 0.55;
-  };
 
   const buttons: ShopBtn[] = [];
   let W = 390;
@@ -247,16 +206,11 @@ export function createBar(deps: BarDeps): Bar {
   function relayout(): void {
     layer.y = lastH - BAR_H - lastSafe;
     const treeW = Math.max(96, Math.round(W * 0.26));
-    const tabs = [tabFarm, tabKitchen, tabCasino].filter((t) => t.root.visible);
-    const tabsW = tabs.length * (TAB_W + GAP);
-    stripW = W - PAD * 3 - treeW - tabsW;
+    stripW = W - PAD * 3 - treeW;
     face.clear();
     face.rect(0, 0, W, BAR_H + lastSafe).fill(BAR_FACE);
     treeBtn.resize(treeW, BTN_H);
     treeBtn.root.position.set(W - PAD - treeW, PAD);
-    tabs.forEach((t, i) =>
-      t.root.position.set(W - PAD - treeW - (tabs.length - i) * (GAP + TAB_W), PAD),
-    );
     stripMask.clear();
     stripMask.rect(PAD, PAD, stripW, BTN_H).fill(0xffffff);
     stripHit.clear();
@@ -266,20 +220,7 @@ export function createBar(deps: BarDeps): Bar {
   }
 
   return {
-    setScreen(screen: Screen): void {
-      activeScreen = screen;
-      applyTabAlpha();
-    },
     refresh(): void {
-      const key = `${kitchenUnlocked(sim) ? "k" : ""}${casinoUnlocked(sim) ? "c" : ""}`;
-      if (key !== tabsKey) {
-        tabsKey = key;
-        tabKitchen.root.visible = key.includes("k");
-        tabCasino.root.visible = key.includes("c");
-        tabFarm.root.visible = key !== "";
-        relayout();
-        applyTabAlpha();
-      }
       ensureButtons();
       for (const b of buttons) {
         const c = birdCost(sim, b.species);

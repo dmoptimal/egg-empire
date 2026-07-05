@@ -24,7 +24,7 @@ export function createDevPanel(deps: DevPanelDeps): void {
   const panel = document.createElement("div");
   panel.id = "devpanel";
   panel.style.cssText =
-    "position:absolute;top:calc(44px + env(safe-area-inset-top));left:6px;z-index:3;" +
+    "position:absolute;top:calc(58px + env(safe-area-inset-top));left:6px;z-index:3;" + // below the room tabs
     "background:rgba(0,0,0,.75);border-radius:10px;padding:6px;display:flex;" +
     "flex-direction:column;gap:4px;font:11px/1.2 system-ui;color:#fff;max-width:170px";
 

@@ -1,13 +1,16 @@
-// HUD (PLAN.md Phase 1): money/feather chips, mute button, hint and toast —
-// all in-canvas pixel panels with BitmapFont numbers. The bottom bar lives
-// in ./bar.ts.
+// HUD (PLAN.md Phase 1): money/feather chips (top right), the room tabs
+// (top left — moved up from the cramped bottom bar, Dan 2026-07-05), mute,
+// hint and toast — all in-canvas pixel panels with BitmapFont numbers.
+// The bottom bar (shop strip + skill tree) lives in ./bar.ts.
 
 import { BitmapText, Container, Graphics, Rectangle, Sprite, Text } from "pixi.js";
-import { toggleMute } from "../audio/sfx";
+import { audioInit, toggleMute } from "../audio/sfx";
 import { fmt, fmtMoney } from "../config/format";
-import type { SimState } from "../sim";
+import { casinoUnlocked, kitchenUnlocked, type SimState } from "../sim";
 import type { Textures } from "../render/textures";
-import { attachTap, FONT, HOT_FONT, pixelPanel, safeInsets } from "./kit";
+import { attachTap, FONT, HOT_FONT, pixelButton, pixelPanel, safeInsets } from "./kit";
+
+export type Screen = "farm" | "kitchen" | "casino";
 
 export interface Hud {
   refresh(): void;
@@ -16,12 +19,14 @@ export interface Hud {
   showHint(): void;
   hideHint(): void;
   toast(msg: string): void;
+  setScreen(screen: Screen): void;
 }
 
 export interface HudDeps {
   sim: SimState;
   layer: Container;
   textures: Textures;
+  onScreen(screen: Screen): void;
 }
 
 const CHIP_H = 30;
@@ -75,6 +80,40 @@ export function createHud(deps: HudDeps): Hud {
 
   const chips = [moneyChip, featherChip, muteChip];
 
+  // room tabs (farm/kitchen/casino) — top-left, shown as gates unlock ------
+  const TAB = 40;
+  const makeTab = (icon: Sprite, screen: Screen) => {
+    icon.anchor.set(0.5);
+    const b = pixelButton({
+      w: TAB,
+      h: TAB,
+      face: 0x3a5a2f,
+      content: icon,
+      onTap: () => {
+        audioInit();
+        deps.onScreen(screen);
+      },
+    });
+    b.root.visible = false;
+    layer.addChild(b.root);
+    return b;
+  };
+  const farmIcon = new Sprite(textures.bird[0]);
+  farmIcon.scale.set(1.9);
+  const kitchenIcon = new Sprite(textures.pan);
+  kitchenIcon.scale.set(2);
+  const casinoIcon = new Sprite(textures.icons.coin);
+  casinoIcon.scale.set(2.4);
+  const tabFarm = makeTab(farmIcon, "farm");
+  const tabKitchen = makeTab(kitchenIcon, "kitchen");
+  const tabCasino = makeTab(casinoIcon, "casino");
+  let activeScreen: Screen = "farm";
+  const applyTabAlpha = (): void => {
+    tabFarm.root.alpha = activeScreen === "farm" ? 1 : 0.55;
+    tabKitchen.root.alpha = activeScreen === "kitchen" ? 1 : 0.55;
+    tabCasino.root.alpha = activeScreen === "casino" ? 1 : 0.55;
+  };
+
   // hint --------------------------------------------------------------
   const hint = new Text({
     text: "Tap or swipe across the eggs to collect them!",
@@ -126,12 +165,23 @@ export function createHud(deps: HudDeps): Hud {
   function layoutChips(): void {
     const W = sim.layout.w;
     const top = safeInsets().top + 6;
-    // measure
+    // room tabs down the top-left …
+    tabKitchen.root.visible = kitchenUnlocked(sim);
+    tabCasino.root.visible = casinoUnlocked(sim);
+    tabFarm.root.visible = tabKitchen.root.visible || tabCasino.root.visible;
+    let tx = 8;
+    for (const t of [tabFarm, tabKitchen, tabCasino]) {
+      if (!t.root.visible) continue;
+      t.root.position.set(tx, top);
+      tx += TAB + 6;
+    }
+    applyTabAlpha();
+    // … and the chips right-aligned so the two never meet
     moneyChip.width = Math.ceil(moneyText.width) + CHIP_PAD * 2;
     featherChip.width = Math.ceil(featherText.width + 6 + featherGlyph.width) + CHIP_PAD * 2;
     muteChip.width = 34;
     const total = chips.reduce((a, c) => a + c.width, 0) + CHIP_GAP * (chips.length - 1);
-    let x = Math.round((W - total) / 2);
+    let x = Math.round(Math.max(tabFarm.root.visible ? tx + 2 : 8, W - 8 - total));
     for (const c of chips) {
       c.gfx.clear();
       pixelPanel(c.gfx, 0, 0, c.width, CHIP_H, { face: CHIP_FACE, faceAlpha: 0.92, frame: CHIP_FRAME });
@@ -215,6 +265,10 @@ export function createHud(deps: HudDeps): Hud {
       toastRoot.alpha = 1;
       toastTimer = 4.5;
       positionToast();
+    },
+    setScreen(screen: Screen): void {
+      activeScreen = screen;
+      applyTabAlpha();
     },
   };
 }

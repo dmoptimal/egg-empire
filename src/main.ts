@@ -44,9 +44,9 @@ import { createLayers } from "./render/layers";
 import { createPopups } from "./render/popups";
 import { createStartScreen, createWinScreen } from "./render/screens";
 import { makeTextures } from "./render/textures";
-import { BAR_H, createBar, type Screen } from "./ui/bar";
+import { BAR_H, createBar } from "./ui/bar";
 import { createDevPanel } from "./ui/devpanel";
-import { createHud } from "./ui/hud";
+import { createHud, type Screen } from "./ui/hud";
 import { loadPixelFont, safeInsets } from "./ui/kit";
 import { createTree } from "./ui/tree";
 
@@ -127,7 +127,14 @@ async function boot(): Promise<void> {
   const startScreen = createStartScreen(layers.start, textures);
   const winScreen = createWinScreen(layers.win, textures);
 
-  const hud = createHud({ sim, layer: layers.uiTop, textures });
+  const hud = createHud({
+    sim,
+    layer: layers.uiTop,
+    textures,
+    onScreen(next) {
+      if (started) setScreen(next);
+    },
+  });
   const bar = createBar({
     sim,
     layer: layers.bar,
@@ -139,9 +146,6 @@ async function boot(): Promise<void> {
       if (!started) return;
       pointers.clear(); // ditto for opening/closing the tree mid-hold
       tree.toggle();
-    },
-    onScreen(next) {
-      if (started) setScreen(next);
     },
   });
   const kitchenView = createKitchenView(layers.kitchen, textures, {
@@ -177,7 +181,7 @@ async function boot(): Promise<void> {
     layers.kitchen.visible = next === "kitchen";
     layers.casino.visible = next === "casino";
     for (const l of farmLayers) l.visible = next === "farm";
-    bar.setScreen(next);
+    hud.setScreen(next);
   }
   const tree = createTree({
     overlay: layers.tree,
