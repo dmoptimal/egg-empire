@@ -1,7 +1,7 @@
 // PLAN.md Phase 3 — one vitest per new support node's sim effect.
 
 import { describe, expect, it } from "vitest";
-import { RUSH_EGG_LIFE, RUSH_INTERVAL_MIN } from "../config/economy";
+import { RUSH_EGG_LIFE, RUSH_INTERVAL_MIN, RUSH_INTERVAL_VAR } from "../config/economy";
 import { EGG_CAP } from "../config/species";
 import { sweepCollect } from "./collect";
 import { updateCollector } from "./collectors";
@@ -136,7 +136,7 @@ describe("rush — Golden Rush", () => {
   it("unlocked: a shimmer egg drops on the randomised cadence", () => {
     const s = quiet();
     s.n.rush = 1;
-    const interval = RUSH_INTERVAL_MIN + 0.5 * 60; // constHooks(0.5)
+    const interval = RUSH_INTERVAL_MIN + 0.5 * RUSH_INTERVAL_VAR; // constHooks(0.5)
     step(s, interval - 1, constHooks(0.5));
     expect([...s.ground, ...s.falling].some((e) => e.rush)).toBe(false);
     step(s, 2, constHooks(0.5));
@@ -151,7 +151,11 @@ describe("rush — Golden Rush", () => {
     expect(egg.phase).toBe("gone"); // consumed, never flies to a basket
     expect(s.rush.active).toBe(rushDuration(s)); // 10s at L1
     const evs = drainEvents(s);
-    expect(evs.some((e) => e.type === "rush-started")).toBe(true);
+    const started = evs.find((e) => e.type === "rush-started");
+    expect(started).toBeDefined();
+    // the event must carry the consumed egg so the renderer can free its
+    // sprite — omitting it left an untappable ghost on the field
+    expect(started && "egg" in started && started.egg).toBe(egg);
     expect(evs.some((e) => e.type === "egg-collected")).toBe(false);
 
     step(s, 8.1, constHooks(0.5)); // 8s of x5 laying: 2 birds/4s x5 = 2.5/s -> 20 eggs

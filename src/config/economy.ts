@@ -25,8 +25,8 @@ export const GOLD2_BONUS_FEATHERS = 1; // Midas flock: instant 🪶 per golden s
 export const BIRDLOT_GROWTH_PER_LVL = 0.02; // Bulk deals: bird cost growth −0.02
 
 // --- Golden Rush (unlocked via the `rush` node, Dan's design 2026-07-05) ---
-export const RUSH_INTERVAL_MIN = 110; //  seconds between shimmer eggs …
-export const RUSH_INTERVAL_VAR = 60; //   … plus up to this much, randomised
+export const RUSH_INTERVAL_MIN = 75; //   seconds between shimmer eggs …
+export const RUSH_INTERVAL_VAR = 45; //   … plus up to this much, randomised
 export const RUSH_BASE_DURATION = 10; //  rush length at level 1
 export const RUSH_DURATION_PER_LVL = 4; // +4s per extra level
 export const RUSH_LAY_MULT = 5; //        every bird lays ×5 during a rush
@@ -67,7 +67,7 @@ export const FARM_NODE_COSTS = {
   ckval: { base: 90000, growth: 1.8 },
   chefs2: { base: 900000, growth: 2.2 },
   counter: { base: 100000, growth: 3 },
-  rush: { base: 100000, growth: 3 },
+  rush: { base: 12000, growth: 3 },
 } as const;
 
 /** Extra basket prices (money), one per bextra level (duck/quail/goose era). */

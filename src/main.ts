@@ -270,6 +270,7 @@ async function boot(): Promise<void> {
         break;
       }
       case "rush-started":
+        eggSprites.release(ev.egg.id); // the shimmer egg is consumed, not collected
         SFX.rush();
         popups.spawn(W / 2, sim.layout.h * 0.33, "GOLDEN RUSH!", 0xffd24a, 22, textures.icons.star);
         break;

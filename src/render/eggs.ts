@@ -20,6 +20,8 @@ export function createEggSprites(layer: Container, textures: Textures): EggSprit
   const pool: Sprite[] = [];
   const free: number[] = [];
   const slotByEgg = new Map<number, number>();
+  let orphanTimer = 0;
+  const liveIds = new Set<number>();
   // Fixed pool sized for the LARGEST possible sim cap (Roomier hay maxed) —
   // still allocated once at boot, zero allocation in the loop.
   // Max cap × the rush doubling, plus the in-flight allowance.
@@ -60,6 +62,24 @@ export function createEggSprites(layer: Container, textures: Textures): EggSprit
       free.push(slot);
     },
     update(sim: SimState, now: number, dt: number): void {
+      // Self-heal: if an egg ever leaves the sim without a release event
+      // (a bug class we've hit), free its sprite instead of leaking a
+      // frozen ghost on the field. Runs ~every 2s.
+      orphanTimer += dt;
+      if (orphanTimer > 2) {
+        orphanTimer = 0;
+        liveIds.clear();
+        for (const e of sim.falling) liveIds.add(e.id);
+        for (const e of sim.ground) liveIds.add(e.id);
+        for (const e of sim.flying) liveIds.add(e.id);
+        for (const [id, slot] of slotByEgg) {
+          if (!liveIds.has(id)) {
+            slotByEgg.delete(id);
+            pool[slot].visible = false;
+            free.push(slot);
+          }
+        }
+      }
       const life = eggLife(sim);
       for (const e of sim.falling) {
         const sp = spriteFor(e);

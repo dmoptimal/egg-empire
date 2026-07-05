@@ -153,7 +153,7 @@ export type SimEvent =
   | { type: "node-bought"; id: string; level: number }
   | { type: "species-unlocked"; species: number }
   | { type: "bird-bought"; species: number; count: number }
-  | { type: "rush-started"; duration: number }
+  | { type: "rush-started"; duration: number; egg: Egg }
   | { type: "rush-ended" }
   | { type: "dish-cooked"; dish: Dish }
   | { type: "chef-hired"; station: number; count: number }

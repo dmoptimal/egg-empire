@@ -43,7 +43,7 @@ function sweepPickup(state: SimState, e: Egg, b: Basket): void {
     // The shimmer egg starts the Golden Rush instead of banking value.
     releaseEgg(state, e);
     state.rush.active = rushDuration(state);
-    emit(state, { type: "rush-started", duration: state.rush.active });
+    emit(state, { type: "rush-started", duration: state.rush.active, egg: e });
     return;
   }
   if (streak) {
