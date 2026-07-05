@@ -8,7 +8,7 @@
 // eventMode "none" so it can never swallow taps meant for buttons/customers.
 
 import { BitmapText, Container, Graphics, Rectangle, Sprite, Text } from "pixi.js";
-import { CUSTOMER_PATIENCE, PLATE_WINDOW, STATIONS, VIP_PATIENCE } from "../config/kitchen";
+import { CUSTOMER_MAX, CUSTOMER_PATIENCE, PLATE_WINDOW, STATIONS, VIP_PATIENCE } from "../config/kitchen";
 import { fmtMoney } from "../config/format";
 import {
   canServeCustomer,
@@ -16,6 +16,7 @@ import {
   chefSlots,
   cookTime,
   counterCap,
+  customerSlotX,
   pantryCap,
   stationUnlocked,
   type Customer,
@@ -30,8 +31,10 @@ const STATION_GAP = 4;
 const CHEF_VIEW_CAP = 4; //   sprites per station regardless of slots (view rule)
 const DISH_SHOW_COUNTER = 24; // dish minis drawn before the count text takes over
 const DISH_SHOW_DELIVERY = 16;
-const CUSTOMER_POOL = 8; //   3 queue spots + everyone mid-walk
+const CUSTOMER_POOL = 9; //   4 tables + everyone mid-walk
 const RUNNER_SPEED = 190; //  px/s chef jog to the counter and back
+const WAITER_POOL = 3;
+const WAITER_SPEED = 210; //  px/s table service
 
 interface StationView {
   root: Container;
@@ -81,6 +84,8 @@ export interface KitchenView {
   laneY(): number;
   /** Send a chef jogging with a fresh dish to its section (visual only). */
   onDishCooked(station: number, target: "counter" | "delivery"): void;
+  /** Send a waiter running plates from the counter to a served table. */
+  onServed(tableX: number, dishKind: number): void;
 }
 
 export interface KitchenDeps {
@@ -232,9 +237,21 @@ export function createKitchenView(
     deliveryPool.push(d);
   }
 
+  // restaurant floor: tables the customers wait at ---------------------------
+  const tableLayer = new Container();
+  quiet(tableLayer);
+  const tables: Sprite[] = [];
+  for (let i = 0; i < CUSTOMER_MAX; i++) {
+    const t = new Sprite(textures.table);
+    t.anchor.set(0.5, 1);
+    t.scale.set(3);
+    tableLayer.addChild(t);
+    tables.push(t);
+  }
+
   // customers -----------------------------------------------------------------
   const customerLayer = new Container();
-  root.addChild(customerLayer);
+  root.addChild(customerLayer, tableLayer); // tables in FRONT = "seated" look
   const customers: CustomerView[] = [];
   for (let i = 0; i < CUSTOMER_POOL; i++) {
     const croot = new Container();
@@ -283,6 +300,36 @@ export function createKitchenView(
       bubbleW: 40,
     };
     customers.push(view);
+  }
+
+  // waiters: ferry served plates from the counter out to the tables ----------
+  interface WaiterView {
+    root: Container;
+    tray: Sprite;
+    px: number;
+    py: number;
+    mode: "post" | "go" | "drop" | "back";
+    tx: number;
+    ty: number;
+    dropT: number;
+  }
+  const waiterLayer = new Container();
+  quiet(waiterLayer);
+  root.addChild(waiterLayer);
+  const waiters: WaiterView[] = [];
+  for (let i = 0; i < WAITER_POOL; i++) {
+    const wroot = new Container();
+    const body = new Sprite(textures.waiter);
+    body.anchor.set(0.5, 1);
+    body.scale.set(2.6);
+    const tray = new Sprite(textures.dish[0]);
+    tray.anchor.set(0.5);
+    tray.scale.set(1.7);
+    tray.y = -38;
+    tray.visible = false;
+    wroot.addChild(body, tray);
+    waiterLayer.addChild(wroot);
+    waiters.push({ root: wroot, tray, px: 0, py: 0, mode: "post", tx: 0, ty: 0, dropT: 0 });
   }
 
   /** Panel + contents for one customer's ticket bubble (green = tap me). */
@@ -396,6 +443,13 @@ export function createKitchenView(
       krushOverlay.rect(0, 0, W, H).fill(0xff9a3d);
       krushOverlay.alpha = 0;
       krushBanner.position.set(W / 2, 136);
+      for (let i = 0; i < tables.length; i++)
+        tables[i].position.set(customerSlotX(sim, i), laneYv + 16);
+      waiters.forEach((wv, i) => {
+        wv.px = counterX + counterW - 20 - i * 18;
+        wv.py = railY + 76;
+        if (wv.mode === "post") wv.root.position.set(wv.px, wv.py);
+      });
       truck.y = roadY - 10;
       lastCounter = -1; // force re-sync after a relayout
       lastDelivery = -1;
@@ -473,6 +527,38 @@ export function createKitchenView(
         } else {
           c.root.x += (dx / dist) * step;
           c.root.y += (dy / dist) * step;
+        }
+      }
+      // waiters: post → table → a beat to set the plates → back
+      for (const wv of waiters) {
+        if (wv.mode === "post") continue;
+        if (wv.mode === "drop") {
+          wv.dropT -= dt;
+          if (wv.dropT <= 0) {
+            wv.tray.visible = false;
+            wv.mode = "back";
+            wv.tx = wv.px;
+            wv.ty = wv.py;
+          }
+          continue;
+        }
+        const dx = wv.tx - wv.root.x;
+        const dy = wv.ty - wv.root.y;
+        const dist = Math.hypot(dx, dy);
+        const step = WAITER_SPEED * dt;
+        wv.root.scale.x = dx < -1 ? -1 : 1;
+        if (dist <= step) {
+          wv.root.position.set(wv.tx, wv.ty);
+          if (wv.mode === "go") {
+            wv.mode = "drop";
+            wv.dropT = 0.35;
+          } else {
+            wv.mode = "post";
+            wv.root.scale.x = 1;
+          }
+        } else {
+          wv.root.x += (dx / dist) * step;
+          wv.root.y += (dy / dist) * step;
         }
       }
       // customers: acquire/release by id, walk/wait/wobble, bubbles
@@ -573,6 +659,21 @@ export function createKitchenView(
         free.tx = deliveryX + 20 + (dropSeq % 3) * Math.max(20, (deliveryW - 40) / 2);
         free.ty = railY + 72;
       }
+    },
+    onServed(tableX: number, dishKind: number): void {
+      let free: WaiterView | null = null;
+      for (const wv of waiters)
+        if (wv.mode === "post") {
+          free = wv;
+          break;
+        }
+      if (!free) return; // all hands carrying — the sale already happened
+      free.mode = "go";
+      free.tray.texture = textures.dish[Math.max(0, dishKind)];
+      free.tray.visible = true;
+      free.root.position.set(free.px, free.py);
+      free.tx = tableX + 20;
+      free.ty = laneYv - 2;
     },
   };
 }

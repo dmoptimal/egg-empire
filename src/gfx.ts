@@ -73,6 +73,8 @@ export async function showGallery(): Promise<void> {
     ...t.customer.map((tex, i) => ({ slug: `customer-${i + 1}`, label: `Customer ${i + 1}`, tex, note: "walks in to order dishes, scale ×3" })),
     { slug: "customer-vip", label: "VIP guest", tex: t.vip, note: "greet to start a Dinner Rush, scale ×3" },
     { slug: "fox", label: "Night fox", tex: t.fox, note: "creeps up at night; tap to shoo, scale ×3" },
+    { slug: "table", label: "Restaurant table", tex: t.table, note: "customers wait at these, scale ×3" },
+    { slug: "waiter", label: "Waiter", tex: t.waiter, note: "runs plates counter → table, scale ×2.6" },
     { slug: "pan", label: "Pan", tex: t.pan, note: "station + kitchen tab icon" },
     { slug: "crate", label: "Pantry crate", tex: t.crate },
     ...STATIONS.map((st, i) => ({ slug: `dish-${st.name.toLowerCase()}`, label: `Dish: ${st.name}`, tex: t.dish[i] })),

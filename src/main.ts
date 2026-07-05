@@ -311,6 +311,7 @@ async function boot(): Promise<void> {
         break;
       case "customer-served":
         SFX.kachingUp();
+        kitchenView.onServed(ev.customer.x, ev.customer.needs.findIndex((q) => q > 0));
         if (screen === "kitchen") {
           popups.spawn(ev.customer.x, kitchenView.laneY() - 78, "+" + fmtMoney(ev.money), 0x7ef25d, 16);
           popups.spawn(ev.customer.x, kitchenView.laneY() - 56, `+${fmt(ev.feathers)}`, 0x8fe3d0, 13, textures.icons.feather);

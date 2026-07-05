@@ -79,9 +79,9 @@ export const chefCost = (s: SimState, station: number): number =>
 export const krushDuration = (s: SimState): number =>
   KRUSH_BASE_DURATION + KRUSH_DURATION_PER_LVL * (lvl(s, "krush") - 1);
 
-/** Where queue slot `slot` stands (design px; the render supplies the y). */
+/** Where table `slot` sits on the restaurant floor (render supplies the y). */
 export const customerSlotX = (s: SimState, slot: number): number =>
-  Math.min(40 + slot * 64, s.layout.w - 48);
+  Math.min(46 + slot * 88, s.layout.w - 48);
 
 /**
  * Take as many eggs as fit from the front of `load` into the pantry.

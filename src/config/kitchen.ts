@@ -46,9 +46,9 @@ export const PERFECT_MULT = 1.5; // tapped-in-time dishes pay +50%
 // are actually ON the counter when they walk in (claims never overlap), so an
 // order is always servable — the delivery shelf, not the counter, feeds the
 // truck, so nothing can yank a claimed dish away.
-export const CUSTOMER_MAX = 3; //          queue spots at the counter
-export const CUSTOMER_INTERVAL_MIN = 5; // seconds between walk-ins …
-export const CUSTOMER_INTERVAL_VAR = 5; // … plus up to this much
+export const CUSTOMER_MAX = 4; //          tables on the restaurant floor
+export const CUSTOMER_INTERVAL_MIN = 4; // seconds between walk-ins …
+export const CUSTOMER_INTERVAL_VAR = 4; // … plus up to this much
 export const CUSTOMER_PATIENCE = 30; //    seconds they wait before storming off
 export const CUSTOMER_WALK_SPEED = 130; // px/s along the kitchen floor
 export const CUSTOMER_MAX_ITEMS = 3; //    most dishes one customer claims
