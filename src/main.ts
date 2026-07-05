@@ -380,6 +380,7 @@ async function boot(): Promise<void> {
         break;
       case "fox-shooed":
         SFX.foxYip();
+        if (ev.byGuard) foxViews.guardLunge(ev.fox.x);
         if (screen === "farm")
           popups.spawn(ev.fox.x, ev.fox.y - 44, `+${fmt(ev.feathers)}`, 0x8fe3d0, 15, textures.icons.feather);
         break;

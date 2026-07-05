@@ -169,22 +169,27 @@ describe("bird theft (an empty hay line lets foxes through)", () => {
   });
 });
 
-describe("the Night guard", () => {
-  it("auto-shoos the closest fox on its level cadence, bounty included", () => {
+describe("the Night guard (a patrol line, not a farm-wide sweep)", () => {
+  it("shoos a fox CROSSING the line, then recharges — the next one slips through", () => {
     const s = quiet();
+    s.counts = [5, 0, 0, 0, 0];
     s.n.guard = 1;
     atNight(s);
-    const closest = forgeFox(s, s.layout.hayBottom + 60);
-    const trailing = forgeFox(s, s.layout.hayBottom + 170, 300);
-    step(s, 0.7, constHooks(0.5)); // guard peeks every 0.5s when idle
-    expect(closest.state).toBe("flee"); // guard picks the biggest threat
-    expect(trailing.state).toBe("climb"); // next shoo waits GUARD_INTERVAL[1]
+    const first = forgeFox(s, s.layout.hayBottom - 4); // bare hay: both climb on
+    const second = forgeFox(s, s.layout.hayBottom + 116, 300);
+    step(s, 4, constHooks(0.5));
+    expect(first.state).toBe("climb"); // still marching — no early invisible shoo
+    step(s, 8, constHooks(0.5));
+    expect(first.state).toBe("flee"); // met the watch at the line
     expect(s.feathers).toBe(foxBounty(s));
-    const ev = drainEvents(s).find((e) => e.type === "fox-shooed");
-    expect(ev && "byGuard" in ev && ev.byGuard).toBe(true);
-    step(s, 1, constHooks(0.5)); // still inside the cooldown
-    expect(trailing.state).toBe("climb");
-    expect(GUARD_INTERVAL[1]).toBeGreaterThan(GUARD_INTERVAL[3]); // levels speed it up
+    const evs = drainEvents(s);
+    const shooed = evs.find((e) => e.type === "fox-shooed");
+    expect(shooed && "byGuard" in shooed && shooed.byGuard).toBe(true);
+    // the second fox crossed while the watch was recharging: it got through
+    expect(evs.some((e) => e.type === "fox-stole-bird")).toBe(true);
+    expect(second.bird).toBe(0);
+    expect(s.counts[0]).toBe(4);
+    expect(GUARD_INTERVAL[1]).toBeGreaterThan(GUARD_INTERVAL[3]); // levels recharge faster
   });
 
   it("does nothing unowned", () => {

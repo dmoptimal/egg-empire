@@ -21,6 +21,8 @@ export interface Textures {
   vip: Texture;
   /** The night fox (day/night cycle) — faces up the screen. */
   fox: Texture;
+  /** The Night guard on the patrol line. */
+  guard: Texture;
   /** Restaurant dressing: a customer table and the waiter who serves it. */
   table: Texture;
   waiter: Texture;
@@ -102,6 +104,8 @@ export function makeTextures(renderer: Renderer): Textures {
     table: tex([[0, 0, 14, 1, 0x6e4520], [0, 1, 14, 3, 0xa06c36], [1, 4, 2, 5, 0x6e4520], [11, 4, 2, 5, 0x6e4520]]),
     // Front-of-house: dark suit, white shirt front.
     waiter: tex([[3, 0, 4, 2, 0x4a2f1d], [2, 1, 6, 1, 0x4a2f1d], [3, 2, 4, 3, 0xe8b48a], [4, 3, 1, 1, 0x111111], [2, 5, 6, 5, 0x2b2b2b], [4, 5, 2, 4, 0xf5f5f0], [1, 5, 2, 4, 0xe8b48a], [7, 5, 2, 4, 0xe8b48a], [3, 10, 1, 3, 0x2b2b2b], [6, 10, 1, 3, 0x2b2b2b]]),
+    // Night guard: flat cap, navy coat, a warm lantern at the hip.
+    guard: tex([[3, 0, 4, 1, 0x2b3a5a], [2, 1, 6, 1, 0x22304a], [3, 2, 4, 3, 0xe8b48a], [4, 3, 1, 1, 0x111111], [2, 5, 6, 5, 0x37476b], [1, 5, 2, 4, 0xe8b48a], [7, 5, 2, 4, 0xe8b48a], [8, 6, 2, 1, 0x8a5a2b], [8, 7, 2, 3, 0xffd94a], [3, 10, 1, 3, 0x22304a], [6, 10, 1, 3, 0x22304a]]),
     fox: tex([[2, 0, 2, 3, 0xd96a2b], [8, 0, 2, 3, 0xd96a2b], [2, 1, 1, 1, 0x111111], [9, 1, 1, 1, 0x111111], [2, 3, 8, 4, 0xd96a2b], [4, 4, 1, 1, 0x111111], [7, 4, 1, 1, 0x111111], [5, 5, 2, 2, 0xf5eee0], [3, 7, 6, 4, 0xd96a2b], [5, 7, 2, 2, 0xf5eee0], [9, 8, 3, 2, 0xd96a2b], [12, 8, 1, 2, 0xf5eee0], [3, 11, 1, 2, 0x8a3a12], [7, 11, 1, 2, 0x8a3a12]]),
     pan: tex([[2, 2, 8, 2, 0x2b2b2b], [3, 3, 6, 2, 0x3d3d3d], [2, 4, 8, 1, 0x2b2b2b], [10, 2, 4, 2, 0x6b4a2b]]),
     crate: tex([[0, 0, 14, 12, 0x6e4520], [1, 1, 12, 10, 0xa06c36], [1, 4, 12, 1, 0x8a5a2b], [1, 8, 12, 1, 0x8a5a2b], [6, 1, 2, 10, 0x8a5a2b]]),

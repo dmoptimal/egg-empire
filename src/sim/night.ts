@@ -14,6 +14,7 @@ import {
   FOX_SPAWN_VAR,
   FOX_TAP_R,
   GUARD_INTERVAL,
+  GUARD_LINE_RATIO,
   NIGHT_LENGTH,
 } from "../config/night";
 import { SPECIES } from "../config/species";
@@ -91,8 +92,13 @@ export function shooFoxesAlong(
   }
 }
 
+/** Where the Night guards stand watch — just below the roost. */
+export const guardLineY = (state: SimState): number =>
+  state.layout.hayTop * GUARD_LINE_RATIO;
+
 export function updateFoxes(state: SimState, dt: number, rng: () => number): void {
   const { h, w, hayBottom } = state.layout;
+  if (state.guardT > 0) state.guardT -= dt; // the watch recharges
   if (state.clock.night) {
     // new foxes slink in from below the road
     if (state.nextFoxIn <= 0) state.nextFoxIn = FOX_SPAWN_MIN + rng() * FOX_SPAWN_VAR;
@@ -107,27 +113,19 @@ export function updateFoxes(state: SimState, dt: number, rng: () => number): voi
         carrying: false,
       });
     }
-    // the Night guard shoos the fox nearest the hay on a level-set cadence
-    const g = lvl(state, "guard");
-    if (g >= 1) {
-      state.guardT -= dt;
-      if (state.guardT <= 0) {
-        let best: Fox | null = null;
-        for (const f of state.foxes)
-          if (f.state === "climb" && (best === null || f.y < best.y)) best = f;
-        if (best) {
-          shooFox(state, best, true);
-          state.guardT = GUARD_INTERVAL[Math.min(g, GUARD_INTERVAL.length - 1)];
-        } else {
-          state.guardT = 0.5; // nothing to shoo — peek again shortly
-        }
-      }
-    }
   }
+  const g = lvl(state, "guard");
   for (let i = state.foxes.length - 1; i >= 0; i--) {
     const f = state.foxes[i];
     if (f.state === "climb") {
       f.y -= FOX_CLIMB_SPEED * dt;
+      // The patrol line: a READY guard shoos the fox that crosses it, then
+      // recharges — a second fox close behind gets through to the flock.
+      if (g >= 1 && state.guardT <= 0 && f.y <= guardLineY(state)) {
+        shooFox(state, f, true);
+        state.guardT = GUARD_INTERVAL[Math.min(g, GUARD_INTERVAL.length - 1)];
+        continue;
+      }
       if (f.y <= hayBottom) {
         // made it to the hay: grab the oldest unclaimed egg and bolt …
         const egg = state.ground.find((e) => !e.rush && !e.claimed);

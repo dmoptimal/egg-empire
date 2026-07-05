@@ -1,13 +1,15 @@
-// Fox sprites (day/night cycle): pooled, mapped to sim foxes by id with
-// zero allocation in the loop — same pattern as the kitchen customers.
-// Climbers slink with a sway; fleers squash down and sprint, showing the
-// stolen egg if they got one.
+// Fox + Night-guard sprites (day/night cycle): pooled, mapped to sim foxes
+// by id with zero allocation in the loop — same pattern as the kitchen
+// customers. Climbers slink with a sway; fleers squash down and sprint,
+// showing the stolen egg or bird if they got one. Guards stand the patrol
+// line at night (one sprite per node level) and lunge when they shoo.
 
-import { Container, Sprite, type Texture } from "pixi.js";
-import type { SimState } from "../sim";
+import { Container, Graphics, Sprite, type Texture } from "pixi.js";
+import { guardLineY, lvl, type SimState } from "../sim";
 import type { Textures } from "./textures";
 
 const FOX_POOL = 12; // night spawns every 4-8s over a 40s night — 12 is roomy
+const GUARD_MAX = 3;
 
 interface FoxView {
   root: Container;
@@ -20,6 +22,8 @@ interface FoxView {
 
 export interface FoxViews {
   update(sim: SimState, now: number): void;
+  /** A guard shooed a fox at x — the nearest watchman lunges. */
+  guardLunge(x: number): void;
 }
 
 export function createFoxViews(layer: Container, textures: Textures): FoxViews {
@@ -46,8 +50,56 @@ export function createFoxViews(layer: Container, textures: Textures): FoxViews {
     views.push({ root, body, egg, bird, id: -1 });
   }
 
+  // the watch: one visible guard per node level, spread along the line
+  interface GuardView {
+    root: Container;
+    glow: Graphics;
+    punch: number;
+  }
+  const guards: GuardView[] = [];
+  for (let i = 0; i < GUARD_MAX; i++) {
+    const root = new Container();
+    const glow = new Graphics();
+    glow.circle(0, -14, 16).fill({ color: 0xffd94a, alpha: 0.14 });
+    const body = new Sprite(textures.guard);
+    body.anchor.set(0.5, 1);
+    body.scale.set(3);
+    root.addChild(glow, body);
+    root.visible = false;
+    layer.addChild(root);
+    guards.push({ root, glow, punch: 0 });
+  }
+
   return {
+    guardLunge(x: number): void {
+      let best: GuardView | null = null;
+      let bd = Infinity;
+      for (const g of guards) {
+        if (!g.root.visible) continue;
+        const d = Math.abs(g.root.x - x);
+        if (d < bd) {
+          bd = d;
+          best = g;
+        }
+      }
+      if (best) best.punch = 1;
+    },
     update(sim: SimState, now: number): void {
+      // guards on the line, at night only
+      const g = Math.min(lvl(sim, "guard"), GUARD_MAX);
+      const lineY = guardLineY(sim) + 20;
+      for (let i = 0; i < GUARD_MAX; i++) {
+        const gv = guards[i];
+        const on = sim.clock.night && i < g;
+        gv.root.visible = on;
+        if (!on) continue;
+        const frac = (i + 1) / (g + 1);
+        gv.punch = Math.max(0, gv.punch - 0.05);
+        gv.root.x = sim.layout.w * frac + Math.sin(now * 0.7 + i * 2.1) * 14;
+        gv.root.y = lineY + Math.sin(now * 1.6 + i) * 2 - gv.punch * 10;
+        gv.root.scale.set(1 + gv.punch * 0.25);
+        gv.glow.alpha = 0.7 + 0.3 * Math.sin(now * 3 + i);
+      }
       for (let vi = 0; vi < views.length; vi++) {
         const v = views[vi];
         if (v.id === -1) continue;
