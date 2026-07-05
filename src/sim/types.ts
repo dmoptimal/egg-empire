@@ -122,12 +122,32 @@ export interface CookJob {
   golden: boolean;
 }
 
-export interface Order {
+export type CustomerState = "in" | "wait" | "leave";
+
+/**
+ * A walk-in customer. Gameplay entity like eggs/collectors: the sim owns the
+ * position (they stroll along the kitchen floor to a queue slot), the render
+ * maps a sprite + ticket bubble onto it. `needs` is claimed from dishes that
+ * were unclaimed on the counter at walk-in time, so serving is always
+ * possible — nothing else removes counter dishes (the truck takes the
+ * delivery shelf instead).
+ */
+export interface Customer {
   id: number;
-  /** Dishes required per station index. */
+  /** Dishes claimed per station index (all zero for a VIP). */
   needs: number[];
-  /** Seconds until the ticket expires. */
-  expires: number;
+  x: number;
+  /** Queue slot 0..CUSTOMER_MAX-1 — sets the standing spot. */
+  slot: number;
+  state: CustomerState;
+  /** Seconds left before they give up; ticks while waiting only. */
+  patience: number;
+  /** Stable palette index for the render. */
+  look: number;
+  /** A VIP guest: greeting them starts a Dinner Rush instead of a sale. */
+  vip: boolean;
+  /** Leaving mood (render: heart vs huff). */
+  happy: boolean;
 }
 
 export interface KitchenTruck {
@@ -143,12 +163,16 @@ export interface KitchenState {
   /** Chefs hired per station index. */
   chefs: number[];
   cooking: CookJob[];
+  /** The customer section: dishes plate here first; customers claim these. */
   counter: Dish[];
+  /** The truck section: overflow dishes stack here; the truck collects it. */
+  delivery: Dish[];
   truck: KitchenTruck;
-  /** Customer tickets awaiting dishes from the counter. */
-  orders: Order[];
-  nextOrderIn: number;
-  orderSeq: number;
+  customers: Customer[];
+  nextCustomerIn: number;
+  customerSeq: number;
+  /** Dinner Rush: seconds of frenzy left / countdown to the next VIP. */
+  krush: { active: number; next: number };
 }
 
 export type SimEvent =
@@ -171,10 +195,13 @@ export type SimEvent =
   | { type: "bird-bought"; species: number; count: number }
   | { type: "rush-started"; duration: number; egg: Egg }
   | { type: "rush-ended" }
-  | { type: "dish-cooked"; dish: Dish; perfect: boolean; station: number }
-  | { type: "order-posted"; order: Order }
-  | { type: "order-filled"; money: number; feathers: number }
-  | { type: "order-expired"; order: Order }
+  | { type: "dish-cooked"; dish: Dish; perfect: boolean; station: number; target: "counter" | "delivery" }
+  | { type: "customer-arrived"; customer: Customer }
+  | { type: "customer-served"; money: number; feathers: number; customer: Customer }
+  /** Patience ran out — they left unserved (their claim is released). */
+  | { type: "customer-left"; customer: Customer }
+  | { type: "krush-started"; duration: number; customer: Customer }
+  | { type: "krush-ended" }
   | { type: "chef-hired"; station: number; count: number }
   | { type: "kitchen-truck-dispatched" }
   | { type: "kitchen-payout"; money: number; feathers: number; dishes: number }

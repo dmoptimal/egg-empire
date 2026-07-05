@@ -151,11 +151,11 @@ export function createTree(deps: TreeDeps): TreeUI {
     if (id.startsWith("sp")) {
       const i = Number(id.slice(2));
       c.addChild(spriteIcon(textures.bird[i], i === 4 ? 1.5 : 2.2));
-    } else if (id[0] === "w") {
+    } else if (/^w\d$/.test(id)) {
       c.addChild(centeredText("$", { fill: "#ffd94a", fontSize: 24, fontWeight: "700" }));
-    } else if (id[0] === "s") {
+    } else if (/^s\d$/.test(id)) {
       c.addChild(spriteIcon(textures.icons.bolt, 2.2));
-    } else if (id[0] === "g") {
+    } else if (/^g\d$/.test(id)) {
       c.addChild(spriteIcon(textures.gold, 4));
     } else if (id === "bsize" || id === "bextra") {
       c.addChild(spriteIcon(textures.basket, 1.7));
@@ -190,11 +190,23 @@ export function createTree(deps: TreeDeps): TreeUI {
       c.addChild(spriteIcon(textures.icons.tag, 2.6));
     } else if (id === "rush") {
       c.addChild(spriteIcon(textures.icons.star, 2.6));
+    } else if (id === "krush") {
+      c.addChild(spriteIcon(textures.vip, 2));
     } else if (id === "kitchen") {
       c.addChild(spriteIcon(textures.pan, 2.2));
     } else if (id.startsWith("st_")) {
       const idx = ["st_boil", "st_fry", "st_scr", "st_poa", "st_oml"].indexOf(id);
       c.addChild(spriteIcon(textures.dish[idx], 2.4));
+    } else if (id === "pantry") {
+      c.addChild(spriteIcon(textures.crate, 1.8));
+    } else if (id === "counter") {
+      c.addChild(spriteIcon(textures.dish[2], 2.4));
+    } else if (id === "ckspd") {
+      c.addChild(spriteIcon(textures.icons.bolt, 2.2));
+    } else if (id === "ckval") {
+      c.addChild(spriteIcon(textures.icons.coin, 2.4));
+    } else if (id === "chefs2") {
+      c.addChild(spriteIcon(textures.chef, 2));
     }
     return c;
   }

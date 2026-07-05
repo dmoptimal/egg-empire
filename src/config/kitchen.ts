@@ -41,13 +41,28 @@ export const CHEFS2_SLOTS_PER_LVL = 1; // Phase 6 "Sous chefs" per level
 export const PLATE_WINDOW = 3; //   seconds a finished dish sizzles awaiting a tap
 export const PERFECT_MULT = 1.5; // tapped-in-time dishes pay +50%
 
-// --- order tickets (fun pass #4) --------------------------------------------
-export const ORDER_MAX = 2; //          tickets on the rail at once
-export const ORDER_INTERVAL_MIN = 40; // seconds between new tickets …
-export const ORDER_INTERVAL_VAR = 35; // … plus up to this much
-export const ORDER_TTL = 90; //         unfilled tickets vanish after this
-export const ORDER_MONEY_MULT = 2.5; // fulfilled dishes pay ×2.5 money …
-export const ORDER_FEATHER_MULT = 2; // … and ×2 feathers
+// --- customers (Dan's kitchen overhaul, 2026-07-05) --------------------------
+// Walk-in customers replace the old ticket rail. Each one claims dishes that
+// are actually ON the counter when they walk in (claims never overlap), so an
+// order is always servable — the delivery shelf, not the counter, feeds the
+// truck, so nothing can yank a claimed dish away.
+export const CUSTOMER_MAX = 3; //          queue spots at the counter
+export const CUSTOMER_INTERVAL_MIN = 5; // seconds between walk-ins …
+export const CUSTOMER_INTERVAL_VAR = 5; // … plus up to this much
+export const CUSTOMER_PATIENCE = 30; //    seconds they wait before storming off
+export const CUSTOMER_WALK_SPEED = 130; // px/s along the kitchen floor
+export const CUSTOMER_MAX_ITEMS = 3; //    most dishes one customer claims
+export const CUSTOMER_MONEY_MULT = 2.5; // served dishes pay ×2.5 money …
+export const CUSTOMER_FEATHER_MULT = 2; // … and ×2 feathers
+
+// --- Dinner Rush (unlocked via the `krush` node) ------------------------------
+export const KRUSH_INTERVAL_MIN = 60; //  seconds between VIP walk-ins …
+export const KRUSH_INTERVAL_VAR = 45; //  … plus up to this much
+export const KRUSH_BASE_DURATION = 12; // rush length at level 1
+export const KRUSH_DURATION_PER_LVL = 4; // +4s per extra level
+export const KRUSH_COOK_RATE = 2; //      pans cook ×2 while the rush runs
+export const KRUSH_CUSTOMER_RATE = 3; //  customers arrive ×3 as often
+export const VIP_PATIENCE = 15; //        greet the VIP within this or lose the rush
 
 /**
  * Chef hire prices per station (money), growing per chef already hired

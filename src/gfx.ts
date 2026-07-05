@@ -70,6 +70,8 @@ export async function showGallery(): Promise<void> {
     { slug: "truck", label: "Truck", tex: t.truck, note: "farm + kitchen trucks, scale ×3" },
     { slug: "farmer", label: "Farmer (collector)", tex: t.coll, note: "scale ×3, flips when walking left" },
     { slug: "chef", label: "Chef", tex: t.chef, note: "kitchen stations, scale ×1.5–3" },
+    ...t.customer.map((tex, i) => ({ slug: `customer-${i + 1}`, label: `Customer ${i + 1}`, tex, note: "walks in to order dishes, scale ×3" })),
+    { slug: "customer-vip", label: "VIP guest", tex: t.vip, note: "greet to start a Dinner Rush, scale ×3" },
     { slug: "pan", label: "Pan", tex: t.pan, note: "station + kitchen tab icon" },
     { slug: "crate", label: "Pantry crate", tex: t.crate },
     ...STATIONS.map((st, i) => ({ slug: `dish-${st.name.toLowerCase()}`, label: `Dish: ${st.name}`, tex: t.dish[i] })),

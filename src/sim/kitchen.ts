@@ -1,8 +1,9 @@
-// The Kitchen sim (PLAN.md Phase 4) — headless, like everything in src/sim.
-// Farm trucks route their egg loads into the pantry (see baskets.ts); hired
-// chefs each work one pan, pulling eggs FIFO from the pantry and plating
-// dishes onto the counter; a separate kitchen truck collects the counter
-// when full or on the shared truck-schedule tech. Both sims always run.
+// The Kitchen sim (PLAN.md Phase 4 + Dan's customer overhaul) — headless,
+// like everything in src/sim. Farm trucks route egg loads into the pantry
+// (see baskets.ts); hired chefs each work one pan, pulling eggs FIFO from the
+// pantry. Plated dishes fill the COUNTER first (walk-in customers claim and
+// buy those at a premium), then overflow onto the DELIVERY shelf, which the
+// kitchen truck collects. Both sims always run.
 
 import {
   TRUCK_DISPATCH_X,
@@ -18,17 +19,26 @@ import {
   CKVAL_PER_LVL,
   COUNTER_BASE_CAP,
   COUNTER_CAP_PER_LVL,
-  ORDER_FEATHER_MULT,
-  ORDER_INTERVAL_MIN,
-  ORDER_INTERVAL_VAR,
-  ORDER_MAX,
-  ORDER_MONEY_MULT,
-  ORDER_TTL,
+  CUSTOMER_FEATHER_MULT,
+  CUSTOMER_INTERVAL_MIN,
+  CUSTOMER_INTERVAL_VAR,
+  CUSTOMER_MAX,
+  CUSTOMER_MAX_ITEMS,
+  CUSTOMER_MONEY_MULT,
+  CUSTOMER_PATIENCE,
+  CUSTOMER_WALK_SPEED,
+  KRUSH_BASE_DURATION,
+  KRUSH_COOK_RATE,
+  KRUSH_CUSTOMER_RATE,
+  KRUSH_DURATION_PER_LVL,
+  KRUSH_INTERVAL_MIN,
+  KRUSH_INTERVAL_VAR,
   PANTRY_BASE_CAP,
   PANTRY_CAP_PER_LVL,
   PERFECT_MULT,
   PLATE_WINDOW,
   STATIONS,
+  VIP_PATIENCE,
 } from "../config/kitchen";
 import {
   featherGolden,
@@ -40,7 +50,7 @@ import {
   truckSpeedOut,
 } from "./economy";
 import { emit } from "./events";
-import type { BagEgg, CookJob, Order, SimState } from "./types";
+import type { BagEgg, CookJob, Customer, SimState } from "./types";
 
 export const kitchenUnlocked = (s: SimState): boolean => lvl(s, "kitchen") >= 1;
 
@@ -50,6 +60,7 @@ export const stationUnlocked = (s: SimState, station: number): boolean =>
 export const pantryCap = (s: SimState): number =>
   PANTRY_BASE_CAP + PANTRY_CAP_PER_LVL * lvl(s, "pantry");
 
+/** Long-counter node sizes both sections: the counter AND the delivery shelf. */
 export const counterCap = (s: SimState): number =>
   COUNTER_BASE_CAP + COUNTER_CAP_PER_LVL * lvl(s, "counter");
 
@@ -64,6 +75,13 @@ export const dishValueMult = (s: SimState, station: number): number =>
 
 export const chefCost = (s: SimState, station: number): number =>
   Math.floor(CHEF_COSTS[station].base * Math.pow(CHEF_COSTS[station].growth, s.kitchen.chefs[station]));
+
+export const krushDuration = (s: SimState): number =>
+  KRUSH_BASE_DURATION + KRUSH_DURATION_PER_LVL * (lvl(s, "krush") - 1);
+
+/** Where queue slot `slot` stands (design px; the render supplies the y). */
+export const customerSlotX = (s: SimState, slot: number): number =>
+  Math.min(40 + slot * 64, s.layout.w - 48);
 
 /**
  * Take as many eggs as fit from the front of `load` into the pantry.
@@ -94,9 +112,10 @@ export function hireChef(state: SimState, station: number): boolean {
 
 function startCooks(state: SimState): void {
   const k = state.kitchen;
-  // Reserve counter space for everything already cooking so a finished dish
-  // always has a slot — chefs idle rather than dropping food on the floor.
-  let capacity = counterCap(state) - k.counter.length - k.cooking.length;
+  // Reserve space for everything already cooking so a finished dish always
+  // has a slot (counter or delivery) — chefs idle rather than dropping food.
+  const cap = counterCap(state);
+  let capacity = cap - k.counter.length + (cap - k.delivery.length) - k.cooking.length;
   for (let si = 0; si < STATIONS.length; si++) {
     if (!stationUnlocked(state, si) || k.chefs[si] === 0) continue;
     let active = 0;
@@ -133,11 +152,11 @@ function updateKitchenTruck(state: SimState, dt: number): void {
   const stopX = state.layout.w - BASKET_X_FROM_RIGHT - TRUCK_STOP_OFFSET;
   if (t.truckState === "idle") {
     const schedOn = lvl(state, "ttime") > 0; // shared truck-schedule tech
-    if (k.counter.length > 0) t.sched += dt;
+    if (k.delivery.length > 0) t.sched += dt;
     else t.sched = 0;
     const due =
-      k.counter.length >= counterCap(state) ||
-      (schedOn && k.counter.length > 0 && t.sched >= truckSchedule(state));
+      k.delivery.length >= counterCap(state) ||
+      (schedOn && k.delivery.length > 0 && t.sched >= truckSchedule(state));
     if (due) {
       t.truckState = "in";
       t.truckX = TRUCK_DISPATCH_X;
@@ -157,15 +176,15 @@ function updateKitchenTruck(state: SimState, dt: number): void {
     if (t.truckPause <= 0) {
       let money = 0;
       let feathers = 0;
-      for (const dish of k.counter) {
+      for (const dish of k.delivery) {
         money += dish.value;
         feathers += dish.feathers;
       }
-      const dishes = k.counter.length;
+      const dishes = k.delivery.length;
       state.money += money;
       state.feathers += feathers;
       state.totalDelivered += dishes;
-      k.counter.length = 0;
+      k.delivery.length = 0;
       t.truckState = "out";
       emit(state, { type: "kitchen-payout", money, feathers, dishes });
     }
@@ -178,7 +197,10 @@ function updateKitchenTruck(state: SimState, dt: number): void {
   }
 }
 
-/** Move a finished job onto the counter, at +50% if it was a Perfect tap. */
+/**
+ * Move a finished job onto the counter (customer section) or, when the
+ * counter is full, the delivery shelf. Perfect taps pay +50%.
+ */
 function plateJob(state: SimState, job: CookJob, perfect: boolean): void {
   const k = state.kitchen;
   const idx = k.cooking.indexOf(job);
@@ -189,8 +211,9 @@ function plateJob(state: SimState, job: CookJob, perfect: boolean): void {
     feathers: job.feathers,
     golden: job.golden,
   };
-  k.counter.push(dish);
-  emit(state, { type: "dish-cooked", dish, perfect, station: job.station });
+  const target = k.counter.length < counterCap(state) ? "counter" : "delivery";
+  (target === "counter" ? k.counter : k.delivery).push(dish);
+  emit(state, { type: "dish-cooked", dish, perfect, station: job.station, target });
 }
 
 /**
@@ -212,9 +235,20 @@ export function stationReady(state: SimState, station: number): boolean {
   return state.kitchen.cooking.some((j) => j.station === station && j.t <= 0);
 }
 
-/** Whether the counter currently holds everything a ticket needs. */
-export function canFillOrder(state: SimState, order: Order): boolean {
-  return order.needs.every((qty, st) => {
+/** Counter dishes per station that no waiting/arriving customer has claimed. */
+function unclaimedByStation(state: SimState): number[] {
+  const avail = STATIONS.map(() => 0);
+  for (const d of state.kitchen.counter) avail[d.station]++;
+  for (const c of state.kitchen.customers) {
+    if (c.state === "leave") continue;
+    for (let st = 0; st < avail.length; st++) avail[st] -= c.needs[st];
+  }
+  return avail;
+}
+
+/** Whether the counter currently holds everything this customer claimed. */
+export function canServeCustomer(state: SimState, customer: Customer): boolean {
+  return customer.needs.every((qty, st) => {
     if (qty === 0) return true;
     let have = 0;
     for (const d of state.kitchen.counter) if (d.station === st) have++;
@@ -222,63 +256,147 @@ export function canFillOrder(state: SimState, order: Order): boolean {
   });
 }
 
-/**
- * Fulfil a ticket from the counter: consumes the dishes and pays their
- * values ×ORDER_MONEY_MULT (feathers ×ORDER_FEATHER_MULT).
- */
-export function fillOrder(state: SimState, orderId: number): boolean {
+function spawnCustomer(state: SimState, rng: () => number, vip: boolean): boolean {
   const k = state.kitchen;
-  const order = k.orders.find((o) => o.id === orderId);
-  if (!order || !canFillOrder(state, order)) return false;
+  const taken = new Set<number>();
+  for (const c of k.customers) if (c.state !== "leave") taken.add(c.slot);
+  if (taken.size >= CUSTOMER_MAX) return false;
+  let slot = 0;
+  while (taken.has(slot)) slot++;
+  const needs = STATIONS.map(() => 0);
+  if (!vip) {
+    // Claim only dishes that are on the counter AND unclaimed by anyone else,
+    // so every order is servable the moment they reach their spot.
+    const avail = unclaimedByStation(state);
+    let total = avail.reduce((a, b) => a + b, 0);
+    if (total <= 0) return false;
+    let want = Math.min(1 + Math.floor(rng() * CUSTOMER_MAX_ITEMS), total);
+    while (want-- > 0) {
+      let pick = Math.floor(rng() * total);
+      for (let st = 0; st < avail.length; st++) {
+        if (pick < avail[st]) {
+          needs[st]++;
+          avail[st]--;
+          total--;
+          break;
+        }
+        pick -= avail[st];
+      }
+    }
+  }
+  const customer: Customer = {
+    id: k.customerSeq++,
+    needs,
+    x: -30,
+    slot,
+    state: "in",
+    patience: vip ? VIP_PATIENCE : CUSTOMER_PATIENCE,
+    look: Math.floor(rng() * 4),
+    vip,
+    happy: false,
+  };
+  k.customers.push(customer);
+  emit(state, { type: "customer-arrived", customer });
+  return true;
+}
+
+/**
+ * Serve a waiting customer: consume their claimed dishes from the counter and
+ * pay the premium. A VIP starts a Dinner Rush instead. Returns false when the
+ * customer isn't at the counter yet (or has already left).
+ */
+export function serveCustomer(state: SimState, customerId: number): boolean {
+  const k = state.kitchen;
+  const customer = k.customers.find((c) => c.id === customerId);
+  if (!customer || customer.state !== "wait") return false;
+  if (customer.vip) {
+    customer.state = "leave";
+    customer.happy = true;
+    k.krush.active = krushDuration(state);
+    emit(state, { type: "krush-started", duration: k.krush.active, customer });
+    return true;
+  }
+  if (!canServeCustomer(state, customer)) return false; // can't happen: claims are reserved
   let money = 0;
   let feathers = 0;
-  for (let st = 0; st < order.needs.length; st++) {
-    let left = order.needs[st];
+  let dishes = 0;
+  for (let st = 0; st < customer.needs.length; st++) {
+    let left = customer.needs[st];
     for (let i = 0; i < k.counter.length && left > 0; ) {
       if (k.counter[i].station === st) {
         money += k.counter[i].value;
         feathers += k.counter[i].feathers;
         k.counter.splice(i, 1);
         left--;
+        dishes++;
       } else {
         i++;
       }
     }
   }
-  money = Math.round(money * ORDER_MONEY_MULT);
-  feathers = Math.round(feathers * ORDER_FEATHER_MULT);
+  money = Math.round(money * CUSTOMER_MONEY_MULT);
+  feathers = Math.round(feathers * CUSTOMER_FEATHER_MULT);
   state.money += money;
   state.feathers += feathers;
-  k.orders.splice(k.orders.indexOf(order), 1);
-  emit(state, { type: "order-filled", money, feathers });
+  state.totalDelivered += dishes;
+  customer.state = "leave";
+  customer.happy = true;
+  emit(state, { type: "customer-served", money, feathers, customer });
   return true;
 }
 
-function updateOrders(state: SimState, dt: number, rng: () => number): void {
+function updateCustomers(state: SimState, dt: number, rng: () => number): void {
   const k = state.kitchen;
-  for (let i = k.orders.length - 1; i >= 0; i--) {
-    k.orders[i].expires -= dt;
-    if (k.orders[i].expires <= 0) {
-      emit(state, { type: "order-expired", order: k.orders[i] });
-      k.orders.splice(i, 1);
+
+  // Dinner Rush countdowns: the frenzy itself, then the next VIP walk-in.
+  if (k.krush.active > 0) {
+    k.krush.active -= dt;
+    if (k.krush.active <= 0) {
+      k.krush.active = 0;
+      emit(state, { type: "krush-ended" });
     }
   }
-  const openStations: number[] = [];
-  for (let st = 0; st < STATIONS.length; st++) if (stationUnlocked(state, st)) openStations.push(st);
-  if (openStations.length === 0 || k.orders.length >= ORDER_MAX) return;
-  if (k.nextOrderIn <= 0) k.nextOrderIn = ORDER_INTERVAL_MIN + rng() * ORDER_INTERVAL_VAR;
-  k.nextOrderIn -= dt;
-  if (k.nextOrderIn > 0) return;
-  k.nextOrderIn = ORDER_INTERVAL_MIN + rng() * ORDER_INTERVAL_VAR;
-  const needs = STATIONS.map(() => 0);
-  const kinds = 1 + (rng() < 0.4 && openStations.length > 1 ? 1 : 0);
-  for (let n = 0; n < kinds; n++) {
-    const st = openStations[Math.floor(rng() * openStations.length)];
-    needs[st] += 1 + Math.floor(rng() * 2);
+  if (lvl(state, "krush") >= 1) {
+    if (k.krush.next <= 0) k.krush.next = KRUSH_INTERVAL_MIN + rng() * KRUSH_INTERVAL_VAR;
+    k.krush.next -= dt;
+    if (k.krush.next <= 0)
+      k.krush.next = spawnCustomer(state, rng, true)
+        ? KRUSH_INTERVAL_MIN + rng() * KRUSH_INTERVAL_VAR
+        : 1; // queue full — knock again in a second
   }
-  const order: Order = { id: k.orderSeq++, needs, expires: ORDER_TTL };
-  k.orders.push(order);
-  emit(state, { type: "order-posted", order });
+
+  // Regular walk-ins, ×KRUSH_CUSTOMER_RATE while a rush runs. The spawn gate
+  // (a free slot + at least one unclaimed dish) throttles the flow to actual
+  // production, so the 5-10s cadence is a ceiling, not a promise.
+  if (k.nextCustomerIn <= 0) k.nextCustomerIn = CUSTOMER_INTERVAL_MIN + rng() * CUSTOMER_INTERVAL_VAR;
+  k.nextCustomerIn -= dt * (k.krush.active > 0 ? KRUSH_CUSTOMER_RATE : 1);
+  if (k.nextCustomerIn <= 0)
+    k.nextCustomerIn = spawnCustomer(state, rng, false)
+      ? CUSTOMER_INTERVAL_MIN + rng() * CUSTOMER_INTERVAL_VAR
+      : 0.75; // nothing to sell yet — peek in again shortly
+
+  // Walk in → wait (patience) → walk out; gone once off-screen left.
+  for (let i = k.customers.length - 1; i >= 0; i--) {
+    const c = k.customers[i];
+    if (c.state === "in") {
+      const target = customerSlotX(state, c.slot);
+      c.x += CUSTOMER_WALK_SPEED * dt;
+      if (c.x >= target) {
+        c.x = target;
+        c.state = "wait";
+      }
+    } else if (c.state === "wait") {
+      c.patience -= dt;
+      if (c.patience <= 0) {
+        c.state = "leave";
+        c.happy = false;
+        emit(state, { type: "customer-left", customer: c });
+      }
+    } else {
+      c.x -= CUSTOMER_WALK_SPEED * dt;
+      if (c.x < -40) k.customers.splice(i, 1);
+    }
+  }
 }
 
 /** One kitchen step — called from tick() after the farm trucks. */
@@ -286,13 +404,16 @@ export function updateKitchen(state: SimState, dt: number, rng: () => number = M
   if (!kitchenUnlocked(state)) return;
   const k = state.kitchen;
   startCooks(state);
+  const cookRate = k.krush.active > 0 ? KRUSH_COOK_RATE : 1;
   for (let i = k.cooking.length - 1; i >= 0; i--) {
     const job = k.cooking[i];
-    job.t -= dt;
+    // A Dinner Rush speeds the cooking, never the sizzle window — the player
+    // gets the full PLATE_WINDOW to tap even mid-frenzy.
+    job.t -= dt * (job.t > 0 ? cookRate : 1);
     // Ready dishes sizzle for PLATE_WINDOW awaiting a Perfect tap, then
     // auto-plate at base value so idle play never loses food.
     if (job.t <= -PLATE_WINDOW) plateJob(state, job, false);
   }
-  updateOrders(state, dt, rng);
+  updateCustomers(state, dt, rng);
   updateKitchenTruck(state, dt);
 }

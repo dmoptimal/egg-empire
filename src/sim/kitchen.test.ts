@@ -1,30 +1,59 @@
 // PLAN.md Phase 4 acceptance: routing overflow, cook timing, multi-egg
-// recipes, golden premium dishes, counter/truck flow — all headless.
+// recipes, golden premium dishes, counter/delivery/truck flow, walk-in
+// customers, and the Dinner Rush — all headless.
 
 import { describe, expect, it } from "vitest";
-import { COUNTER_BASE_CAP, ORDER_INTERVAL_MIN, ORDER_INTERVAL_VAR, ORDER_TTL, PANTRY_BASE_CAP, PLATE_WINDOW, STATIONS } from "../config/kitchen";
+import {
+  COUNTER_BASE_CAP,
+  CUSTOMER_INTERVAL_MIN,
+  CUSTOMER_INTERVAL_VAR,
+  KRUSH_INTERVAL_MIN,
+  KRUSH_INTERVAL_VAR,
+  PANTRY_BASE_CAP,
+  PLATE_WINDOW,
+  STATIONS,
+} from "../config/kitchen";
 import { drainEvents } from "./events";
 import {
-  canFillOrder,
+  canServeCustomer,
   chefCost,
   chefSlots,
   cookTime,
   counterCap,
   dishValueMult,
-  fillOrder,
   hireChef,
+  krushDuration,
   pantryCap,
   plateStation,
   routeToPantry,
+  serveCustomer,
   stationReady,
   updateKitchen,
 } from "./kitchen";
 import { restore, serialize } from "./save";
 import { createSim } from "./state";
 import { constHooks, step } from "./test-helpers";
-import type { BagEgg, SimEvent, SimState } from "./types";
+import type { BagEgg, Customer, Dish, SimEvent, SimState } from "./types";
 
 const egg = (value: number, golden = false, species = 0): BagEgg => ({ value, golden, species });
+const dish = (value = 30, feathers = 2, station = 0): Dish => ({ station, value, feathers, golden: false });
+/** Park a customer at the counter, skipping the walk-in. */
+function forgeCustomer(s: SimState, over: Partial<Customer> = {}): Customer {
+  const c: Customer = {
+    id: s.kitchen.customerSeq++,
+    needs: [0, 0, 0, 0, 0],
+    x: 40,
+    slot: 0,
+    state: "wait",
+    patience: 30,
+    look: 0,
+    vip: false,
+    happy: false,
+    ...over,
+  };
+  s.kitchen.customers.push(c);
+  return c;
+}
 
 function kitchenSim(stations: number[] = [0], chefsAt: Record<number, number> = { 0: 1 }): SimState {
   const s = createSim();
@@ -118,12 +147,11 @@ describe("cooking", () => {
     expect(s.kitchen.cooking).toHaveLength(1); // third egg started when a pan freed
   });
 
-  it("a full counter blocks new cooks instead of losing dishes", () => {
+  it("both sections full parks the chefs instead of losing dishes", () => {
     const s = kitchenSim();
-    s.kitchen.counter = Array.from({ length: COUNTER_BASE_CAP }, () => ({
-      station: 0, value: 1, feathers: 0, golden: false,
-    }));
-    s.n.ttime = 0; // no schedule: the full counter dispatches the truck, so
+    s.kitchen.counter = Array.from({ length: COUNTER_BASE_CAP }, () => dish(1, 0));
+    s.kitchen.delivery = Array.from({ length: COUNTER_BASE_CAP }, () => dish(1, 0));
+    s.n.ttime = 0; // no schedule: the full shelf dispatches the truck, so
     s.kitchen.truck.truckState = "out"; // park it mid-run for this check
     s.kitchen.pantry.push(egg(10));
     updateKitchen(s, 0.1);
@@ -132,12 +160,21 @@ describe("cooking", () => {
   });
 });
 
-describe("the kitchen truck", () => {
-  it("collects a full counter and pays the dish sum", () => {
+describe("two sections: counter for customers, delivery shelf for the truck", () => {
+  it("plated dishes fill the counter first, overflow to the shelf", () => {
     const s = kitchenSim();
-    s.kitchen.counter = Array.from({ length: COUNTER_BASE_CAP }, () => ({
-      station: 0, value: 30, feathers: 2, golden: false,
-    }));
+    for (let i = 0; i < counterCap(s); i++) s.kitchen.counter.push(dish(1, 0));
+    s.kitchen.pantry.push(egg(10));
+    step(s, 4.2 + PLATE_WINDOW, constHooks(0.5));
+    expect(s.kitchen.delivery).toEqual([{ station: 0, value: 30, feathers: 1, golden: false }]);
+    const cooked = drainEvents(s).find((e) => e.type === "dish-cooked");
+    expect(cooked && "target" in cooked && cooked.target).toBe("delivery");
+  });
+
+  it("the truck collects the delivery shelf and never the counter", () => {
+    const s = kitchenSim();
+    s.kitchen.counter.push(dish(99, 9));
+    s.kitchen.delivery = Array.from({ length: COUNTER_BASE_CAP }, () => dish(30, 2));
     step(s, 6, constHooks(0.5));
     const evs = drainEvents(s);
     const payout = evs.find((e): e is Extract<SimEvent, { type: "kitchen-payout" }> => e.type === "kitchen-payout")!;
@@ -146,13 +183,14 @@ describe("the kitchen truck", () => {
     expect(payout.feathers).toBe(40);
     expect(payout.dishes).toBe(COUNTER_BASE_CAP);
     expect(s.money).toBe(600);
-    expect(s.kitchen.counter).toHaveLength(0);
+    expect(s.kitchen.delivery).toHaveLength(0);
+    expect(s.kitchen.counter).toHaveLength(1); // customers' stock is safe
   });
 
-  it("the shared truck-schedule tech collects part-full counters", () => {
+  it("the shared truck-schedule tech collects part-full shelves", () => {
     const s = kitchenSim();
     s.n.ttime = 5; // 4s schedule
-    s.kitchen.counter.push({ station: 0, value: 30, feathers: 1, golden: false });
+    s.kitchen.delivery.push(dish(30, 1));
     step(s, 3.5, constHooks(0.5));
     expect(s.kitchen.truck.truckState).toBe("idle");
     step(s, 3, constHooks(0.5));
@@ -201,50 +239,136 @@ describe("tap-to-plate (fun pass #3)", () => {
   });
 });
 
-describe("order tickets (fun pass #4)", () => {
-  it("tickets post on the cadence, only for unlocked stations, capped at 2", () => {
+describe("walk-in customers", () => {
+  it("nobody comes while the counter is bare", () => {
     const s = kitchenSim([0], {});
-    const interval = ORDER_INTERVAL_MIN + 0.5 * ORDER_INTERVAL_VAR;
-    step(s, interval + 1, constHooks(0.5));
-    expect(s.kitchen.orders).toHaveLength(1);
-    expect(s.kitchen.orders[0].needs[0]).toBeGreaterThan(0);
-    expect(s.kitchen.orders[0].needs.slice(1).every((q) => q === 0)).toBe(true);
-    step(s, 400, constHooks(0.5));
-    expect(s.kitchen.orders.length).toBeLessThanOrEqual(2);
+    step(s, 60, constHooks(0.5));
+    expect(s.kitchen.customers).toHaveLength(0);
   });
 
-  it("filling an order consumes the dishes and pays the multipliers", () => {
+  it("walk in on the 5-10s cadence and claim dishes that are actually there", () => {
     const s = kitchenSim([0], {});
-    s.kitchen.counter.push(
-      { station: 0, value: 30, feathers: 2, golden: false },
-      { station: 0, value: 30, feathers: 2, golden: false },
-      { station: 1, value: 99, feathers: 9, golden: false },
-    );
-    s.kitchen.orders.push({ id: 7, needs: [2, 0, 0, 0, 0], expires: 60 });
-    expect(canFillOrder(s, s.kitchen.orders[0])).toBe(true);
-    expect(fillOrder(s, 7)).toBe(true);
+    s.kitchen.counter.push(dish(), dish(), dish());
+    const interval = CUSTOMER_INTERVAL_MIN + 0.5 * CUSTOMER_INTERVAL_VAR; // 7.5s
+    step(s, interval - 1, constHooks(0.5));
+    expect(s.kitchen.customers).toHaveLength(0);
+    step(s, 1.2, constHooks(0.5));
+    expect(s.kitchen.customers).toHaveLength(1);
+    const c = s.kitchen.customers[0];
+    expect(c.needs).toEqual([2, 0, 0, 0, 0]); // 1+⌊0.5×3⌋ dishes, all boiled
+    expect(drainEvents(s).some((e) => e.type === "customer-arrived")).toBe(true);
+    expect(c.state).toBe("in");
+    step(s, 1, constHooks(0.5)); // strolls to the queue spot
+    expect(c.state).toBe("wait");
+    expect(canServeCustomer(s, c)).toBe(true); // by construction
+  });
+
+  it("claims never overlap, and the queue gates on unclaimed stock", () => {
+    const s = kitchenSim([0], {});
+    s.kitchen.counter.push(dish(), dish(), dish());
+    step(s, 60, constHooks(0.5));
+    // 1st claims 2, 2nd claims the last 1, then the counter is spoken for —
+    // nobody else walks in even though a third queue slot is free.
+    const wanted = s.kitchen.customers.map((c) => c.needs[0]);
+    expect(wanted).toEqual([2, 1]);
+    expect(s.kitchen.customers.every((c) => canServeCustomer(s, c))).toBe(true);
+  });
+
+  it("serving pays the premium, consumes the dishes, sends them off happy", () => {
+    const s = kitchenSim([0], {});
+    s.kitchen.counter.push(dish(30, 2), dish(30, 2), dish(99, 9, 1));
+    const c = forgeCustomer(s, { needs: [2, 0, 0, 0, 0] });
+    expect(serveCustomer(s, c.id)).toBe(true);
     expect(s.money).toBe(150); // (30+30) × 2.5
     expect(s.feathers).toBe(8); // (2+2) × 2
+    expect(s.totalDelivered).toBe(2);
     expect(s.kitchen.counter).toEqual([{ station: 1, value: 99, feathers: 9, golden: false }]);
-    expect(s.kitchen.orders).toHaveLength(0);
-    expect(drainEvents(s).some((e) => e.type === "order-filled")).toBe(true);
+    expect(c.state).toBe("leave");
+    expect(c.happy).toBe(true);
+    expect(drainEvents(s).some((e) => e.type === "customer-served")).toBe(true);
+    step(s, 1, constHooks(0.5)); // walks off-screen and despawns
+    expect(s.kitchen.customers).toHaveLength(0);
   });
 
-  it("cannot fill without the dishes", () => {
+  it("cannot serve a customer still walking in", () => {
     const s = kitchenSim([0], {});
-    s.kitchen.orders.push({ id: 3, needs: [2, 0, 0, 0, 0], expires: 60 });
-    s.kitchen.counter.push({ station: 0, value: 30, feathers: 2, golden: false });
-    expect(fillOrder(s, 3)).toBe(false);
+    s.kitchen.counter.push(dish());
+    const c = forgeCustomer(s, { needs: [1, 0, 0, 0, 0], state: "in", x: -10 });
+    expect(serveCustomer(s, c.id)).toBe(false);
     expect(s.money).toBe(0);
-    expect(s.kitchen.orders).toHaveLength(1);
   });
 
-  it("unfilled tickets expire", () => {
+  it("patience runs out: they leave and release their claim", () => {
     const s = kitchenSim([0], {});
-    s.kitchen.orders.push({ id: 9, needs: [1, 0, 0, 0, 0], expires: ORDER_TTL });
-    step(s, ORDER_TTL + 1, constHooks(0.5));
-    expect(s.kitchen.orders.find((o) => o.id === 9)).toBeUndefined();
-    expect(drainEvents(s).some((e) => e.type === "order-expired")).toBe(true);
+    s.kitchen.counter.push(dish());
+    const c = forgeCustomer(s, { needs: [1, 0, 0, 0, 0], patience: 2 });
+    step(s, 2.2, constHooks(0.5));
+    expect(c.state).toBe("leave");
+    expect(c.happy).toBe(false);
+    expect(drainEvents(s).some((e) => e.type === "customer-left")).toBe(true);
+    // the dish is unclaimed again — the next walk-in wants it
+    step(s, 8, constHooks(0.5));
+    expect(s.kitchen.customers.some((x) => x.id !== c.id && x.needs[0] === 1)).toBe(true);
+  });
+});
+
+describe("Dinner Rush (krush node)", () => {
+  it("locked: VIPs never visit", () => {
+    const s = kitchenSim([0], {});
+    s.kitchen.counter.push(dish(), dish(), dish());
+    step(s, 300, constHooks(0.5));
+    expect(s.kitchen.customers.every((c) => !c.vip)).toBe(true);
+    expect(s.kitchen.krush.active).toBe(0);
+  });
+
+  it("unlocked: a VIP walks in on the cadence; greeting them starts the rush", () => {
+    const s = kitchenSim([0], {});
+    s.n.krush = 1;
+    const interval = KRUSH_INTERVAL_MIN + 0.5 * KRUSH_INTERVAL_VAR; // 82.5s
+    step(s, interval - 1, constHooks(0.5));
+    expect(s.kitchen.customers.some((c) => c.vip)).toBe(false);
+    step(s, 2, constHooks(0.5)); // VIP ignores the empty counter
+    const vip = s.kitchen.customers.find((c) => c.vip)!;
+    expect(vip).toBeDefined();
+    step(s, 1, constHooks(0.5));
+    expect(vip.state).toBe("wait");
+    expect(serveCustomer(s, vip.id)).toBe(true);
+    expect(s.kitchen.krush.active).toBe(12); // L1 duration
+    const evs = drainEvents(s);
+    const started = evs.find((e) => e.type === "krush-started");
+    expect(started && "duration" in started && started.duration).toBe(12);
+    step(s, 12.5, constHooks(0.5));
+    expect(s.kitchen.krush.active).toBe(0);
+    expect(drainEvents(s).some((e) => e.type === "krush-ended")).toBe(true);
+  });
+
+  it("a running rush cooks ×2 but keeps the full sizzle window", () => {
+    const s = kitchenSim();
+    s.n.krush = 1;
+    s.kitchen.krush.active = 30;
+    s.kitchen.pantry.push(egg(10));
+    step(s, 2.1, constHooks(0.5)); // 4s recipe at double speed
+    expect(stationReady(s, 0)).toBe(true);
+    step(s, PLATE_WINDOW - 0.5, constHooks(0.5)); // window drains at ×1
+    expect(stationReady(s, 0)).toBe(true); // still tappable
+    expect(s.kitchen.counter).toHaveLength(0);
+  });
+
+  it("customers pour in ×3 during a rush", () => {
+    const s = kitchenSim([0], {});
+    s.n.krush = 1;
+    s.kitchen.krush.active = 30;
+    s.kitchen.counter.push(dish(), dish(), dish());
+    step(s, 2.7, constHooks(0.5)); // 7.5s cadence ÷ 3
+    expect(s.kitchen.customers).toHaveLength(1);
+  });
+
+  it("levels lengthen the rush: 12/16/20s", () => {
+    const s = kitchenSim();
+    s.n.krush = 1;
+    expect(krushDuration(s)).toBe(12);
+    s.n.krush = 3;
+    expect(krushDuration(s)).toBe(20);
   });
 });
 

@@ -15,6 +15,10 @@ export interface Textures {
   truck: Texture;
   coll: Texture;
   chef: Texture;
+  /** Walk-in kitchen customers — one texture per `look` palette. */
+  customer: Texture[];
+  /** The Dinner Rush VIP: top hat and a gold jacket. */
+  vip: Texture;
   pan: Texture;
   crate: Texture;
   /** One plated dish per station (boiled → omelette). */
@@ -50,6 +54,10 @@ export function makeTextures(renderer: Renderer): Textures {
     return gen(g);
   };
 
+  /** The collector frame with hair colours instead of a hat (customers). */
+  const person = (hair: number, skin: number, shirt: number, legs: number): Texture =>
+    tex([[3, 0, 4, 2, hair], [2, 1, 6, 1, hair], [3, 2, 4, 3, skin], [4, 3, 1, 1, 0x111111], [2, 5, 6, 5, shirt], [1, 5, 2, 4, skin], [7, 5, 2, 4, skin], [3, 10, 1, 3, legs], [6, 10, 1, 3, legs]]);
+
   const eggTex = (color: number, speckle = false): Texture => {
     const g = new Graphics();
     g.ellipse(3, 3.5, 2.6, 3.4).fill(color);
@@ -77,6 +85,14 @@ export function makeTextures(renderer: Renderer): Textures {
     coll: tex([[3, 0, 4, 2, 0xe8c531], [2, 1, 6, 1, 0xe8c531], [3, 2, 4, 3, 0xe8b48a], [4, 3, 1, 1, 0x111111], [2, 5, 6, 5, 0x3a6bb5], [1, 5, 2, 4, 0xe8b48a], [7, 5, 2, 4, 0xe8b48a], [3, 10, 1, 3, 0x2b3a5a], [6, 10, 1, 3, 0x2b3a5a]]),
     // The chef is the collector in whites: toque, apron, grey trousers.
     chef: tex([[3, -1, 4, 1, 0xf5f5f0], [3, 0, 4, 2, 0xf5f5f0], [2, 1, 6, 1, 0xe8e8e0], [3, 2, 4, 3, 0xe8b48a], [4, 3, 1, 1, 0x111111], [2, 5, 6, 5, 0xe8e8e0], [1, 5, 2, 4, 0xe8b48a], [7, 5, 2, 4, 0xe8b48a], [3, 10, 1, 3, 0x3a3a3a], [6, 10, 1, 3, 0x3a3a3a]]),
+    // Townsfolk share the collector's frame: hair instead of a hat.
+    customer: [
+      person(0x5a3a22, 0xe8b48a, 0xc0453a, 0x2b3a5a), // brunette, red top
+      person(0x2b2b2b, 0xc98a5a, 0x3aa8a0, 0x3a3a3a), // black hair, teal top
+      person(0xd88a2e, 0xf0c8a0, 0x8a5ab5, 0x4a3a2a), // ginger, purple top
+      person(0x9a9a9a, 0xe8b48a, 0x4a8a3a, 0x2b2b2b), // grey hair, green top
+    ],
+    vip: tex([[2, -3, 6, 1, 0x1a1a1a], [3, -3, 4, 1, 0x1a1a1a], [3, -2, 4, 2, 0x1a1a1a], [2, 0, 6, 1, 0x1a1a1a], [3, 1, 4, 1, 0xffd24a], [3, 2, 4, 3, 0xe8b48a], [4, 3, 1, 1, 0x111111], [2, 5, 6, 5, 0xe8b431], [4, 5, 2, 2, 0xf5f5f0], [1, 5, 2, 4, 0xe8b48a], [7, 5, 2, 4, 0xe8b48a], [3, 10, 1, 3, 0x2b2b2b], [6, 10, 1, 3, 0x2b2b2b]]),
     pan: tex([[2, 2, 8, 2, 0x2b2b2b], [3, 3, 6, 2, 0x3d3d3d], [2, 4, 8, 1, 0x2b2b2b], [10, 2, 4, 2, 0x6b4a2b]]),
     crate: tex([[0, 0, 14, 12, 0x6e4520], [1, 1, 12, 10, 0xa06c36], [1, 4, 12, 1, 0x8a5a2b], [1, 8, 12, 1, 0x8a5a2b], [6, 1, 2, 10, 0x8a5a2b]]),
     dish: [
