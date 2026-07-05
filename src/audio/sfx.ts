@@ -127,8 +127,9 @@ export const SFX = {
     tone(320, 0.16, { type: "sine", vol: 0.09, slide: -180 });
   },
   honk(): void {
-    tone(392, 0.13, { type: "square", vol: 0.14 });
-    tone(330, 0.15, { type: "square", vol: 0.14, delay: 0.14 });
+    // Dan 2026-07-05: was 0.14 and "a bit too loud" — both trucks honk now.
+    tone(392, 0.13, { type: "square", vol: 0.06 });
+    tone(330, 0.15, { type: "square", vol: 0.06, delay: 0.14 });
   },
   kaching(): void {
     tone(1244, 0.07, { type: "square", vol: 0.15 });
