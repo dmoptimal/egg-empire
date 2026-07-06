@@ -110,7 +110,14 @@ export async function showGallery(): Promise<void> {
   ];
 
   document.title = "Egg Empire — graphics";
-  document.body.style.cssText = "background:#1c2620;color:#e8e8e0;font:14px/1.4 system-ui;margin:0;padding:20px";
+  // index.html locks the page down for the game (overflow hidden, no
+  // selection, fixed wrap) — undo all of it so the gallery scrolls.
+  document.documentElement.style.cssText = "overflow:auto;height:auto";
+  document.body.style.cssText =
+    "background:#1c2620;color:#e8e8e0;font:14px/1.4 system-ui;margin:0;padding:20px;" +
+    "overflow:auto;height:auto;-webkit-user-select:auto;user-select:auto;overscroll-behavior:auto";
+  const wrap = document.getElementById("wrap");
+  if (wrap) wrap.style.display = "none";
   const head = document.createElement("div");
   head.innerHTML =
     "<h1 style='font-size:20px;margin:0 0 4px'>Egg Empire — every graphic in the game</h1>" +
@@ -118,6 +125,66 @@ export async function showGallery(): Promise<void> {
     "Click any tile to download it, draw a replacement at the same (or scaled-up) size, and hand the files back — " +
     "they're generated in <code>src/render/textures.ts</code> today and can be swapped for PNG assets.</p>";
   document.body.appendChild(head);
+
+  // One-click sprite sheet: everything below packed onto a single PNG at 4×
+  // (nearest-neighbour) with slug labels, for Photoshop/Aseprite work.
+  const items: { slug: string; url: string; w: number; h: number }[] = [];
+  const sheetBtn = document.createElement("button");
+  sheetBtn.textContent = "Download ALL as one sprite-sheet PNG";
+  sheetBtn.style.cssText =
+    "font:14px/1 system-ui;padding:10px 16px;margin:0 0 18px;background:#2f6fdb;color:#fff;border:0;border-radius:8px;cursor:pointer";
+  sheetBtn.addEventListener("click", () => {
+    void (async () => {
+      const SCALE = 4;
+      const PAD = 14;
+      const LABEL = 14;
+      const SHEET_W = 1600;
+      const imgs = await Promise.all(
+        items.map(
+          (it) =>
+            new Promise<HTMLImageElement>((res) => {
+              const im = new Image();
+              im.onload = () => res(im);
+              im.src = it.url;
+            }),
+        ),
+      );
+      let x = PAD;
+      let y = PAD;
+      let rowH = 0;
+      const places: { x: number; y: number }[] = [];
+      for (const it of items) {
+        const w = it.w * SCALE;
+        const h = it.h * SCALE + LABEL;
+        if (x + w + PAD > SHEET_W) {
+          x = PAD;
+          y += rowH + PAD;
+          rowH = 0;
+        }
+        places.push({ x, y });
+        x += Math.max(w, 60) + PAD;
+        rowH = Math.max(rowH, h);
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = SHEET_W;
+      canvas.height = y + rowH + PAD;
+      const ctx = canvas.getContext("2d")!;
+      ctx.fillStyle = "#26332b";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.imageSmoothingEnabled = false;
+      ctx.font = "10px monospace";
+      items.forEach((it, i) => {
+        ctx.drawImage(imgs[i], places[i].x, places[i].y, it.w * SCALE, it.h * SCALE);
+        ctx.fillStyle = "#9fb8a8";
+        ctx.fillText(it.slug, places[i].x, places[i].y + it.h * SCALE + 11);
+      });
+      const a = document.createElement("a");
+      a.download = "egg-empire-sprites.png";
+      a.href = canvas.toDataURL("image/png");
+      a.click();
+    })();
+  });
+  document.body.appendChild(sheetBtn);
 
   const grid = document.createElement("div");
   grid.style.cssText = "display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px";
@@ -127,6 +194,7 @@ export async function showGallery(): Promise<void> {
     const url = await app.renderer.extract.base64(e.tex);
     const w = Math.round(e.tex.width);
     const h = Math.round(e.tex.height);
+    items.push({ slug: e.slug, url, w, h });
     const cell = document.createElement("a");
     cell.href = url;
     cell.download = `${e.slug}.png`;

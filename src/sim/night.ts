@@ -33,6 +33,8 @@ export function updateClock(state: SimState, dt: number): void {
   const c = state.clock;
   c.t += dt;
   if (c.t >= CYCLE_LENGTH) c.t -= CYCLE_LENGTH;
+  // Endless day until Ducks are unlocked — the tutorial farm never freezes.
+  if (c.t >= DAY_LENGTH && lvl(state, "sp1") < 1) c.t -= DAY_LENGTH;
   const night = c.t >= DAY_LENGTH;
   if (night !== c.night) {
     c.night = night;

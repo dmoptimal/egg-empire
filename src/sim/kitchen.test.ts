@@ -13,6 +13,7 @@ import {
   PLATE_WINDOW,
   STATIONS,
 } from "../config/kitchen";
+import { DAY_LENGTH } from "../config/night";
 import { drainEvents } from "./events";
 import {
   canServeCustomer,
@@ -369,6 +370,31 @@ describe("Dinner Rush (krush node)", () => {
     expect(krushDuration(s)).toBe(12);
     s.n.krush = 3;
     expect(krushDuration(s)).toBe(20);
+  });
+});
+
+describe("closing time (the kitchen shuts at night)", () => {
+  it("pans idle and nobody walks in after dusk", () => {
+    const s = kitchenSim();
+    s.n.sp1 = 1; // the day/night cycle runs once Ducks are unlocked
+    s.clock.t = DAY_LENGTH;
+    s.kitchen.pantry.push(egg(10));
+    s.kitchen.counter.push(dish(), dish(), dish());
+    step(s, 12, constHooks(0.5));
+    expect(s.kitchen.cooking).toHaveLength(0); // no new dishes started
+    expect(s.kitchen.pantry).toHaveLength(1);
+    expect(s.kitchen.customers).toHaveLength(0); // door's locked
+  });
+
+  it("a pan already cooking finishes after dusk", () => {
+    const s = kitchenSim();
+    s.n.sp1 = 1;
+    s.kitchen.pantry.push(egg(10));
+    step(s, 1, constHooks(0.5)); // started in daylight
+    expect(s.kitchen.cooking).toHaveLength(1);
+    s.clock.t = DAY_LENGTH; // dusk falls mid-boil
+    step(s, 3.2 + PLATE_WINDOW, constHooks(0.5));
+    expect(s.kitchen.counter).toHaveLength(1); // the chef saw it through
   });
 });
 

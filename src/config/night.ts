@@ -4,9 +4,13 @@
 // feather bounty scaled to your best bird — or let it reach the hay and it
 // steals the oldest egg. The Night guard node auto-shoos on a cadence.
 
-export const DAY_LENGTH = 150; //  seconds of daylight per cycle
-export const NIGHT_LENGTH = 40; // seconds of night per cycle
-export const NIGHT_FADE = 5; //    dusk/dawn tint fade (render-side)
+// Dan 2026-07-06: night now matches the day — the farm's foxes and the
+// all-night casino are the evening game; the kitchen shuts at dusk. The
+// cycle only begins once Ducks are unlocked, so the tutorial farm never
+// freezes on a newcomer.
+export const DAY_LENGTH = 150; //   seconds of daylight per cycle
+export const NIGHT_LENGTH = 150; // seconds of night per cycle
+export const NIGHT_FADE = 5; //     dusk/dawn tint fade (render-side)
 
 export const FOX_SPAWN_MIN = 4; // seconds between foxes at night …
 export const FOX_SPAWN_VAR = 4; // … plus up to this much

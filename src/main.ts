@@ -4,7 +4,7 @@
 
 import { Application, Graphics, TextureSource, type FederatedPointerEvent } from "pixi.js";
 import { audioInit, SFX } from "./audio/sfx";
-import { musicSetNight, musicSetPaused, musicStart } from "./audio/music";
+import { musicSetNight, musicSetPaused, musicSetScene, musicStart } from "./audio/music";
 import { DAY_LENGTH, NIGHT_FADE } from "./config/night";
 import { SPECIES } from "./config/species";
 import { fmt, fmtMoney } from "./config/format";
@@ -194,6 +194,7 @@ async function boot(): Promise<void> {
     layers.casino.visible = next === "casino";
     for (const l of farmLayers) l.visible = next === "farm";
     hud.setScreen(next);
+    musicSetScene(next); // each room has its own tune
   }
   const tree = createTree({
     overlay: layers.tree,
@@ -253,11 +254,11 @@ async function boot(): Promise<void> {
         eggSprites.acquire(ev.egg);
         break;
       case "egg-bounced":
-        SFX.land();
+        if (screen === "farm") SFX.land();
         break;
       case "egg-spoiled":
         eggSprites.release(ev.egg.id);
-        SFX.spoil();
+        if (screen === "farm") SFX.spoil();
         break;
       case "egg-despawned":
       case "egg-picked-up":
@@ -265,7 +266,7 @@ async function boot(): Promise<void> {
         eggSprites.release(ev.egg.id);
         break;
       case "egg-collected":
-        SFX.pop(ev.egg.golden);
+        if (screen === "farm") SFX.pop(ev.egg.golden);
         popups.spawn(
           ev.egg.sx,
           ev.egg.sy - 14,
@@ -280,12 +281,13 @@ async function boot(): Promise<void> {
         break;
       case "baskets-full":
         basketViews.wiggleAll();
-        if (screen === "farm")
+        if (screen === "farm") {
           popups.spawn(sim.baskets[0].x, sim.layout.basketY - 70, "Baskets full!", 0xff8a8a, 15);
-        SFX.donk();
+          SFX.donk();
+        }
         break;
       case "truck-dispatched":
-        SFX.honk();
+        if (screen === "farm") SFX.honk();
         break;
       case "payout":
         // farm popups stay on the farm — the kitchen screen has its own
@@ -294,8 +296,8 @@ async function boot(): Promise<void> {
           popups.spawn(ev.basket.x, sim.layout.basketY - 44, `+${fmt(ev.feathers)}`, 0x8fe3d0, 17, textures.icons.feather);
           if (ev.routed > 0)
             popups.spawn(ev.basket.x, sim.layout.basketY - 96, `→ ${ev.routed}`, 0xf2cf5d, 15, textures.pan);
+          SFX.kaching();
         }
-        SFX.kaching();
         refreshAll();
         break;
       case "node-bought":
@@ -309,10 +311,10 @@ async function boot(): Promise<void> {
         refreshAll();
         break;
       case "kitchen-truck-dispatched":
-        SFX.honk();
+        if (screen === "kitchen") SFX.honk();
         break;
       case "kitchen-payout": {
-        SFX.kachingUp();
+        if (screen === "kitchen") SFX.kachingUp();
         const stopX = sim.layout.w - 52;
         if (screen === "kitchen") {
           popups.spawn(stopX, sim.layout.roadY - 60, "+" + fmtMoney(ev.money), 0x7ef25d, 22);
@@ -326,8 +328,10 @@ async function boot(): Promise<void> {
         refreshAll();
         break;
       case "dish-cooked": {
-        if (ev.perfect) SFX.perfect();
-        else SFX.ding();
+        if (screen === "kitchen") {
+          if (ev.perfect) SFX.perfect();
+          else SFX.ding();
+        }
         kitchenView.onDishCooked(ev.station, ev.target);
         if (screen === "kitchen") {
           const pos = kitchenView.stationPos(ev.station);
@@ -340,7 +344,7 @@ async function boot(): Promise<void> {
         if (screen === "kitchen") SFX.order();
         break;
       case "customer-served":
-        SFX.kachingUp();
+        if (screen === "kitchen") SFX.kachingUp();
         kitchenView.onServed(ev.customer.x, ev.customer.slot, ev.customer.needs.findIndex((q) => q > 0));
         if (screen === "kitchen") {
           popups.spawn(ev.customer.x, kitchenView.laneY(ev.customer.slot) - 78, "+" + fmtMoney(ev.money), 0x7ef25d, 16);
@@ -349,12 +353,12 @@ async function boot(): Promise<void> {
         refreshAll();
         break;
       case "customer-left":
-        SFX.spoil();
+        if (screen === "kitchen") SFX.spoil();
         if (screen === "kitchen")
           popups.spawn(ev.customer.x, kitchenView.laneY(ev.customer.slot) - 60, "Hmph!", 0xff8a8a, 12);
         break;
       case "krush-started":
-        SFX.rush();
+        if (screen === "kitchen") SFX.rush();
         if (screen === "kitchen")
           popups.spawn(W / 2, sim.layout.h * 0.3, "DINNER RUSH!", 0xff9a3d, 22, textures.icons.flame);
         break;
@@ -368,7 +372,7 @@ async function boot(): Promise<void> {
       case "rush-ended":
         break;
       case "strike":
-        SFX.perfect();
+        if (screen === "farm") SFX.perfect();
         if (screen === "farm")
           popups.spawn(ev.egg.x, ev.egg.y - 26, `STRIKE! ×${ev.count + 1}`, 0xffd24a, 17, textures.icons.star);
         break;
@@ -381,19 +385,19 @@ async function boot(): Promise<void> {
         musicSetNight(false);
         break;
       case "fox-shooed":
-        SFX.foxYip();
+        if (screen === "farm") SFX.foxYip();
         if (ev.byGuard) foxViews.guardLunge(ev.fox.x);
         if (screen === "farm")
           popups.spawn(ev.fox.x, ev.fox.y - 44, `+${fmt(ev.feathers)}`, 0x8fe3d0, 15, textures.icons.feather);
         break;
       case "fox-stole":
-        SFX.gulp();
+        if (screen === "farm") SFX.gulp();
         eggSprites.release(ev.egg.id); // the egg leaves in a fox's mouth
         if (screen === "farm")
           popups.spawn(ev.fox.x, ev.fox.y - 44, "Stolen!", 0xff8a8a, 13);
         break;
       case "fox-stole-bird":
-        SFX.squawk();
+        if (screen === "farm") SFX.squawk();
         if (screen === "farm")
           popups.spawn(ev.fox.x, ev.fox.y - 48, `${SPECIES[ev.species].name} taken!`, 0xff8a8a, 16);
         refreshAll(); // flock and bird prices both just changed
@@ -407,9 +411,11 @@ async function boot(): Promise<void> {
       case "roulette-spun":
         break; // the ratchet ticks carry the drama
       case "roulette-stopped": {
-        if (ev.mult >= 8) SFX.rush();
-        else if (ev.mult >= 1) SFX.kaching();
-        else SFX.donk();
+        if (screen === "casino") {
+          if (ev.mult >= 8) SFX.rush();
+          else if (ev.mult >= 1) SFX.kaching();
+          else SFX.donk();
+        }
         if (screen === "casino") {
           const pos = casinoView.wheelPos();
           if (ev.mult > 0)
@@ -432,9 +438,11 @@ async function boot(): Promise<void> {
         }
         break;
       case "slots-stopped": {
-        if (ev.mult >= 30) SFX.rush();
-        else if (ev.run >= 2) SFX.kaching();
-        else SFX.donk();
+        if (screen === "casino") {
+          if (ev.mult >= 30) SFX.rush();
+          else if (ev.run >= 2) SFX.kaching();
+          else SFX.donk();
+        }
         if (screen === "casino") {
           const p = casinoView.slotPos();
           if (ev.run >= 2)
@@ -536,7 +544,7 @@ async function boot(): Promise<void> {
     // ambient clucking, denser with more birds
     cluckT -= dt;
     if (cluckT <= 0) {
-      SFX.cluck();
+      if (screen === "farm") SFX.cluck();
       cluckT = (totalBirds(sim) > 12 ? 1.0 : 2.0) + Math.random() * 2.5;
     }
 

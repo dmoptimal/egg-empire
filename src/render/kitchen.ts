@@ -379,7 +379,16 @@ export function createKitchenView(
   krushBanner.anchor.set(0.5);
   krushBanner.visible = false;
   quiet(krushBanner);
-  root.addChild(krushOverlay, krushBanner);
+  // Night: the kitchen shuts (Dan: the casino is the night spot).
+  const closedBanner = new BitmapText({
+    text: "CLOSED FOR THE NIGHT",
+    style: { fontFamily: HOT_FONT, fontSize: 12 },
+  });
+  closedBanner.tint = 0xbfd4e8;
+  closedBanner.anchor.set(0.5);
+  closedBanner.visible = false;
+  quiet(closedBanner);
+  root.addChild(krushOverlay, krushBanner, closedBanner);
 
   let railY = 290;
   let laneFront = 560;
@@ -446,6 +455,7 @@ export function createKitchenView(
       krushOverlay.rect(0, 0, W, H).fill(0xff9a3d);
       krushOverlay.alpha = 0;
       krushBanner.position.set(W / 2, 136);
+      closedBanner.position.set(W / 2, 136);
       for (let i = 0; i < tables.length; i++)
         tables[i].position.set(customerSlotX(sim, i), rowY(i) + 16);
       waiters.forEach((wv, i) => {
@@ -640,6 +650,7 @@ export function createKitchenView(
         krushOverlay.alpha = 0;
         krushBanner.visible = false;
       }
+      closedBanner.visible = sim.clock.night && k.krush.active <= 0;
       truck.x = k.truck.truckX;
     },
     stationPos(station: number): { x: number; y: number } {

@@ -193,7 +193,8 @@ export function createCasinoView(
         label = new BitmapText({ text: "", style: { fontFamily: HOT_FONT, fontSize: 10 } });
         label.anchor.set(0.5);
         label.position.set(Math.cos(mid) * (WHEEL_R - 26), Math.sin(mid) * (WHEEL_R - 26));
-        label.rotation = mid + Math.PI / 2;
+        // flip lower-half labels so nothing reads upside down
+        label.rotation = mid + Math.PI / 2 + (Math.sin(mid) > 0 ? Math.PI : 0);
         wheelRot.addChild(label);
         wheelLabels.set(i, label);
       }

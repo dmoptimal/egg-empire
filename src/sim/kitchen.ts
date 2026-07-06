@@ -364,7 +364,8 @@ function updateCustomers(state: SimState, dt: number, rng: () => number): void {
       emit(state, { type: "krush-ended" });
     }
   }
-  if (lvl(state, "krush") >= 1) {
+  const open = !state.clock.night; // closed for the night: nobody new walks in
+  if (open && lvl(state, "krush") >= 1) {
     if (k.krush.next <= 0) k.krush.next = KRUSH_INTERVAL_MIN + rng() * KRUSH_INTERVAL_VAR;
     k.krush.next -= dt;
     if (k.krush.next <= 0)
@@ -376,12 +377,15 @@ function updateCustomers(state: SimState, dt: number, rng: () => number): void {
   // Regular walk-ins, ×KRUSH_CUSTOMER_RATE while a rush runs. The spawn gate
   // (a free slot + at least one unclaimed dish) throttles the flow to actual
   // production, so the 5-10s cadence is a ceiling, not a promise.
-  if (k.nextCustomerIn <= 0) k.nextCustomerIn = CUSTOMER_INTERVAL_MIN + rng() * CUSTOMER_INTERVAL_VAR;
-  k.nextCustomerIn -= dt * (k.krush.active > 0 ? KRUSH_CUSTOMER_RATE : 1);
-  if (k.nextCustomerIn <= 0)
-    k.nextCustomerIn = spawnCustomer(state, rng, false)
-      ? CUSTOMER_INTERVAL_MIN + rng() * CUSTOMER_INTERVAL_VAR
-      : 0.75; // nothing to sell yet — peek in again shortly
+  if (open) {
+    if (k.nextCustomerIn <= 0)
+      k.nextCustomerIn = CUSTOMER_INTERVAL_MIN + rng() * CUSTOMER_INTERVAL_VAR;
+    k.nextCustomerIn -= dt * (k.krush.active > 0 ? KRUSH_CUSTOMER_RATE : 1);
+    if (k.nextCustomerIn <= 0)
+      k.nextCustomerIn = spawnCustomer(state, rng, false)
+        ? CUSTOMER_INTERVAL_MIN + rng() * CUSTOMER_INTERVAL_VAR
+        : 0.75; // nothing to sell yet — peek in again shortly
+  }
 
   // Walk in → wait (patience) → walk out; gone once off-screen left.
   for (let i = k.customers.length - 1; i >= 0; i--) {
@@ -411,7 +415,9 @@ function updateCustomers(state: SimState, dt: number, rng: () => number): void {
 export function updateKitchen(state: SimState, dt: number, rng: () => number = Math.random): void {
   if (!kitchenUnlocked(state)) return;
   const k = state.kitchen;
-  startCooks(state);
+  // The kitchen shuts at dusk: pans mid-cook finish, but no new dishes
+  // start and nobody new walks in until dawn (the casino runs all night).
+  if (!state.clock.night) startCooks(state);
   const cookRate = k.krush.active > 0 ? KRUSH_COOK_RATE : 1;
   for (let i = k.cooking.length - 1; i >= 0; i--) {
     const job = k.cooking[i];

@@ -19,6 +19,7 @@ function quiet() {
 
 /** Flip the sim into night and swallow the transition events. */
 function atNight(s: SimState): void {
+  s.n.sp1 = 1; // the cycle only runs once Ducks are unlocked
   s.clock.t = DAY_LENGTH;
   step(s, 0.05, constHooks(0.5));
   drainEvents(s);
@@ -33,6 +34,7 @@ function forgeFox(s: SimState, y: number, x = 200): Fox {
 describe("the clock", () => {
   it("sun sets after DAY_LENGTH and rises NIGHT_LENGTH later", () => {
     const s = quiet();
+    s.n.sp1 = 1;
     s.clock.t = DAY_LENGTH - 1;
     step(s, 2, constHooks(0.5));
     expect(s.clock.night).toBe(true);
@@ -45,6 +47,7 @@ describe("the clock", () => {
 
   it("roosting birds lay nothing; dawn resumes laying", () => {
     const s = createSim(); // 2 chickens
+    s.n.sp1 = 1;
     s.clock.t = DAY_LENGTH - 0.05;
     step(s, 0.1, constHooks(0.5));
     drainEvents(s);
@@ -57,6 +60,7 @@ describe("the clock", () => {
 
   it("first nightfall introduces the foxes (milestone)", () => {
     const s = quiet();
+    s.n.sp1 = 1;
     s.clock.t = DAY_LENGTH;
     step(s, 0.1, constHooks(0.5));
     expect(drainEvents(s).some((e) => e.type === "milestone" && e.id === "night_intro")).toBe(true);
@@ -107,6 +111,7 @@ describe("foxes", () => {
 
   it("dawn scatters every climber, and they despawn off-screen", () => {
     const s = quiet();
+    s.n.sp1 = 1;
     s.clock.t = CYCLE_LENGTH - 0.1;
     const fox = forgeFox(s, 400);
     step(s, 0.2, constHooks(0.5));
@@ -199,5 +204,14 @@ describe("the Night guard (a patrol line, not a farm-wide sweep)", () => {
     step(s, 2, constHooks(0.5));
     expect(fox.state).toBe("climb");
     expect(s.feathers).toBe(0);
+  });
+});
+
+describe("the tutorial farm", () => {
+  it("stays daylit until Ducks are unlocked", () => {
+    const s = quiet(); // sp0 only
+    step(s, DAY_LENGTH + 30, constHooks(0.5));
+    expect(s.clock.night).toBe(false);
+    expect(s.foxes).toHaveLength(0);
   });
 });
