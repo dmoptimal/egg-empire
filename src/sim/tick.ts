@@ -6,6 +6,7 @@
 
 import { LAY_ACC_MAX, LAY_BURST_MAX } from "../config/constants";
 import { RUSH_INTERVAL_MIN, RUSH_INTERVAL_VAR, RUSH_LAY_MULT } from "../config/economy";
+import { REST_LAY_MULT } from "../config/night";
 import { QUAIL_CLUSTER_PCT, QUAIL_CLUSTER_SIZE, SPECIES } from "../config/species";
 import { updateTruck } from "./baskets";
 import { sweepCollect } from "./collect";
@@ -16,7 +17,7 @@ import { emit } from "./events";
 import { updateKitchen } from "./kitchen";
 import { updateMilestones } from "./milestones";
 import { updateCasino } from "./casino";
-import { updateClock, updateFoxes } from "./night";
+import { updateClock, updateFoxes, updateNightLife } from "./night";
 import { DEFAULT_HOOKS } from "./state";
 import type { SimHooks, SimState } from "./types";
 
@@ -55,7 +56,9 @@ export function tick(
       state.rush.next = RUSH_INTERVAL_MIN + hooks.rng() * RUSH_INTERVAL_VAR;
     }
   }
-  const layMult = state.rush.active > 0 ? RUSH_LAY_MULT : 1;
+  // Rested flock (all goodnight taps spent): the whole day lays brisker.
+  const layMult =
+    (state.rush.active > 0 ? RUSH_LAY_MULT : 1) * (state.restedDay ? REST_LAY_MULT : 1);
 
   // Fixed-accumulator laying: fractional eggs-owed build up per species and
   // are laid in bursts of at most LAY_BURST_MAX per frame. Roosting birds
@@ -84,6 +87,7 @@ export function tick(
   for (const c of state.collectors) updateCollector(state, c, dt);
   for (const b of state.baskets) updateTruck(state, b, dt);
   updateFoxes(state, dt, hooks.rng);
+  updateNightLife(state, dt, hooks.rng);
   updateKitchen(state, dt, hooks.rng); // both sims always run (no-op until unlocked)
   updateCasino(state, dt, hooks.rng);
   updateMilestones(state, dt);

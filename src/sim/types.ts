@@ -123,6 +123,23 @@ export interface Fox {
   bird?: number;
 }
 
+/** A moon egg mid-fall — catch it before it breaks on the hay. */
+export interface MoonEgg {
+  id: number;
+  x: number;
+  y: number;
+}
+
+/** A firefly adrift over the night field — swept for feathers. */
+export interface Firefly {
+  id: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+}
+
 export interface Layout {
   w: number;
   h: number;
@@ -251,6 +268,11 @@ export type SimEvent =
   | { type: "fox-dropped-bird"; fox: Fox; species: number }
   | { type: "fox-routed"; fox: Fox; feathers: number }
   | { type: "guard-lunge"; x: number; count: number }
+  | { type: "moon-egg-caught"; x: number; y: number; money: number }
+  | { type: "moon-egg-broke"; x: number; y: number }
+  | { type: "firefly-caught"; x: number; y: number; feathers: number; chain: number }
+  | { type: "bird-petted"; x: number; y: number; feathers: number; left: number }
+  | { type: "flock-rested" }
   | { type: "fox-stole"; fox: Fox; egg: Egg }
   /** The flock is one bird short — counts (and so bird prices) already updated. */
   | { type: "fox-stole-bird"; fox: Fox; species: number }
@@ -323,6 +345,15 @@ export interface SimState {
   foxSeq: number;
   /** Night-guard auto-shoo cooldown. */
   guardT: number;
+  /** Moon eggs mid-fall and fireflies adrift (night only; transient). */
+  moonEggs: MoonEgg[];
+  nextMoonIn: number;
+  fireflies: Firefly[];
+  nextFlyIn: number;
+  nightSeq: number;
+  /** Goodnight taps left tonight; all spent → tomorrow lays brisker. */
+  petsLeft: number;
+  restedDay: boolean;
   /** Birds lost tonight (capped at FOX_BIRD_CAP; resets at nightfall). */
   nightBirdThefts: number;
   /** The Bird Casino — pachinko balls, the auto-drop timer, and the wheel. */

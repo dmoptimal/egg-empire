@@ -75,6 +75,8 @@ export async function showGallery(): Promise<void> {
     ...SPECIES.map((sp, i) => ({ slug: `bird-${sp.name.toLowerCase()}`, label: sp.name, tex: t.bird[i], note: `waddles in the field; view scale ×${t.birdScale[i]}` })),
     ...SPECIES.map((sp, i) => ({ slug: `egg-${sp.name.toLowerCase()}`, label: `${sp.name} egg`, tex: t.egg[i], note: `game scale ×${sp.eggScale}` })),
     { slug: "egg-golden", label: "Golden egg", tex: t.gold, note: "any species, 2%+ chance" },
+    { slug: "egg-moon", label: "Moon egg", tex: t.moon, note: "falls from the roost at night; catch it mid-fall" },
+    { slug: "firefly", label: "Firefly", tex: t.firefly, note: "night mote — swipe through for feathers" },
     { slug: "basket", label: "Basket", tex: t.basket, note: "scale ×3.2; fill overlay drawn inside" },
     { slug: "truck", label: "Truck", tex: t.truck, note: "farm + kitchen trucks, scale ×3" },
     { slug: "farmer", label: "Farmer (collector)", tex: t.coll, note: "scale ×3, flips when walking left" },

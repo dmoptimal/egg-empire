@@ -11,6 +11,12 @@
 
 import {
   DAY_LENGTH,
+  FIREFLY_CAP,
+  FIREFLY_DRIFT,
+  FIREFLY_LIFE,
+  FIREFLY_MIN,
+  FIREFLY_TAP_R,
+  FIREFLY_VAR,
   FOX_BIRD_CAP,
   FOX_BIRD_DEPTH,
   FOX_BOUNTY_MULT,
@@ -27,7 +33,15 @@ import {
   GUARD_TAP_R,
   KIT_PACK,
   KIT_SPREAD,
+  MOON_EGG_MIN,
+  MOON_EGG_TAP_R,
+  MOON_EGG_VAR,
+  MOON_FALL_SPEED,
+  MOON_SPAWN_Y,
+  MOON_WORTH_SECONDS,
   NIGHT_LENGTH,
+  PET_BAND_Y,
+  PET_CAP,
   ROGUE_NIGHTS,
   ROUT_BOUNTY_PCT,
   SNEAK_DASH,
@@ -37,7 +51,7 @@ import {
 } from "../config/night";
 import { SPECIES } from "../config/species";
 import { segDist2 } from "./collect";
-import { featherPerEgg, lvl, unlocked } from "./economy";
+import { featherPerEgg, layIntv, lvl, totalBirds, unlocked, worthMult } from "./economy";
 import { releaseEgg, rescueEgg } from "./eggs";
 import { emit } from "./events";
 import { fireMilestone } from "./milestones";
@@ -59,8 +73,17 @@ export function updateClock(state: SimState, dt: number): void {
     emit(state, { type: night ? "nightfall" : "daybreak" });
     if (night) {
       state.nightBirdThefts = 0;
+      // Goodnight taps: tonight's pats, one per bird up to the cap. Rested
+      // ends at dusk — the buff is for the day you earned.
+      state.petsLeft = Math.min(totalBirds(state), PET_CAP);
+      state.restedDay = false;
     } else {
       bump(state, "nights");
+      // Tucked the whole flock in? The day ahead lays brisker (tick.ts).
+      if (state.petsLeft === 0 && totalBirds(state) > 0) {
+        state.restedDay = true;
+        emit(state, { type: "flock-rested" });
+      }
       // Dawn rout: every fox still prowling scatters, worth a token bounty.
       for (const f of state.foxes) {
         if (f.state === "climb") {
@@ -207,6 +230,114 @@ export function lungeGuard(state: SimState, x: number, y: number): boolean {
   if (count === 0) return false;
   state.guardT = GUARD_INTERVAL[Math.min(g, GUARD_INTERVAL.length - 1)];
   emit(state, { type: "guard-lunge", x: gx, count });
+  return true;
+}
+
+/**
+ * What a caught moon egg pays: a slice of the WHOLE flock's daytime lay
+ * income, so the night verb scales with progression by itself.
+ */
+export function moonEggValue(state: SimState): number {
+  let perSec = 0;
+  for (let i = 0; i < SPECIES.length; i++) {
+    if (!unlocked(state, i) || state.counts[i] === 0) continue;
+    perSec += (state.counts[i] / layIntv(state, i)) * Math.round(SPECIES[i].eggValue * worthMult(state, i));
+  }
+  return Math.max(SPECIES[0].eggValue * 20, Math.round(perSec * MOON_WORTH_SECONDS));
+}
+
+/** Moon eggs fall out of the roost; fireflies drift the dark field. */
+export function updateNightLife(state: SimState, dt: number, rng: () => number): void {
+  const { w, hayTop } = state.layout;
+  if (state.clock.night && totalBirds(state) > 0) {
+    if (state.nextMoonIn <= 0) state.nextMoonIn = MOON_EGG_MIN + rng() * MOON_EGG_VAR;
+    state.nextMoonIn -= dt;
+    if (state.nextMoonIn <= 0) {
+      state.nextMoonIn = MOON_EGG_MIN + rng() * MOON_EGG_VAR;
+      state.moonEggs.push({ id: state.nightSeq++, x: 30 + rng() * Math.max(w - 60, 60), y: MOON_SPAWN_Y });
+    }
+  }
+  for (let i = state.moonEggs.length - 1; i >= 0; i--) {
+    const m = state.moonEggs[i];
+    m.y += MOON_FALL_SPEED * dt;
+    if (m.y >= hayTop) {
+      state.moonEggs.splice(i, 1);
+      emit(state, { type: "moon-egg-broke", x: m.x, y: m.y });
+    }
+  }
+  if (state.clock.night && state.fireflies.length < FIREFLY_CAP) {
+    if (state.nextFlyIn <= 0) state.nextFlyIn = FIREFLY_MIN + rng() * FIREFLY_VAR;
+    state.nextFlyIn -= dt;
+    if (state.nextFlyIn <= 0) {
+      state.nextFlyIn = FIREFLY_MIN + rng() * FIREFLY_VAR;
+      const a = rng() * Math.PI * 2;
+      state.fireflies.push({
+        id: state.nightSeq++,
+        x: 30 + rng() * Math.max(w - 60, 60),
+        y: 110 + rng() * Math.max(hayTop - 150, 40),
+        vx: Math.cos(a) * FIREFLY_DRIFT,
+        vy: Math.sin(a) * FIREFLY_DRIFT,
+        life: FIREFLY_LIFE,
+      });
+    }
+  }
+  for (let i = state.fireflies.length - 1; i >= 0; i--) {
+    const f = state.fireflies[i];
+    f.life -= state.clock.night ? dt : dt * 4; // daylight snuffs them fast
+    f.x += f.vx * dt;
+    f.y += f.vy * dt;
+    if (f.x < 20 || f.x > w - 20) f.vx *= -1;
+    if (f.y < 96 || f.y > hayTop - 10) f.vy *= -1;
+    if (f.life <= 0) state.fireflies.splice(i, 1);
+  }
+}
+
+/** Sweep pass for the night toys — moon eggs banked, fireflies chained. */
+export function sweepNight(
+  state: SimState,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+): void {
+  const mr2 = MOON_EGG_TAP_R * MOON_EGG_TAP_R;
+  for (let i = state.moonEggs.length - 1; i >= 0; i--) {
+    const m = state.moonEggs[i];
+    if (segDist2(m.x, m.y, x1, y1, x2, y2) > mr2) continue;
+    state.moonEggs.splice(i, 1);
+    const money = moonEggValue(state);
+    state.money += money;
+    bump(state, "moonEggs");
+    fireMilestone(state, "moon_intro");
+    emit(state, { type: "moon-egg-caught", x: m.x, y: m.y, money });
+  }
+  const fr2 = FIREFLY_TAP_R * FIREFLY_TAP_R;
+  let chain = 0;
+  for (let i = state.fireflies.length - 1; i >= 0; i--) {
+    const f = state.fireflies[i];
+    if (segDist2(f.x, f.y, x1, y1, x2, y2) > fr2) continue;
+    state.fireflies.splice(i, 1);
+    chain++; // each extra catch in one sweep pays a step more
+    const feathers = Math.max(1, Math.round(featherPerEgg(state, bestSpecies(state)) * chain));
+    state.feathers += feathers;
+    bump(state, "fireflies");
+    emit(state, { type: "firefly-caught", x: f.x, y: f.y, feathers, chain });
+  }
+}
+
+/**
+ * Goodnight taps (Dan's pick): a tap up in the roost band pats a bird for a
+ * few feathers — limited pats a night, and spending them ALL earns a
+ * brisker-laying day (see updateClock's dawn branch).
+ */
+export function petBird(state: SimState, x: number, y: number): boolean {
+  if (!state.clock.night || y > PET_BAND_Y || state.petsLeft <= 0 || totalBirds(state) === 0)
+    return false;
+  state.petsLeft--;
+  const feathers = Math.max(1, Math.round(featherPerEgg(state, bestSpecies(state)) * 2));
+  state.feathers += feathers;
+  bump(state, "pets");
+  emit(state, { type: "bird-petted", x, y, feathers, left: state.petsLeft });
   return true;
 }
 

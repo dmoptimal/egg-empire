@@ -6,7 +6,7 @@ import { FULL_WARN_COOLDOWN } from "../config/constants";
 import { COMBO_WINDOW, GOLD2_BONUS_FEATHERS, RUSH_COMBO_MULT } from "../config/economy";
 import { GOOSE_SHINE_MULT, GOOSE_SHINE_TIME, OSTRICH_SMASH_R } from "../config/species";
 import { basketWithSpace } from "./baskets";
-import { shooFoxesAlong } from "./night";
+import { shooFoxesAlong, sweepNight } from "./night";
 import { bump } from "./stats";
 import { comboValueMult, lvl, rushDuration, sweepRadius } from "./economy";
 import { collectEgg, releaseEgg } from "./eggs";
@@ -91,6 +91,7 @@ export function sweepCollect(
 ): void {
   // Foxes first: shooing must work even when every basket is full.
   shooFoxesAlong(state, x1, y1, x2, y2);
+  sweepNight(state, x1, y1, x2, y2); // moon eggs + fireflies ride the same sweep
   const r = sweepRadius(state);
   const r2 = r * r;
   for (let k = state.ground.length - 1; k >= 0; k--) {

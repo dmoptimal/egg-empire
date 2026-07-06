@@ -51,6 +51,32 @@ export const ROGUE_NIGHTS = 2; //  plain foxes only until this many nights survi
 export const GUARD_TAP_R = 46; //   tap this close to a watchman …
 export const GUARD_LUNGE_R = 95; // … and he clears foxes within this
 
+// --- Night life (Dan's picks 2026-07-06): the farm's night verbs ------------
+// Moon eggs: the roost shuffles one loose every so often — catch it mid-fall
+// for a payout worth a slice of the whole flock's daytime laying; miss and
+// it breaks on the hay.
+export const MOON_EGG_MIN = 9; //     seconds between drops …
+export const MOON_EGG_VAR = 6; //     … plus up to this much
+export const MOON_FALL_SPEED = 60; // px/s — roughly a 4½s catch window
+export const MOON_EGG_TAP_R = 46;
+export const MOON_WORTH_SECONDS = 5; // value = this much full-flock lay income
+export const MOON_SPAWN_Y = 70; //    drops out of the roost row
+
+// Fireflies: ambient feather sprinkles. Swipe through them — each extra
+// catch in one sweep pays a step more (chains).
+export const FIREFLY_MIN = 2.5; //   spawn gap …
+export const FIREFLY_VAR = 3.5;
+export const FIREFLY_CAP = 9; //     at most this many aglow (render pool fits)
+export const FIREFLY_LIFE = 13; //   seconds before one winks out
+export const FIREFLY_DRIFT = 16; //  px/s wander
+export const FIREFLY_TAP_R = 40;
+
+// Goodnight taps: pet the roost (limited pats per night); tuck the whole
+// flock in and tomorrow's laying wakes up a touch brisker.
+export const PET_CAP = 8; //      pats per night (or the flock size, if smaller)
+export const PET_BAND_Y = 100; // taps above this line are pets
+export const REST_LAY_MULT = 1.05;
+
 /**
  * Guards hold a visible patrol line just below the roost (Dan 2026-07-05:
  * "the foxes need to have a chance") — a fox is only shooed when it CROSSES

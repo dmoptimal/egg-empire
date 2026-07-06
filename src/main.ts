@@ -23,6 +23,7 @@ import {
   serialize,
   serveCustomer,
   lungeGuard,
+  petBird,
   spinRoulette,
   spinSlots,
   sweepCollect,
@@ -38,6 +39,7 @@ import { clearSave, loadSave, writeSave } from "./storage";
 import { drawBackground } from "./render/background";
 import { createCasinoView } from "./render/casino";
 import { createFoxViews } from "./render/foxes";
+import { createNightLife } from "./render/nightlife";
 import { createKitchenView } from "./render/kitchen";
 import { createBasketViews } from "./render/baskets";
 import { createBirds } from "./render/birds";
@@ -123,6 +125,7 @@ async function boot(): Promise<void> {
   const rushOverlay = new Graphics();
   const nightOverlay = new Graphics();
   layers.fx.addChild(rushOverlay, nightOverlay);
+  const nightLife = createNightLife(layers.fx, textures); // glows above the wash
   const popups = createPopups(layers.fx);
   const startScreen = createStartScreen(layers.start, textures);
   const winScreen = createWinScreen(layers.win, textures);
@@ -436,6 +439,45 @@ async function boot(): Promise<void> {
         if (screen === "farm") SFX.foxYip();
         foxViews.guardLunge(ev.x);
         break;
+      case "moon-egg-caught":
+        if (screen === "farm") {
+          SFX.kaching();
+          popups.spawn(ev.x, ev.y, `+${fmtMoney(ev.money)}`, 0xbfe3ff, 16);
+        }
+        refreshAll();
+        break;
+      case "moon-egg-broke":
+        if (screen === "farm") {
+          SFX.donk();
+          popups.spawn(ev.x, ev.y - 8, "splat", 0x9fb0cc, 12);
+        }
+        break;
+      case "firefly-caught":
+        if (screen === "farm") {
+          SFX.tick();
+          popups.spawn(
+            ev.x,
+            ev.y - 10,
+            ev.chain > 1 ? `+${fmt(ev.feathers)} ×${ev.chain}` : `+${fmt(ev.feathers)}`,
+            0xffe98a,
+            12,
+            textures.icons.feather,
+          );
+        }
+        refreshAll();
+        break;
+      case "bird-petted":
+        if (screen === "farm") {
+          SFX.cluck();
+          birds.pet(ev.x);
+          if (ev.left === 0) popups.spawn(ev.x, ev.y + 14, "All tucked in!", 0xffd1e8, 15);
+          else popups.spawn(ev.x, ev.y + 14, `+${fmt(ev.feathers)}`, 0xffd1e8, 12, textures.icons.feather);
+        }
+        refreshAll();
+        break;
+      case "flock-rested":
+        hud.toast("Well-rested flock — laying is brisker all day!");
+        break;
       case "casino-drop":
         if (screen === "casino" && casinoView.cabinet() === "pachinko") SFX.pop(ev.ball.golden);
         break;
@@ -533,6 +575,7 @@ async function boot(): Promise<void> {
     if (screen !== "farm") return; // kitchen taps are buttons only
     const { x, y } = ev.global;
     pointers.set(ev.pointerId, { x, y });
+    petBird(sim, x, y); // a tap up in the roost band is a goodnight pat
     lungeGuard(sim, x, y); // tap a charged watchman and he clears his patch
     sweepCollect(sim, x, y, x, y);
   });
@@ -610,6 +653,7 @@ async function boot(): Promise<void> {
     basketViews.update(sim, dt);
     collectorViews.update(sim);
     foxViews.update(sim, now);
+    nightLife.update(sim, now);
     birds.update(now, dt, clock.night);
     popups.update(dt);
 

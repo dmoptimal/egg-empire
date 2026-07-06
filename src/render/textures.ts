@@ -11,6 +11,9 @@ export interface Textures {
   birdScale: number[];
   egg: Texture[];
   gold: Texture;
+  /** Night-life toys: the falling moon egg and the firefly mote. */
+  moon: Texture;
+  firefly: Texture;
   basket: Texture;
   truck: Texture;
   coll: Texture;
@@ -90,6 +93,8 @@ export function makeTextures(renderer: Renderer): Textures {
     birdScale: [3, 3, 3, 3, 3.4],
     egg: [eggTex(0xfff3da), eggTex(0xdff0e0), eggTex(0xe6d4ac, true), eggTex(0xf7f5ee), eggTex(0xf0e6cf)],
     gold: eggTex(0xffd24a),
+    moon: eggTex(0xe8f2ff),
+    firefly: tex([[1, 0, 1, 3, 0xffe98a], [0, 1, 3, 1, 0xffe98a], [1, 1, 1, 1, 0xfffbe0]]),
     basket: tex([[0, 2, 18, 10, 0x8a5a2b], [1, 3, 16, 8, 0xa06c36], [0, 2, 18, 2, 0x6e4520], [4, 4, 1, 7, 0x8a5a2b], [9, 4, 1, 7, 0x8a5a2b], [14, 4, 1, 7, 0x8a5a2b]]),
     truck: tex([[0, 4, 16, 8, 0x3a7bd5], [1, 5, 14, 6, 0x4a8be5], [16, 5, 8, 7, 0x2c5fa8], [18, 6, 4, 3, 0xbfe3ff], [3, 12, 4, 4, 0x1a1a1a], [4, 13, 2, 2, 0x666666], [18, 12, 4, 4, 0x1a1a1a], [19, 13, 2, 2, 0x666666]]),
     coll: tex([[3, 0, 4, 2, 0xe8c531], [2, 1, 6, 1, 0xe8c531], [3, 2, 4, 3, 0xe8b48a], [4, 3, 1, 1, 0x111111], [2, 5, 6, 5, 0x3a6bb5], [1, 5, 2, 4, 0xe8b48a], [7, 5, 2, 4, 0xe8b48a], [3, 10, 1, 3, 0x2b3a5a], [6, 10, 1, 3, 0x2b3a5a]]),

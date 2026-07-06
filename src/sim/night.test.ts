@@ -4,6 +4,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DAY_LENGTH,
+  FIREFLY_CAP,
   FOX_BIRD_CAP,
   FOX_BIRD_DEPTH,
   FOX_KINDS,
@@ -15,10 +16,10 @@ import {
 import { sweepCollect } from "./collect";
 import { birdCost } from "./economy";
 import { drainEvents } from "./events";
-import { CYCLE_LENGTH, foxBounty, guardLineY, guardX, lungeGuard } from "./night";
+import { CYCLE_LENGTH, foxBounty, guardLineY, guardX, lungeGuard, moonEggValue, petBird } from "./night";
 import { createSim } from "./state";
 import { constHooks, forgeGroundEgg, step } from "./test-helpers";
-import type { Fox, FoxKind, SimState } from "./types";
+import type { Fox, FoxKind, SimEvent, SimState } from "./types";
 
 function quiet() {
   const s = createSim();
@@ -358,6 +359,104 @@ describe("the rogues' gallery", () => {
     step(s, 0.05, constHooks(0.99)); // a roll that would be a bruiser
     expect(s.foxes).toHaveLength(1);
     expect(s.foxes[0].kind).toBe("fox");
+  });
+});
+
+describe("moon eggs", () => {
+  it("drop from the roost on a night cadence and break on the hay", () => {
+    const s = createSim(); // needs a flock to shuffle one loose
+    s.n.sp1 = 1;
+    s.clock.t = DAY_LENGTH;
+    step(s, 0.05, constHooks(0.5));
+    drainEvents(s);
+    step(s, 11.5, constHooks(0.5)); // gap: 9 + 0.5×6 = 12s
+    expect(s.moonEggs).toHaveLength(0);
+    step(s, 1, constHooks(0.5));
+    expect(s.moonEggs).toHaveLength(1);
+    step(s, 6, constHooks(0.5)); // 275px of fall at 60px/s
+    expect(s.moonEggs.some((m) => m.y >= s.layout.hayTop)).toBe(false);
+    expect(drainEvents(s).some((e) => e.type === "moon-egg-broke")).toBe(true);
+  });
+
+  it("a sweep banks one for a slice of the flock's day rate", () => {
+    const s = createSim();
+    s.counts = [10, 0, 0, 0, 0];
+    atNight(s);
+    s.moonEggs.push({ id: 1, x: 150, y: 200 });
+    const value = moonEggValue(s);
+    sweepCollect(s, 150, 200, 150, 200);
+    expect(s.moonEggs).toHaveLength(0);
+    expect(s.money).toBe(value);
+    expect(s.stats.moonEggs).toBe(1);
+    const evs = drainEvents(s);
+    expect(evs.some((e) => e.type === "moon-egg-caught" && e.money === value)).toBe(true);
+    expect(evs.some((e) => e.type === "milestone" && e.id === "moon_intro")).toBe(true);
+  });
+
+  it("value scales with the flock", () => {
+    const small = createSim();
+    small.counts = [2, 0, 0, 0, 0];
+    const big = createSim();
+    big.counts = [50, 0, 0, 0, 0];
+    expect(moonEggValue(big)).toBeGreaterThan(moonEggValue(small));
+  });
+});
+
+describe("fireflies", () => {
+  it("drift at night, capped, and wink out after daybreak", () => {
+    const s = quiet();
+    atNight(s);
+    step(s, 60, constHooks(0.5));
+    expect(s.fireflies.length).toBeGreaterThan(0);
+    expect(s.fireflies.length).toBeLessThanOrEqual(FIREFLY_CAP);
+    s.clock.t = 0; // force daylight
+    s.clock.night = false;
+    step(s, 5, constHooks(0.5)); // daylight burns lifetimes 4× faster
+    expect(s.fireflies.length).toBeLessThanOrEqual(1);
+  });
+
+  it("one sweep chains them — each extra catch pays a step more", () => {
+    const s = quiet();
+    s.counts = [1, 0, 0, 0, 0];
+    atNight(s);
+    for (let i = 0; i < 3; i++)
+      s.fireflies.push({ id: 100 + i, x: 200 + i * 8, y: 200, vx: 0, vy: 0, life: 9 });
+    sweepCollect(s, 208, 200, 208, 200);
+    expect(s.fireflies).toHaveLength(0);
+    expect(s.feathers).toBe(1 + 2 + 3); // featherPerEgg(chicken)=1, chain steps
+    const chains = drainEvents(s)
+      .filter((e): e is Extract<SimEvent, { type: "firefly-caught" }> => e.type === "firefly-caught")
+      .map((e) => e.chain);
+    expect(Math.max(...chains)).toBe(3);
+    expect(s.stats.fireflies).toBe(3);
+  });
+});
+
+describe("goodnight taps", () => {
+  it("nightfall stocks the pats; spending them all earns a rested day", () => {
+    const s = createSim();
+    s.counts = [5, 0, 0, 0, 0];
+    atNight(s);
+    expect(s.petsLeft).toBe(5); // min(5 birds, cap 8)
+    for (let i = 0; i < 5; i++) expect(petBird(s, 100 + i, 70)).toBe(true);
+    expect(petBird(s, 100, 70)).toBe(false); // pats are spent
+    expect(s.feathers).toBe(10); // 2 feathers a pat at chicken rates
+    expect(s.stats.pets).toBe(5);
+    drainEvents(s);
+    step(s, NIGHT_LENGTH, constHooks(0.5)); // through dawn
+    expect(s.restedDay).toBe(true);
+    expect(drainEvents(s).some((e) => e.type === "flock-rested")).toBe(true);
+    step(s, DAY_LENGTH + 0.5, constHooks(0.5)); // through the day to next dusk
+    expect(s.clock.night).toBe(true);
+    expect(s.restedDay).toBe(false); // the buff was for the day it earned
+  });
+
+  it("no pats by day, none below the roost band, none past the stock", () => {
+    const s = createSim();
+    expect(petBird(s, 100, 70)).toBe(false); // daylight
+    atNight(s);
+    expect(petBird(s, 100, 300)).toBe(false); // too low — that's a sweep
+    expect(s.petsLeft).toBe(2); // two starter chickens
   });
 });
 

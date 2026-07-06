@@ -12,6 +12,7 @@ export const MILESTONE_ORDER = [
   "ostrich_intro",
   "night_intro",
   "fox_bird_intro",
+  "moon_intro",
 ];
 
 /** Short names for the achievements list. */
@@ -26,6 +27,7 @@ export const MILESTONE_TITLE: Record<string, string> = {
   ostrich_intro: "Meet the ostriches",
   night_intro: "First nightfall",
   fox_bird_intro: "The fox got one",
+  moon_intro: "Moonlighting",
 };
 
 /** Toast copy fired the moment each milestone lands. */
@@ -40,4 +42,5 @@ export const MILESTONE_TEXT: Record<string, string> = {
   ostrich_intro: "Ostrich eggs roll! Sweep one mid-roll to smash everything nearby.",
   night_intro: "Night falls — the flock roosts, and foxes creep in. Tap foxes for feathers!",
   fox_bird_intro: "A fox got through the bare hay and took a bird! Shoo them before they reach the flock.",
+  moon_intro: "A moon egg, caught mid-fall! The roost drops one every so often at night — worth a slice of the whole flock's laying.",
 };

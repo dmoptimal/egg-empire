@@ -45,6 +45,13 @@ export function createSim(opts: CreateSimOptions = {}): SimState {
     foxSeq: 1,
     guardT: 0,
     nightBirdThefts: 0,
+    moonEggs: [],
+    nextMoonIn: 0,
+    fireflies: [],
+    nextFlyIn: 0,
+    nightSeq: 1,
+    petsLeft: 0,
+    restedDay: false,
     casino: {
       balls: [],
       ballSeq: 1,

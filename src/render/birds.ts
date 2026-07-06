@@ -19,6 +19,8 @@ interface BirdView {
   cx: number;
   cy: number;
   phase: number;
+  /** Time left in the happy hop a goodnight tap triggers. */
+  petT: number;
 }
 
 export interface Birds {
@@ -26,6 +28,8 @@ export interface Birds {
   clamp(layout: Layout): void;
   update(now: number, dt: number, night: boolean): void;
   spawnPoint(species: number): SpawnPoint | null;
+  /** A goodnight tap near x — the closest roosting bird gives a happy hop. */
+  pet(x: number): void;
 }
 
 export function createBirds(layer: Container, textures: Textures, getLayout: () => Layout): Birds {
@@ -52,6 +56,7 @@ export function createBirds(layer: Container, textures: Textures, getLayout: () 
       cx: x,
       cy: y,
       phase: Math.random() * 6.28,
+      petT: 0,
     });
   }
 
@@ -85,7 +90,24 @@ export function createBirds(layer: Container, textures: Textures, getLayout: () 
           const amp = night ? 0 : 1;
           b.sp.x = b.cx + Math.sin(now * 1.1 + b.phase) * 10 * amp;
           b.sp.y = b.cy + Math.sin(now * 0.8 + b.phase * 2) * 4 * amp + (night ? Math.sin(now * 2 + b.phase) * 1.5 : 0);
+          if (b.petT > 0) {
+            b.petT = Math.max(0, b.petT - dt);
+            b.sp.y -= Math.sin(((0.5 - b.petT) / 0.5) * Math.PI) * 9; // happy hop
+          }
         }
+    },
+    pet(x: number): void {
+      let best: BirdView | null = null;
+      let bd = Infinity;
+      for (const arr of views)
+        for (const b of arr) {
+          const d = Math.abs(b.cx - x);
+          if (d < bd) {
+            bd = d;
+            best = b;
+          }
+        }
+      if (best) best.petT = 0.5;
     },
     spawnPoint(species: number): SpawnPoint | null {
       const arr = views[species];

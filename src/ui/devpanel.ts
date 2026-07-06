@@ -6,6 +6,7 @@
 // exact same CHECKPOINTS the pacing tests assert against — they cannot drift.
 
 import { CHECKPOINTS } from "../config/economy";
+import { DAY_LENGTH } from "../config/night";
 import { NODES } from "../config/nodes";
 import { checkpointToSave, serialize, type SaveData, type SimState } from "../sim";
 
@@ -128,6 +129,14 @@ export function createDevPanel(deps: DevPanelDeps): void {
     deps.loadState(save);
   });
   btn(tools, "reset", () => deps.loadState(null));
+  // Flip the sun (Dan 2026-07-06): jump straight to dusk or dawn. Grants
+  // Ducks if needed — the cycle is gated on sp1 and would snap back to day.
+  btn(tools, "night ⇄ day", () => {
+    const s = deps.sim;
+    if (!s.clock.night && !(s.n.sp1 >= 1)) s.n.sp1 = 1;
+    s.clock.t = s.clock.night ? 0 : DAY_LENGTH;
+    deps.refresh();
+  });
   const speedBtn = document.createElement("button");
   speedBtn.textContent = "speed ×1";
   speedBtn.style.cssText =
