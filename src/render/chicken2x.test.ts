@@ -18,20 +18,29 @@ describe("frame maps", () => {
       }
   });
 
-  it("walking keeps feet on the ground row; head pecks on contact frames", () => {
-    const [a, pass, b] = CHICK_ANIMS.walk.maps;
-    expect(a[20]).toContain("b");
-    expect(b[20]).toContain("b");
-    expect(a[1]).not.toContain("r"); // comb dropped a row on the peck…
-    expect(a[2]).toContain("r");
-    expect(pass[1]).toContain("r"); // …and is back up on the pass
+  it("walking is a stride — the legs swap front/back, not feet in place", () => {
+    const [c1, p1, c2, p2] = CHICK_ANIMS.walk.maps;
+    // the near (bright) foot is in front on one contact, behind on the other
+    expect(c1[20].indexOf("bbbb")).toBeGreaterThan(c1[20].indexOf("BBBB"));
+    expect(c2[20].indexOf("BBBB")).toBeGreaterThan(c2[20].indexOf("bbbb"));
+    // passing frames tuck the swinging foot up off the ground row
+    expect(p1[19]).toContain("BBB");
+    expect(p1[20]).not.toContain("B");
+    expect(p2[19]).toContain("bbb");
+    expect(p2[20]).not.toContain("b");
+    // the body bounces: pecked down on the contacts (comb clears row 0-1),
+    // risen on the passes (comb reaches the top row)
+    expect(c1[1]).not.toContain("r");
+    expect(c1[0]).not.toContain("r");
+    expect(p1[0]).toContain("r");
   });
 
   it("roosting tucks the legs away entirely", () => {
     const settled = CHICK_ANIMS.sit.maps[2];
-    expect(settled[18]).not.toContain("b");
-    expect(settled[19]).not.toContain("b");
-    expect(settled[20]).not.toContain("b");
+    for (const y of [18, 19, 20]) {
+      expect(settled[y]).not.toContain("b");
+      expect(settled[y]).not.toContain("B");
+    }
   });
 
   it("sleeping closes the eye (no glint anywhere)", () => {

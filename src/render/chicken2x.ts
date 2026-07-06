@@ -42,9 +42,9 @@ const BASE = [
   "..wwwwwwwddddddwwwwww...",
   "...wsssssssssssssssw....",
   ".....dddddddddddd.......",
-  ".........bb...bb........",
-  ".........bb...bb........",
-  "........bbbb.bbbb.......",
+  ".........BB...bb........",
+  ".........BB...bb........",
+  "........BBBB.bbbb.......",
   "........................",
 ];
 
@@ -98,15 +98,40 @@ const closeEyes = (m: string[], drop: number): string[] => {
   g[5 + drop][18] = "w";
   return rows(g);
 };
-const withFeet = (m: string[], y20: string): string[] => {
-  const g = [...m];
-  g[20] = y20;
-  return g;
-};
+const withRows = (m: string[], repl: Record<number, string>): string[] =>
+  m.map((r, y) => repl[y] ?? r);
 
-// Walk: feet alternate stride, head pecks forward on the contact frames.
-const stepA = withFeet(bob(BASE), ".......bbbb...bbbb......");
-const stepB = withFeet(bob(BASE), ".........bbb.bbb........");
+// Walk: a real stride, learned the hard way (Dan, 2026-07-06). Fixed leg
+// columns with sliding feet = moonwalk; symmetric frames that only swap leg
+// tones = feet pumping in and out. What sells it: (1) a wide-spread contact
+// pose with the legs angled and every foot's toes pointing FORWARD (1px rear
+// toe only — no backwards feet), (2) a passing pose where the swing foot is
+// clearly lifted off the ground, and (3) the whole body dipping on the
+// contacts (head peck) and rising 1px on the passes — the bounce carries
+// the walk. Near leg is bright, far leg darker.
+const raise = (m: string[]): string[] => shiftRegion(m, 0, 0, 23, 17, 0, -1);
+const contactA = withRows(bob(BASE), {
+  18: "..........BB.bb.........",
+  19: "........BB.....bb.......",
+  20: ".......BBBB...bbbb......",
+});
+const contactB = withRows(bob(BASE), {
+  18: "..........bb.BB.........",
+  19: "........bb.....BB.......",
+  20: ".......bbbb...BBBB......",
+});
+const passA = withRows(raise(BASE), {
+  17: "..........BB.bb.........",
+  18: "..........BB.bb.........",
+  19: ".........BBBB.bb........",
+  20: "............bbbb........",
+});
+const passB = withRows(raise(BASE), {
+  17: "..........bb.BB.........",
+  18: "..........bb.BB.........",
+  19: ".........bbbb.BB........",
+  20: "............BBBB........",
+});
 
 // Lay: settle onto the hay, eyes shut, tail flicks — the egg (a separate
 // sprite; eggs are gameplay entities) pops on the strain frame.
@@ -128,7 +153,7 @@ export interface ChickAnim {
 
 export const CHICK_ANIMS: Record<"idle" | "walk" | "lay" | "sit" | "sleep", ChickAnim> = {
   idle: { maps: [BASE, bob(BASE)], fps: 2.4, loop: true },
-  walk: { maps: [stepA, BASE, stepB, BASE], fps: 8, loop: true },
+  walk: { maps: [contactA, passA, contactB, passB], fps: 8, loop: true },
   lay: { maps: [squat1, squat2, strain, squat1], fps: 6, loop: false },
   sit: { maps: [squat1, squat(BASE, 2), settled], fps: 5, loop: false },
   sleep: { maps: [asleep, nestled], fps: 1, loop: true },
