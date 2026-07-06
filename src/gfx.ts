@@ -15,6 +15,7 @@ interface Entry {
   label: string;
   tex: Texture;
   note?: string;
+  swatch?: boolean; // backdrop tile — gets its own section on the sheet
 }
 
 /** Backdrop patterns from background.ts / kitchen.ts, as samplable swatches. */
@@ -23,7 +24,7 @@ function makeSwatches(renderer: Renderer): Entry[] {
     const g = new Graphics();
     draw(g);
     const tex = renderer.generateTexture({ target: g, textureSourceOptions: { scaleMode: "nearest" } });
-    return { slug, label, tex, note };
+    return { slug, label, tex, note, swatch: true };
   };
   return [
     gen((g) => {
@@ -126,9 +127,11 @@ export async function showGallery(): Promise<void> {
     "they're generated in <code>src/render/textures.ts</code> today and can be swapped for PNG assets.</p>";
   document.body.appendChild(head);
 
-  // One-click sprite sheet: everything below packed onto a single PNG at 4×
-  // (nearest-neighbour) with slug labels, for Photoshop/Aseprite work.
-  const items: { slug: string; url: string; w: number; h: number }[] = [];
+  // One-click sprite sheet: everything below on a single transparent PNG at
+  // 4× (nearest-neighbour) with slug labels, for Photoshop/Aseprite work.
+  // Cells are EQUALLY PITCHED (per section) with art anchored top-left, so
+  // the whole sheet lines up on an editor grid — Dan's request.
+  const items: { slug: string; url: string; w: number; h: number; swatch?: boolean }[] = [];
   const sheetBtn = document.createElement("button");
   sheetBtn.textContent = "Download ALL as one sprite-sheet PNG";
   sheetBtn.style.cssText =
@@ -136,8 +139,9 @@ export async function showGallery(): Promise<void> {
   sheetBtn.addEventListener("click", () => {
     void (async () => {
       const SCALE = 4;
-      const PAD = 14;
-      const LABEL = 14;
+      const PAD = 16; //   gutter between cells; first cell origin is (PAD, header)
+      const LABEL = 14; // label band at the bottom of every cell
+      const HEAD = 22;
       const SHEET_W = 1600;
       const imgs = await Promise.all(
         items.map(
@@ -149,35 +153,64 @@ export async function showGallery(): Promise<void> {
             }),
         ),
       );
-      let x = PAD;
+      // Two uniform grids — sprites, then the big backdrop swatches — each
+      // pitched to its largest member so every cell in a section is the same
+      // size, art anchored top-left. No background fill: the sheet stays
+      // transparent for image editors.
+      interface Cell {
+        it: (typeof items)[number];
+        im: HTMLImageElement;
+        x: number;
+        y: number;
+        cw: number;
+        ch: number;
+      }
+      const cells: Cell[] = [];
+      const heads: { s: string; y: number }[] = [];
       let y = PAD;
-      let rowH = 0;
-      const places: { x: number; y: number }[] = [];
-      for (const it of items) {
-        const w = it.w * SCALE;
-        const h = it.h * SCALE + LABEL;
-        if (x + w + PAD > SHEET_W) {
-          x = PAD;
-          y += rowH + PAD;
-          rowH = 0;
-        }
-        places.push({ x, y });
-        x += Math.max(w, 60) + PAD;
-        rowH = Math.max(rowH, h);
+      for (const sec of [
+        { title: "SPRITES", swatch: false },
+        { title: "BACKDROPS (tiling swatches)", swatch: true },
+      ]) {
+        const list = items.map((it, i) => ({ it, im: imgs[i] })).filter((e) => !!e.it.swatch === sec.swatch);
+        if (list.length === 0) continue;
+        const cw = Math.max(...list.map((e) => e.it.w)) * SCALE;
+        const ch = Math.max(...list.map((e) => e.it.h)) * SCALE + LABEL;
+        const cols = Math.max(1, Math.floor((SHEET_W - PAD) / (cw + PAD)));
+        const gy = y + HEAD;
+        heads.push({ s: `${sec.title} · cell ${cw}×${ch}px · pitch ${cw + PAD}px · origin (${PAD}, ${gy})`, y: y + 12 });
+        list.forEach((e, i) => {
+          cells.push({
+            ...e,
+            x: PAD + (i % cols) * (cw + PAD),
+            y: gy + Math.floor(i / cols) * (ch + PAD),
+            cw,
+            ch,
+          });
+        });
+        y = gy + Math.ceil(list.length / cols) * (ch + PAD) + PAD;
       }
       const canvas = document.createElement("canvas");
       canvas.width = SHEET_W;
-      canvas.height = y + rowH + PAD;
+      canvas.height = y;
       const ctx = canvas.getContext("2d")!;
-      ctx.fillStyle = "#26332b";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.imageSmoothingEnabled = false;
+      // shadowed text so labels survive on any editor backdrop
+      const text = (s: string, tx: number, ty: number): void => {
+        ctx.fillStyle = "rgba(0,0,0,.75)";
+        ctx.fillText(s, tx + 1, ty + 1);
+        ctx.fillStyle = "#b9d3c3";
+        ctx.fillText(s, tx, ty);
+      };
+      ctx.font = "bold 11px monospace";
+      for (const h of heads) text(h.s, PAD, h.y);
       ctx.font = "10px monospace";
-      items.forEach((it, i) => {
-        ctx.drawImage(imgs[i], places[i].x, places[i].y, it.w * SCALE, it.h * SCALE);
-        ctx.fillStyle = "#9fb8a8";
-        ctx.fillText(it.slug, places[i].x, places[i].y + it.h * SCALE + 11);
-      });
+      for (const c of cells) {
+        ctx.strokeStyle = "rgba(128,164,142,.4)"; // faint cell outline = the grid
+        ctx.strokeRect(c.x - 0.5, c.y - 0.5, c.cw + 1, c.ch + 1);
+        ctx.drawImage(c.im, c.x, c.y, c.it.w * SCALE, c.it.h * SCALE);
+        text(c.it.slug, c.x + 2, c.y + c.ch - 4);
+      }
       // toBlob + an in-document anchor: a synthetic click on a detached
       // anchor with a giant data: URL made Chrome ignore the filename and
       // save an extensionless UUID (Dan hit this).
@@ -203,7 +236,7 @@ export async function showGallery(): Promise<void> {
     const url = await app.renderer.extract.base64(e.tex);
     const w = Math.round(e.tex.width);
     const h = Math.round(e.tex.height);
-    items.push({ slug: e.slug, url, w, h });
+    items.push({ slug: e.slug, url, w, h, swatch: e.swatch });
     const cell = document.createElement("a");
     cell.href = url;
     cell.download = `${e.slug}.png`;
@@ -211,8 +244,10 @@ export async function showGallery(): Promise<void> {
       "display:block;background:#26332b;border:2px solid #0d120d;padding:10px;text-decoration:none;color:inherit";
     const img = document.createElement("img");
     img.src = url;
+    // cap at the card width — the 88px-wide backdrop tiles at a fixed 8×
+    // (704px) blew out of their cells and shredded the grid (Dan's screenshot)
     img.style.cssText =
-      `width:${w * 8}px;height:${h * 8}px;image-rendering:pixelated;display:block;margin:0 auto 8px;` +
+      `width:${w * 8}px;max-width:100%;height:auto;image-rendering:pixelated;display:block;margin:0 auto 8px;` +
       "background:repeating-conic-gradient(#2e3a33 0 25%,#26332b 0 50%) 0 0/16px 16px";
     const label = document.createElement("div");
     label.innerHTML = `<b>${e.label}</b><br><span style="opacity:.65">${e.slug}.png · ${w}×${h}px${e.note ? " · " + e.note : ""}</span>`;
