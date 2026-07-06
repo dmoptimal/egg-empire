@@ -57,7 +57,20 @@ export {
 } from "./save";
 export { checkpointToSave, checkpointSim, moneyRate, featherRate } from "./pacing";
 export { updateClock, updateFoxes, shooFoxesAlong, foxBounty, guardLineY, CYCLE_LENGTH } from "./night";
-export { casinoUnlocked, dropBall, dropCost, binMult, pinAt, pinKind, spinRoulette, rouletteSlice, updateCasino, type PinKind } from "./casino";
+export {
+  casinoUnlocked,
+  dropBall,
+  dropCost,
+  binMult,
+  pinAt,
+  pinKind,
+  spinRoulette,
+  rouletteSlice,
+  rouletteMult,
+  spinSlots,
+  updateCasino,
+  type PinKind,
+} from "./casino";
 export {
   kitchenUnlocked,
   stationUnlocked,

@@ -70,11 +70,14 @@ export const FARM_NODE_COSTS = {
   rush: { base: 12000, growth: 3 },
   krush: { base: 100000, growth: 3 },
   guard: { base: 14000, growth: 2.6 },
-  // Bird Casino upgrades (goose-era feathers)
+  // Bird Casino upgrades (goose-era feathers; spay lands in the ostrich era)
   pval: { base: 150000, growth: 2.2 },
   pbounce: { base: 100000, growth: 3 },
   pdup: { base: 100000, growth: 3 },
   pauto: { base: 110000, growth: 3 },
+  rwheel: { base: 150000, growth: 3 },
+  sluck: { base: 160000, growth: 3 },
+  spay: { base: 1100000, growth: 3 },
 } as const;
 
 /** Extra basket prices (money), one per bextra level (duck/quail/goose era). */
@@ -91,6 +94,13 @@ export const PACING_BANDS = {
   branchTotal: [1200, 2400],
   /** Unlocking the next species: 5–15 minutes of the previous era's income. */
   speciesUnlock: [300, 900],
+  /**
+   * Full-tree completion, minutes of modelled active play. Widened from
+   * [180,300] on 2026-07-06: more content is coming, so per-purchase feel
+   * (the bands above) stays fixed while the total grows into this window —
+   * re-tighten at content freeze rather than re-pricing the live game.
+   */
+  completion: [300, 600],
 } as const;
 
 // --- era checkpoints -------------------------------------------------------
@@ -169,7 +179,7 @@ export const CHECKPOINTS: Checkpoint[] = [
       ecap: 3, espoil: 1, sweep: 2, combo: 2, gold2: 1, birdlot: 1, kitchen: 1,
       st_boil: 1, st_fry: 1, st_scr: 1,
       pantry: 2, ckspd: 2, ckval: 1, counter: 1, rush: 1, krush: 1,
-      casino: 1, pval: 1,
+      casino: 1, pval: 1, rwheel: 1, sluck: 1,
     },
   },
   {
@@ -191,6 +201,7 @@ export const CHECKPOINTS: Checkpoint[] = [
       st_boil: 1, st_fry: 1, st_scr: 1, st_poa: 1, st_oml: 1,
       pantry: 5, ckspd: 5, ckval: 5, chefs2: 2, counter: 3, rush: 3, krush: 3,
       casino: 1, pval: 3, pbounce: 3, pdup: 3, pauto: 3,
+      rwheel: 3, sluck: 3, spay: 3,
     },
   },
 ];

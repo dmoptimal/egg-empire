@@ -23,6 +23,7 @@ import {
   serialize,
   serveCustomer,
   spinRoulette,
+  spinSlots,
   sweepCollect,
   tick,
   totalBirds,
@@ -104,6 +105,7 @@ async function boot(): Promise<void> {
 
   const textures = makeTextures(app.renderer);
   const layers = createLayers(app.stage);
+  layers.bar.visible = false; // shown when the title screen is dismissed
   const birds = createBirds(layers.birds, textures, () => sim.layout);
   const eggSprites = createEggSprites(layers.eggs, textures);
   const basketViews = createBasketViews(layers.baskets, layers.trucks, textures);
@@ -166,6 +168,9 @@ async function boot(): Promise<void> {
     },
     onSpin(chips) {
       if (spinRoulette(sim, Math.random, chips)) refreshAll();
+    },
+    onPull(chips) {
+      if (spinSlots(sim, Math.random, chips)) refreshAll();
     },
     onTick() {
       SFX.tick();
@@ -238,6 +243,7 @@ async function boot(): Promise<void> {
   function startGame(): void {
     started = true;
     startScreen.hide();
+    layers.bar.visible = true; // hidden on the title — nothing there works yet
     hud.showHint();
   }
 
@@ -409,6 +415,31 @@ async function boot(): Promise<void> {
           if (ev.mult > 0)
             popups.spawn(pos.x, pos.y - 30, `×${ev.mult}  +${fmtMoney(ev.money)}`, ev.mult >= 8 ? 0xffd24a : 0x7ef25d, ev.mult >= 8 ? 22 : 17);
           else popups.spawn(pos.x, pos.y - 30, "House wins", 0x9a8f80, 13);
+        }
+        refreshAll();
+        break;
+      }
+      case "slots-spun":
+        break;
+      case "slots-reel":
+        if (screen === "casino") SFX.tick();
+        break;
+      case "slots-respin":
+        SFX.perfect();
+        if (screen === "casino") {
+          const p = casinoView.slotPos();
+          popups.spawn(p.x, p.y - 90, "FREE RESPIN!", 0x8fe3d0, 15, textures.icons.star);
+        }
+        break;
+      case "slots-stopped": {
+        if (ev.mult >= 30) SFX.rush();
+        else if (ev.run >= 2) SFX.kaching();
+        else SFX.donk();
+        if (screen === "casino") {
+          const p = casinoView.slotPos();
+          if (ev.run >= 2)
+            popups.spawn(p.x, p.y - 90, `×${Math.round(ev.mult * 10) / 10}  +${fmtMoney(ev.money)}`, ev.mult >= 30 ? 0xffd24a : 0x7ef25d, ev.mult >= 30 ? 22 : 17);
+          else popups.spawn(p.x, p.y - 90, "No line", 0x9a8f80, 13);
         }
         refreshAll();
         break;

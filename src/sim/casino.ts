@@ -27,6 +27,13 @@ import {
   PVAL_PER_LVL,
   RESTITUTION,
   ROULETTE_MULTS,
+  RWHEEL_SLICES,
+  SLOT_PAY2,
+  SLOT_PAY3,
+  SLOT_REEL_STOPS,
+  SLOT_STRIP,
+  SLUCK_RESPIN_PER_LVL,
+  SPAY_PER_LVL,
   SPIN_DECEL,
   SPIN_VEL_MIN,
   SPIN_VEL_VAR,
@@ -174,6 +181,66 @@ export function rouletteSlice(angle: number): number {
   return Math.min(ROULETTE_MULTS.length - 1, Math.floor(a / step));
 }
 
+/** A slice's live multiplier — Loaded wheel converts house slices to ×1. */
+export function rouletteMult(s: SimState, slice: number): number {
+  if (ROULETTE_MULTS[slice] > 0) return ROULETTE_MULTS[slice];
+  const lv = lvl(s, "rwheel");
+  for (let i = 0; i < lv && i < RWHEEL_SLICES.length; i++)
+    if (RWHEEL_SLICES[i] === slice) return 1;
+  return 0;
+}
+
+export const slotPayMult = (s: SimState): number => 1 + SPAY_PER_LVL * lvl(s, "spay");
+
+const drawReels = (rng: () => number): number[] =>
+  [0, 1, 2].map(() => SLOT_STRIP[Math.min(SLOT_STRIP.length - 1, Math.floor(rng() * SLOT_STRIP.length))]);
+
+/** Pull the arm: charge the stake, draw all three reels up front. */
+export function spinSlots(state: SimState, rng: () => number, chips: number): boolean {
+  if (!casinoUnlocked(state)) return false;
+  const sl = state.casino.slots;
+  if (sl.bet > 0) return false;
+  const bet = dropCost(state) * Math.max(1, Math.round(chips));
+  if (state.money < bet) return false;
+  state.money -= bet;
+  sl.bet = bet;
+  sl.t = 0;
+  sl.revealed = 0;
+  sl.result = drawReels(rng);
+  bump(state, "pulls");
+  emit(state, { type: "slots-spun", bet });
+  return true;
+}
+
+function updateSlots(state: SimState, dt: number, rng: () => number): void {
+  const sl = state.casino.slots;
+  if (sl.bet <= 0) return;
+  sl.t += dt;
+  while (sl.revealed < 3 && sl.t >= SLOT_REEL_STOPS[sl.revealed]) {
+    emit(state, { type: "slots-reel", reel: sl.revealed, symbol: sl.result[sl.revealed] });
+    sl.revealed++;
+  }
+  if (sl.revealed < 3) return;
+  // settle: left-aligned run of matching symbols
+  const [a, b] = sl.result;
+  const c = sl.result[2];
+  const run = a === b ? (b === c ? 3 : 2) : 1;
+  // Lucky reels: a losing pull can respin free — the stake stays live
+  if (run < 2 && rng() < SLUCK_RESPIN_PER_LVL * lvl(state, "sluck")) {
+    sl.t = 0;
+    sl.revealed = 0;
+    sl.result = drawReels(rng);
+    emit(state, { type: "slots-respin" });
+    return;
+  }
+  const mult = run >= 2 ? (run === 3 ? SLOT_PAY3 : SLOT_PAY2)[a] * slotPayMult(state) : 0;
+  const money = Math.round(sl.bet * mult);
+  state.money += money;
+  if (money > (state.stats.slotsBest ?? 0)) state.stats.slotsBest = money;
+  emit(state, { type: "slots-stopped", symbols: [...sl.result], run, mult, money, bet: sl.bet });
+  sl.bet = 0;
+}
+
 function updateRoulette(state: SimState, dt: number): void {
   const r = state.casino.roulette;
   if (r.vel <= 0) return;
@@ -183,7 +250,7 @@ function updateRoulette(state: SimState, dt: number): void {
   r.vel = 0;
   r.angle %= Math.PI * 2;
   const slice = rouletteSlice(r.angle);
-  const mult = ROULETTE_MULTS[slice];
+  const mult = rouletteMult(state, slice);
   const money = Math.round(r.bet * mult);
   state.money += money;
   if (money > (state.stats.rouletteBest ?? 0)) state.stats.rouletteBest = money;
@@ -195,6 +262,7 @@ export function updateCasino(state: SimState, dt: number, rng: () => number): vo
   if (!casinoUnlocked(state)) return;
   const c = state.casino;
   updateRoulette(state, dt);
+  updateSlots(state, dt, rng);
 
   // Roost dropper: a hen feeds the machine, pausing on a thin bankroll so
   // an unlucky streak can never drain the farm while you sleep.

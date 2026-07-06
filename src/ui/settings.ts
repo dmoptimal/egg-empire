@@ -46,6 +46,8 @@ const STAT_ROWS: [string, (s: SimState) => string][] = [
   ["Best pachinko win", (s) => fmtMoney(s.stats.casinoBest ?? 0)],
   ["Roulette spins", (s) => fmt(s.stats.spins ?? 0)],
   ["Best roulette win", (s) => fmtMoney(s.stats.rouletteBest ?? 0)],
+  ["Slot pulls", (s) => fmt(s.stats.pulls ?? 0)],
+  ["Best slots win", (s) => fmtMoney(s.stats.slotsBest ?? 0)],
 ];
 
 export function createSettings(deps: SettingsDeps): Settings {

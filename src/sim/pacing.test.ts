@@ -46,6 +46,7 @@ const NODE_ERA: Record<string, string> = {
   rush: "quail", krush: "goose", guard: "quail",
   // Bird Casino upgrades
   pval: "goose", pbounce: "goose", pdup: "goose", pauto: "goose",
+  rwheel: "goose", sluck: "goose", spay: "ostrich",
 };
 
 /** Money nodes are one big purchase per level, each landing in its own era. */
@@ -150,7 +151,7 @@ describe("maxing a branch costs 20-40 minutes cumulative", () => {
   });
 });
 
-describe("full-tree completion lands in 3-5 hours of active play", () => {
+describe("full-tree completion lands inside the PACING_BANDS.completion window", () => {
   // Model: a level's cost is paid at its band era for the FIRST level and one
   // era later for the rest (players clean branches up after income grows).
   // Money and feathers accrue in parallel, so each era costs max(m, f) time.
@@ -186,8 +187,10 @@ describe("full-tree completion lands in 3-5 hours of active play", () => {
     expect(
       totalMin,
       `estimated completion ${totalMin.toFixed(0)}min — ${perEra.join("; ")}`,
-    ).toBeGreaterThanOrEqual(180);
-    expect(totalMin, `estimated completion ${totalMin.toFixed(0)}min`).toBeLessThanOrEqual(300);
+    ).toBeGreaterThanOrEqual(PACING_BANDS.completion[0]);
+    expect(totalMin, `estimated completion ${totalMin.toFixed(0)}min`).toBeLessThanOrEqual(
+      PACING_BANDS.completion[1],
+    );
   });
 });
 

@@ -54,6 +54,14 @@ function makeSwatches(renderer: Renderer): Entry[] {
     }, "kitchen-floor", "Kitchen floor tiles"),
     gen((g) => g.rect(0, 0, 88, 44).fill(0x5a4a3c), "kitchen-wall", "Kitchen wall"),
     gen((g) => g.rect(0, 0, 88, 30).fill(0x14273a), "title-bg", "Title screen backdrop"),
+    gen((g) => {
+      g.rect(0, 0, 88, 88).fill(0x241a2e);
+      for (let y = 0; y < 88; y += 44)
+        for (let x = ((y / 44) % 2) * 22; x < 88; x += 44) g.rect(x, y, 22, 22);
+      g.fill(0x2b2036);
+    }, "casino-floor", "Casino floor (all cabinets)"),
+    gen((g) => g.rect(0, 0, 88, 44).fill(0x1d3a2a), "pachinko-felt", "Pachinko/roulette felt"),
+    gen((g) => g.rect(0, 0, 88, 44).fill(0x6a2438), "slots-cabinet", "Slot machine cabinet"),
   ];
 }
 
@@ -94,7 +102,10 @@ export async function showGallery(): Promise<void> {
     { slug: "icon-coin", label: "Coin (midas flock)", tex: t.icons.coin },
     { slug: "icon-tag", label: "Tag (bulk deals)", tex: t.icons.tag },
     { slug: "icon-trophy", label: "Trophy (win screen)", tex: t.icons.trophy },
+    { slug: "icon-star", label: "Star (perfect/rush)", tex: t.icons.star },
     { slug: "icon-gear", label: "Gear (settings)", tex: t.icons.gear },
+    { slug: "icon-sun", label: "Sun (day clock)", tex: t.icons.sun },
+    { slug: "icon-moon", label: "Moon (night clock)", tex: t.icons.moon },
     ...makeSwatches(app.renderer),
   ];
 

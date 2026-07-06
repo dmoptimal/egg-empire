@@ -45,7 +45,13 @@ export function createSim(opts: CreateSimOptions = {}): SimState {
     foxSeq: 1,
     guardT: 0,
     nightBirdThefts: 0,
-    casino: { balls: [], ballSeq: 1, nextAuto: 0, roulette: { angle: 0, vel: 0, bet: 0 } },
+    casino: {
+      balls: [],
+      ballSeq: 1,
+      nextAuto: 0,
+      roulette: { angle: 0, vel: 0, bet: 0 },
+      slots: { t: 0, result: [0, 0, 0], revealed: 3, bet: 0 },
+    },
     kitchen: {
       pantry: [],
       chefs: STATIONS.map(() => 0),

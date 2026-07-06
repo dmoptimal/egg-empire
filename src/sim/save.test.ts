@@ -99,25 +99,26 @@ function idleFarm() {
 }
 
 describe("offline income amounts", () => {
-  it("pays lay rate × golden-weighted value for the elapsed time", () => {
+  it("pays HALF the lay rate × golden-weighted value for the elapsed time", () => {
     const s = restore(serialize(idleFarm(), 0))!;
-    // 0.5 eggs/s · 100s: value/egg (10·0.98 + 100·0.02) = 11.8 → $590;
-    // feathers/egg (1·0.98 + 15·0.02) = 1.28 → floor(64)
-    expect(estimateOfflineIncome(s, 100)).toEqual({ money: 590, feathers: 64, seconds: 100 });
+    // 0.5 eggs/s · 100s · OFFLINE_RATE 0.5: value/egg (10·0.98 + 100·0.02)
+    // = 11.8 → $295; feathers/egg (1·0.98 + 15·0.02) = 1.28 → floor(32)
+    expect(estimateOfflineIncome(s, 100)).toEqual({ money: 295, feathers: 32, seconds: 100 });
   });
 
   it("applies worth rounding before golden ×10 and Gentle Hands on top", () => {
     const s = restore(serialize(idleFarm(), 0))!;
     s.n.w0 = 5; // round(10·1.5⁵) = 76
     s.n.cval = 5; // ×1.5
-    // (76·0.98 + 760·0.02)·1.5 = 134.52 per egg · 0.5/s · 100s = 6726
-    expect(estimateOfflineIncome(s, 100).money).toBe(6726);
+    // (76·0.98 + 760·0.02)·1.5 = 134.52 per egg · 0.5/s · 100s · 0.5 = 3363
+    expect(estimateOfflineIncome(s, 100).money).toBe(3363);
   });
 
-  it("caps credited time at 8 hours", () => {
+  it("caps credited time at 3 hours — a long absence is a leg-up, not the game", () => {
     const s = restore(serialize(idleFarm(), 0))!;
-    const off = estimateOfflineIncome(s, 36 * 3600);
+    const off = estimateOfflineIncome(s, 72 * 3600);
     expect(off.seconds).toBe(OFFLINE_CAP_SECONDS);
-    expect(off.money).toBe(Math.floor(0.5 * 11.8 * OFFLINE_CAP_SECONDS));
+    expect(OFFLINE_CAP_SECONDS).toBe(3 * 3600);
+    expect(off.money).toBe(Math.floor(0.5 * 11.8 * OFFLINE_CAP_SECONDS * 0.5));
   });
 });

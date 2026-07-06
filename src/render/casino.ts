@@ -3,7 +3,7 @@
 // sprites mapped by id, and the only inputs are the DROP button. Every
 // decorative child opts out of hit-testing (the hard-won rule).
 
-import { BitmapText, Container, Graphics, Sprite, Text } from "pixi.js";
+import { BitmapText, Container, Graphics, Sprite, Text, type Texture } from "pixi.js";
 import {
   BALL_R,
   BIN_MULTS,
@@ -18,7 +18,7 @@ import {
   WHEEL_R,
 } from "../config/casino";
 import { fmtMoney } from "../config/format";
-import { binMult, dropCost, lvl, pinAt, pinKind, rouletteSlice, type SimState } from "../sim";
+import { binMult, dropCost, lvl, pinAt, pinKind, rouletteMult, rouletteSlice, type SimState } from "../sim";
 import { FONT, HOT_FONT, pixelButton, pixelPanel, type PixelButton } from "../ui/kit";
 import type { Textures } from "./textures";
 
@@ -30,11 +30,14 @@ export interface CasinoView {
   binPos(bin: number): { x: number; y: number };
   /** Centre of the roulette wheel — spin results pop up here. */
   wheelPos(): { x: number; y: number };
+  /** Centre of the slot machine — pull results pop up here. */
+  slotPos(): { x: number; y: number };
 }
 
 export interface CasinoDeps {
   onDrop(): void;
   onSpin(chips: number): void;
+  onPull(chips: number): void;
   /** The wheel clacked past a slice divider (spin ratchet SFX). */
   onTick(): void;
 }
@@ -61,16 +64,17 @@ export function createCasinoView(
   quiet(title);
   root.addChild(title);
 
-  // cabinet tabs: Pachinko | Roulette
-  let mode: "pachinko" | "roulette" = "pachinko";
+  // cabinet tabs: Pachinko | Roulette | Slots
+  let mode: "pachinko" | "roulette" | "slots" = "pachinko";
   const tabLabel = (s: string): Text => {
-    const t = new Text({ text: s, style: { fontFamily: FONT, fontSize: 13, fontWeight: "700", fill: "#fff" } });
+    const t = new Text({ text: s, style: { fontFamily: FONT, fontSize: 12, fontWeight: "700", fill: "#fff" } });
     t.anchor.set(0.5);
     return t;
   };
-  const tabPach = pixelButton({ w: 120, h: 30, face: 0x3a5a2f, content: tabLabel("Pachinko"), onTap: () => setMode("pachinko") });
-  const tabRoul = pixelButton({ w: 120, h: 30, face: 0x3a5a2f, content: tabLabel("Roulette"), onTap: () => setMode("roulette") });
-  root.addChild(tabPach.root, tabRoul.root);
+  const tabPach = pixelButton({ w: 104, h: 30, face: 0x3a5a2f, content: tabLabel("Pachinko"), onTap: () => setMode("pachinko") });
+  const tabRoul = pixelButton({ w: 104, h: 30, face: 0x3a5a2f, content: tabLabel("Roulette"), onTap: () => setMode("roulette") });
+  const tabSlot = pixelButton({ w: 104, h: 30, face: 0x3a5a2f, content: tabLabel("Slots"), onTap: () => setMode("slots") });
+  root.addChild(tabPach.root, tabRoul.root, tabSlot.root);
 
   // the board: felt panel, pins, bin dividers — all in one static Graphics
   const board = new Container();
@@ -161,26 +165,44 @@ export function createCasinoView(
   quiet(wheelRot);
   const wheelGfx = new Graphics();
   const step = (Math.PI * 2) / ROULETTE_MULTS.length;
-  for (let i = 0; i < ROULETTE_MULTS.length; i++) {
-    const m = ROULETTE_MULTS[i];
-    const a0 = -Math.PI / 2 + i * step;
-    const color = m > 0 ? MULT_COLORS[m] ?? 0x3aa8a0 : i % 2 === 0 ? 0x1d3a2a : 0x16301f;
-    wheelGfx.moveTo(0, 0).arc(0, 0, WHEEL_R, a0, a0 + step).lineTo(0, 0).fill(color);
-  }
-  wheelGfx.circle(0, 0, 26).fill(0x0d1a12);
-  wheelGfx.circle(0, 0, 20).fill(0x24402c);
   wheelRot.addChild(wheelGfx);
-  for (let i = 0; i < ROULETTE_MULTS.length; i++) {
-    const m = ROULETTE_MULTS[i];
-    if (m === 0) continue;
-    const mid = -Math.PI / 2 + (i + 0.5) * step;
-    const t = new BitmapText({ text: `×${m}`, style: { fontFamily: HOT_FONT, fontSize: 10 } });
-    t.tint = m === 8 ? 0x241a2e : 0xfff3da;
-    t.anchor.set(0.5);
-    t.position.set(Math.cos(mid) * (WHEEL_R - 26), Math.sin(mid) * (WHEEL_R - 26));
-    t.rotation = mid + Math.PI / 2;
-    wheelRot.addChild(t);
-  }
+  let wheelSig = -1;
+  // Loaded wheel converts house slices live — redraw fills + labels per level.
+  const redrawWheel = (sim: SimState): void => {
+    const sig = lvl(sim, "rwheel");
+    if (sig === wheelSig) return;
+    wheelSig = sig;
+    wheelGfx.clear();
+    for (let i = 0; i < ROULETTE_MULTS.length; i++) {
+      const m = rouletteMult(sim, i);
+      const a0 = -Math.PI / 2 + i * step;
+      const color = m > 0 ? MULT_COLORS[m] ?? 0x3aa8a0 : i % 2 === 0 ? 0x1d3a2a : 0x16301f;
+      wheelGfx.moveTo(0, 0).arc(0, 0, WHEEL_R, a0, a0 + step).lineTo(0, 0).fill(color);
+    }
+    wheelGfx.circle(0, 0, 26).fill(0x0d1a12);
+    wheelGfx.circle(0, 0, 20).fill(0x24402c);
+    for (let i = 0; i < ROULETTE_MULTS.length; i++) {
+      const m = rouletteMult(sim, i);
+      let label = wheelLabels.get(i);
+      if (m === 0) {
+        if (label) label.visible = false;
+        continue;
+      }
+      if (!label) {
+        const mid = -Math.PI / 2 + (i + 0.5) * step;
+        label = new BitmapText({ text: "", style: { fontFamily: HOT_FONT, fontSize: 10 } });
+        label.anchor.set(0.5);
+        label.position.set(Math.cos(mid) * (WHEEL_R - 26), Math.sin(mid) * (WHEEL_R - 26));
+        label.rotation = mid + Math.PI / 2;
+        wheelRot.addChild(label);
+        wheelLabels.set(i, label);
+      }
+      label.text = `×${m}`;
+      label.tint = m === 8 ? 0x241a2e : 0xfff3da;
+      label.visible = true;
+    }
+  };
+  const wheelLabels = new Map<number, BitmapText>();
   const pointer = new Graphics();
   pointer.moveTo(-10, -WHEEL_R - 12).lineTo(10, -WHEEL_R - 12).lineTo(0, -WHEEL_R + 8).closePath().fill(0xffd24a);
   quiet(pointer);
@@ -203,7 +225,10 @@ export function createCasinoView(
       onTap: () => {
         chipSel = i;
         for (let c = 0; c < chipBtns.length; c++) chipBtns[c].root.alpha = c === chipSel ? 1 : 0.55;
-        if (simRef) spinLabel.text = `SPIN  -${fmtMoney(dropCost(simRef) * ROULETTE_BETS[chipSel])}`;
+        if (simRef) {
+          spinLabel.text = `SPIN  -${fmtMoney(dropCost(simRef) * ROULETTE_BETS[chipSel])}`;
+          pullLabel.text = `PULL  -${fmtMoney(dropCost(simRef) * ROULETTE_BETS[chipSel])}`;
+        }
       },
     });
     b.root.alpha = i === 0 ? 1 : 0.55;
@@ -220,18 +245,78 @@ export function createCasinoView(
     onTap: () => deps.onSpin(ROULETTE_BETS[chipSel]),
   });
   root.addChild(spin.root);
+  // --- the slots cabinet -------------------------------------------------------
+  const slotGroup = new Container();
+  slotGroup.visible = false;
+  root.addChild(slotGroup);
+  const slotFace = new Graphics();
+  pixelPanel(slotFace, -160, -100, 320, 210, { face: 0x6a2438, frame: 0x2a0d16 });
+  quiet(slotFace);
+  const slotTitle = new BitmapText({ text: "EGG SLOTS", style: { fontFamily: HOT_FONT, fontSize: 13 } });
+  slotTitle.tint = 0xffd24a;
+  slotTitle.anchor.set(0.5);
+  slotTitle.position.set(0, -78);
+  quiet(slotTitle);
+  slotGroup.addChild(slotFace, slotTitle);
+  // symbol art: egg, feather, chicken, golden egg, star
+  const SYMBOLS: { tex: Texture; scale: number }[] = [
+    { tex: textures.egg[0], scale: 7 },
+    { tex: textures.icons.feather, scale: 5 },
+    { tex: textures.bird[0], scale: 3.4 },
+    { tex: textures.gold, scale: 7 },
+    { tex: textures.icons.star, scale: 6 },
+  ];
+  const reelWins: Sprite[] = [];
+  for (let r = 0; r < 3; r++) {
+    const win = new Graphics();
+    pixelPanel(win, -39, -39, 78, 78, { face: 0x14201a, frame: 0x060a08 });
+    win.position.set((r - 1) * 92, -6);
+    quiet(win);
+    const sp = new Sprite(SYMBOLS[0].tex);
+    sp.anchor.set(0.5);
+    sp.position.set((r - 1) * 92, -6);
+    quiet(sp);
+    slotGroup.addChild(win, sp);
+    reelWins.push(sp);
+  }
+  const slotHint = new Text({
+    text: "2 in a row from the left pays — 3 pays big",
+    style: { fontFamily: FONT, fontSize: 11, fill: "#e8c8d0" },
+  });
+  slotHint.anchor.set(0.5);
+  slotHint.position.set(0, 74);
+  quiet(slotHint);
+  slotGroup.addChild(slotHint);
+  const pullLabel = new BitmapText({ text: "", style: { fontFamily: HOT_FONT, fontSize: 11 } });
+  pullLabel.anchor.set(0.5);
+  const pull: PixelButton = pixelButton({
+    w: 190,
+    h: 46,
+    face: 0xb5892a,
+    content: pullLabel,
+    onTap: () => deps.onPull(ROULETTE_BETS[chipSel]),
+  });
+  root.addChild(pull.root);
+  const setSymbol = (reel: number, sym: number): void => {
+    reelWins[reel].texture = SYMBOLS[sym].tex;
+    reelWins[reel].scale.set(SYMBOLS[sym].scale);
+  };
+
   let simRef: SimState | null = null;
   let lastSlice = -1;
 
-  function setMode(next: "pachinko" | "roulette"): void {
+  function setMode(next: "pachinko" | "roulette" | "slots"): void {
     mode = next;
     board.visible = next === "pachinko";
     drop.root.visible = next === "pachinko";
     wheelGroup.visible = next === "roulette";
     spin.root.visible = next === "roulette";
-    for (const c of chipBtns) c.root.visible = next === "roulette";
+    slotGroup.visible = next === "slots";
+    pull.root.visible = next === "slots";
+    for (const c of chipBtns) c.root.visible = next !== "pachinko";
     tabPach.root.alpha = next === "pachinko" ? 1 : 0.55;
     tabRoul.root.alpha = next === "roulette" ? 1 : 0.55;
+    tabSlot.root.alpha = next === "slots" ? 1 : 0.55;
   }
 
   let ox = 20;
@@ -248,8 +333,9 @@ export function createCasinoView(
         for (let x = ((y / 44) % 2) * 22; x < W; x += 44) bg.rect(x, y, 22, 22);
       bg.fill(0x2b2036);
       title.position.set(W / 2, 36);
-      tabPach.root.position.set(Math.round(W / 2) - 124, 58);
-      tabRoul.root.position.set(Math.round(W / 2) + 4, 58);
+      tabPach.root.position.set(Math.round(W / 2) - 160, 58);
+      tabRoul.root.position.set(Math.round(W / 2) - 52, 58);
+      tabSlot.root.position.set(Math.round(W / 2) + 56, 58);
       ox = Math.round((W - BOARD_W) / 2);
       oy = 100;
       board.position.set(ox, oy);
@@ -261,15 +347,19 @@ export function createCasinoView(
       const chipsX = Math.round(W / 2) - 106;
       chipBtns.forEach((c, i) => c.root.position.set(chipsX + i * 74, wcy + WHEEL_R + 26));
       spin.root.position.set(Math.round(W / 2 - 95), Math.min(wcy + WHEEL_R + 72, H - 56));
+      slotGroup.position.set(Math.round(W / 2), oy + 140);
+      pull.root.position.set(spin.root.x, spin.root.y);
       setMode(mode);
     },
     refresh(sim: SimState): void {
       simRef = sim;
       redrawPins(sim);
+      redrawWheel(sim);
       const cost = dropCost(sim);
       dropLabel.text = `DROP  -${fmtMoney(cost)}`;
       drop.setDisabled(sim.money < cost);
       spinLabel.text = `SPIN  -${fmtMoney(cost * ROULETTE_BETS[chipSel])}`;
+      pullLabel.text = `PULL  -${fmtMoney(cost * ROULETTE_BETS[chipSel])}`;
       for (let b = 0; b < binLabels.length; b++) {
         const m = binMult(sim, b);
         binLabels[b].text = `×${m >= 10 ? Math.round(m) : m.toFixed(1).replace(/\.0$/, "")}`;
@@ -335,6 +425,13 @@ export function createCasinoView(
         wheelEgg.rotation = 0;
       }
       spin.setDisabled(r.vel > 0 || sim.money < dropCost(sim) * ROULETTE_BETS[chipSel]);
+      // slots: unrevealed reels flicker through the symbols; revealed snap
+      const sl = sim.casino.slots;
+      for (let reel = 0; reel < 3; reel++) {
+        if (sl.bet > 0 && reel >= sl.revealed) setSymbol(reel, Math.floor(now * 14 + reel * 1.7) % 5);
+        else setSymbol(reel, sl.result[reel]);
+      }
+      pull.setDisabled(sl.bet > 0 || sim.money < dropCost(sim) * ROULETTE_BETS[chipSel]);
     },
     binPos(bin: number): { x: number; y: number } {
       const binW2 = BOARD_W / BIN_MULTS.length;
@@ -342,6 +439,9 @@ export function createCasinoView(
     },
     wheelPos(): { x: number; y: number } {
       return { x: wcx, y: wcy };
+    },
+    slotPos(): { x: number; y: number } {
+      return { x: wcx, y: oy + 140 };
     },
   };
 }

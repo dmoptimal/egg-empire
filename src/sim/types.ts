@@ -243,6 +243,12 @@ export type SimEvent =
   | { type: "casino-payout"; ball: CasinoBall; bin: number; money: number }
   | { type: "roulette-spun"; bet: number }
   | { type: "roulette-stopped"; slice: number; mult: number; money: number; bet: number }
+  | { type: "slots-spun"; bet: number }
+  /** Lucky reels: the losing pull respins free, stake still live. */
+  | { type: "slots-respin" }
+  /** A reel thunked to a stop showing `symbol`. */
+  | { type: "slots-reel"; reel: number; symbol: number }
+  | { type: "slots-stopped"; symbols: number[]; run: number; mult: number; money: number; bet: number }
   /** One-shot progress toast (see sim/milestones.ts for the ids). */
   | { type: "milestone"; id: string }
   | { type: "dish-cooked"; dish: Dish; perfect: boolean; station: number; target: "counter" | "delivery" }
@@ -310,6 +316,8 @@ export interface SimState {
     nextAuto: number;
     /** Roulette: wheel angle (rad), spin velocity (0 = at rest), live stake. */
     roulette: { angle: number; vel: number; bet: number };
+    /** Slots: spin clock, drawn symbols, reels revealed so far, live stake. */
+    slots: { t: number; result: number[]; revealed: number; bet: number };
   };
   kitchen: KitchenState;
   /** Buffered events since the last drain — the render/audio seam. */

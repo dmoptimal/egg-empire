@@ -60,7 +60,10 @@ export const TRUCK_STOP_OFFSET = 10; //    truck stops at basket.x - 10
 export const TRUCK_EXIT_MARGIN = 90; //    despawns once x > W + 90
 
 // --- saves / offline progress (NEW work, README step 6 — not in prototype) ---
-export const OFFLINE_CAP_SECONDS = 8 * 3600; // idle income accrues for at most 8h away
+// Tightened 2026-07-06 (Dan): away time is capped AND accrues at half rate,
+// so leaving the game off for days is a leg-up, never the whole climb.
+export const OFFLINE_CAP_SECONDS = 3 * 3600;
+export const OFFLINE_RATE = 0.5;
 
 // --- collectors ---
 export const COLL_SPEED_BASE = 130;

@@ -209,6 +209,12 @@ export function createTree(deps: TreeDeps): TreeUI {
       c.addChild(spriteIcon(textures.egg[0], 3));
     } else if (id === "pauto") {
       c.addChild(spriteIcon(textures.bird[0], 1.8));
+    } else if (id === "rwheel") {
+      c.addChild(spriteIcon(textures.icons.coin, 2.4));
+    } else if (id === "sluck") {
+      c.addChild(spriteIcon(textures.icons.star, 2.6));
+    } else if (id === "spay") {
+      c.addChild(spriteIcon(textures.gold, 4));
     } else if (id === "pantry") {
       c.addChild(spriteIcon(textures.crate, 1.8));
     } else if (id === "counter") {

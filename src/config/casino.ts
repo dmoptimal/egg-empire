@@ -56,3 +56,17 @@ export const SPIN_VEL_MIN = 9; //  rad/s at launch …
 export const SPIN_VEL_VAR = 5; //  … plus up to this much
 export const SPIN_DECEL = 1.5; //  rad/s² of felt friction
 export const WHEEL_R = 150; //     design px (render draws it 1:1)
+/** Loaded wheel node: converts these house slices to ×1, one per level. */
+export const RWHEEL_SLICES = [15, 13, 11];
+
+// --- Slots (the third cabinet, 2026-07-06) -----------------------------------
+// Symbols: 0 egg · 1 feather · 2 chicken · 3 golden egg · 4 star.
+// Wins are left-aligned runs: two of a kind pays SLOT_PAY2, three SLOT_PAY3.
+// Base EV ≈ 0.93 (house edge); Lucky reels + Golden paylines push past 1.
+export const SLOT_STRIP = [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 3, 3, 4];
+export const SLOT_PAY2 = [1, 1.5, 2.5, 5, 12];
+export const SLOT_PAY3 = [5, 8, 16, 32, 120];
+export const SLOT_REEL_STOPS = [0.9, 1.5, 2.1]; // seconds until each reel lands
+export const SLOT_BETS = ROULETTE_BETS; //         same chip rack
+export const SLUCK_RESPIN_PER_LVL = 0.08; // Lucky reels: losing pulls respin free
+export const SPAY_PER_LVL = 0.1; //         Golden paylines: all payouts +10%/lvl

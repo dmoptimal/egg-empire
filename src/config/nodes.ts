@@ -141,6 +141,12 @@ export const NODES: NodeDef[] = [
     cost: farmCost("pdup"), dsc: "Adds PINK twin-pins — an egg that hits one can split in two, both halves paying." },
   { id: "pauto",   nm: "Roost dropper",  x: 100, y: 900, max: 3, par: "pval",   cur: "feathers", edge: "straight",
     cost: farmCost("pauto"), dsc: "A hen roosts on the machine and drops eggs herself — faster per level." },
+  { id: "rwheel",  nm: "Loaded wheel",   x: 200, y: 900, max: 3, par: "pval",   cur: "feathers", edge: "straight",
+    cost: farmCost("rwheel"), dsc: "Turns a house slice of the roulette wheel GREEN (money back) per level." },
+  { id: "sluck",   nm: "Lucky reels",    x: 300, y: 900, max: 3, par: "rwheel", cur: "feathers",
+    cost: farmCost("sluck"), dsc: "A losing slots pull has an 8% chance per level to respin FREE — the stake stays on." },
+  { id: "spay",    nm: "Golden paylines", x: 300, y: 1000, max: 3, par: "sluck", cur: "feathers", edge: "straight",
+    cost: farmCost("spay"), dsc: "Every slots payout is +10% richer per level." },
 
   // Flock economics off Geese.
   { id: "birdlot", nm: "Bulk deals",     x: 110, y: 1010, max: 3, par: "sp3",   cur: "feathers", edge: "straight",

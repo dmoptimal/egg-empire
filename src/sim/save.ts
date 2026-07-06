@@ -4,7 +4,7 @@
 // Only the durable economy is saved — eggs on the ground, trucks mid-run and
 // collector errands are ephemeral and restart cleanly.
 
-import { GOLDEN_VALUE_MULT, OFFLINE_CAP_SECONDS } from "../config/constants";
+import { GOLDEN_VALUE_MULT, OFFLINE_CAP_SECONDS, OFFLINE_RATE } from "../config/constants";
 import { SPECIES } from "../config/species";
 import { addBasket } from "./baskets";
 import { addCollector } from "./collectors";
@@ -141,8 +141,8 @@ export function estimateOfflineIncome(state: SimState, elapsedSeconds: number): 
     feathersPerSec += eggsPerSec * (featherPerEgg(state, i) * (1 - g) + featherGolden(state, i) * g);
   }
   return {
-    money: Math.floor(moneyPerSec * seconds),
-    feathers: Math.floor(feathersPerSec * seconds),
+    money: Math.floor(moneyPerSec * seconds * OFFLINE_RATE),
+    feathers: Math.floor(feathersPerSec * seconds * OFFLINE_RATE),
     seconds,
   };
 }

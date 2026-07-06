@@ -9,9 +9,40 @@ import {
   BOUNCY_PER_LVL,
   MAX_BALLS,
   ROULETTE_MULTS,
+  SLOT_PAY2,
+  SLOT_PAY3,
+  SLOT_REEL_STOPS,
   SPLIT_PER_LVL,
 } from "../config/casino";
-import { binMult, casinoUnlocked, dropBall, dropCost, pinKind, spinRoulette } from "./casino";
+import {
+  binMult,
+  casinoUnlocked,
+  dropBall,
+  dropCost,
+  pinKind,
+  rouletteMult,
+  slotPayMult,
+  spinRoulette,
+  spinSlots,
+} from "./casino";
+import { SLOT_STRIP, SLUCK_RESPIN_PER_LVL } from "../config/casino";
+import type { SimState } from "./types";
+
+/** Exact slots EV from the strip, paytable and live upgrades. */
+function slotsEV(s: SimState): number {
+  const p = [0, 0, 0, 0, 0];
+  for (const sym of SLOT_STRIP) p[sym] += 1 / SLOT_STRIP.length;
+  let ev = 0;
+  let pWin = 0;
+  for (let sym = 0; sym < 5; sym++) {
+    pWin += p[sym] * p[sym];
+    ev += p[sym] ** 2 * (1 - p[sym]) * SLOT_PAY2[sym] + p[sym] ** 3 * SLOT_PAY3[sym];
+  }
+  ev *= slotPayMult(s);
+  // free respins on losses form a geometric series on the same stake
+  const respin = (1 - pWin) * SLUCK_RESPIN_PER_LVL * (s.n.sluck ?? 0);
+  return ev / (1 - respin);
+}
 import { drainEvents } from "./events";
 import { createSim } from "./state";
 import { constHooks, step } from "./test-helpers";
@@ -97,6 +128,69 @@ describe("roulette", () => {
     s.money = 5;
     expect(spinRoulette(s, () => 0.5, 1)).toBe(false);
     expect(s.money).toBe(5);
+  });
+});
+
+describe("slots", () => {
+  it("start with a gentle house edge; maxed upgrades tip past even", () => {
+    const s = casinoSim();
+    const base = slotsEV(s);
+    expect(base).toBeGreaterThan(0.85);
+    expect(base).toBeLessThan(0.98);
+    s.n.sluck = 3;
+    s.n.spay = 3;
+    const maxed = slotsEV(s);
+    expect(maxed).toBeGreaterThan(1.05);
+    expect(maxed).toBeLessThan(1.6);
+  });
+
+  it("a pull stakes the chips, reels thunk in order, the run pays", () => {
+    const s = casinoSim();
+    expect(spinSlots(s, () => 0.5, 10)).toBe(true);
+    expect(s.money).toBe(1e9 - 100);
+    expect(spinSlots(s, () => 0.5, 1)).toBe(false); // reels still turning
+    step(s, SLOT_REEL_STOPS[2] + 0.2, constHooks(0.5));
+    const evs = drainEvents(s);
+    expect(evs.filter((e) => e.type === "slots-reel")).toHaveLength(3);
+    const done = evs.find(
+      (e): e is Extract<SimEvent, { type: "slots-stopped" }> => e.type === "slots-stopped",
+    )!;
+    expect(done).toBeDefined();
+    // rng 0.5 draws strip[8] = feather on every reel: a triple
+    expect(done.symbols).toEqual([1, 1, 1]);
+    expect(done.run).toBe(3);
+    expect(done.money).toBe(Math.round(100 * SLOT_PAY3[1]));
+    expect(s.money).toBe(1e9 - 100 + done.money);
+    expect(s.stats.slotsBest).toBe(done.money);
+  });
+
+  it("Lucky reels respins a losing pull free, stake still on", () => {
+    const s = casinoSim();
+    s.n.sluck = 3; // 24% respin chance
+    const seq = [0.05, 0.45, 0.95]; // egg, feather, star — a losing spread
+    let i = 0;
+    spinSlots(s, () => seq[Math.min(i++, 2)], 1);
+    // roll 0.05 < 0.24 → free respin; the redraw at 0.05³ lands triple eggs
+    step(s, 4.6, constHooks(0.05));
+    const evs = drainEvents(s);
+    expect(evs.some((e) => e.type === "slots-respin")).toBe(true);
+    const done = evs.find(
+      (e): e is Extract<SimEvent, { type: "slots-stopped" }> => e.type === "slots-stopped",
+    )!;
+    expect(done.run).toBe(3); // the respin saved the pull
+    expect(s.money).toBe(1e9 - 10 + Math.round(10 * SLOT_PAY3[0]));
+  });
+});
+
+describe("Loaded wheel", () => {
+  it("turns house slices green, one per level", () => {
+    const s = casinoSim();
+    const zeros = () => ROULETTE_MULTS.filter((_, i) => rouletteMult(s, i) === 0).length;
+    const before = zeros();
+    s.n.rwheel = 3;
+    expect(zeros()).toBe(before - 3);
+    expect(rouletteMult(s, 15)).toBe(1);
+    expect(rouletteMult(s, 0)).toBe(ROULETTE_MULTS[0]); // paying slices untouched
   });
 });
 
