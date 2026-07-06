@@ -178,10 +178,19 @@ export async function showGallery(): Promise<void> {
         ctx.fillStyle = "#9fb8a8";
         ctx.fillText(it.slug, places[i].x, places[i].y + it.h * SCALE + 11);
       });
-      const a = document.createElement("a");
-      a.download = "egg-empire-sprites.png";
-      a.href = canvas.toDataURL("image/png");
-      a.click();
+      // toBlob + an in-document anchor: a synthetic click on a detached
+      // anchor with a giant data: URL made Chrome ignore the filename and
+      // save an extensionless UUID (Dan hit this).
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+        const a = document.createElement("a");
+        a.download = "egg-empire-sprites.png";
+        a.href = URL.createObjectURL(blob);
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      }, "image/png");
     })();
   });
   document.body.appendChild(sheetBtn);
