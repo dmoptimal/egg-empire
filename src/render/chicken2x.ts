@@ -121,16 +121,16 @@ const contactB = withRows(bob(BASE), {
   20: ".......bbbb...BBBB......",
 });
 const passA = withRows(raise(BASE), {
-  17: "..........BB.bb.........",
-  18: "..........BB.bb.........",
-  19: ".........BBBB.bb........",
-  20: "............bbbb........",
+  17: ".........BB.bb..........",
+  18: ".........BB.bb..........",
+  19: "........BBBB.bb.........",
+  20: "...........bbbb.........",
 });
 const passB = withRows(raise(BASE), {
-  17: "..........bb.BB.........",
-  18: "..........bb.BB.........",
-  19: ".........bbbb.BB........",
-  20: "............BBBB........",
+  17: ".........bb.BB..........",
+  18: ".........bb.BB..........",
+  19: "........bbbb.BB.........",
+  20: "...........BBBB.........",
 });
 
 // Lay: settle onto the hay, eyes shut, tail flicks — the egg (a separate
