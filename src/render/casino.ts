@@ -32,6 +32,8 @@ export interface CasinoView {
   wheelPos(): { x: number; y: number };
   /** Centre of the slot machine — pull results pop up here. */
   slotPos(): { x: number; y: number };
+  /** Which cabinet is on show — sounds/popups stay with their machine. */
+  cabinet(): "pachinko" | "roulette" | "slots";
 }
 
 export interface CasinoDeps {
@@ -442,6 +444,9 @@ export function createCasinoView(
     },
     slotPos(): { x: number; y: number } {
       return { x: wcx, y: oy + 140 };
+    },
+    cabinet(): "pachinko" | "roulette" | "slots" {
+      return mode;
     },
   };
 }

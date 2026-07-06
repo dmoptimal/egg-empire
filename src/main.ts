@@ -403,15 +403,15 @@ async function boot(): Promise<void> {
         refreshAll(); // flock and bird prices both just changed
         break;
       case "casino-drop":
-        if (screen === "casino") SFX.pop(ev.ball.golden);
+        if (screen === "casino" && casinoView.cabinet() === "pachinko") SFX.pop(ev.ball.golden);
         break;
       case "casino-split":
-        if (screen === "casino") SFX.perfect();
+        if (screen === "casino" && casinoView.cabinet() === "pachinko") SFX.perfect();
         break;
       case "roulette-spun":
         break; // the ratchet ticks carry the drama
       case "roulette-stopped": {
-        if (screen === "casino") {
+        if (screen === "casino" && casinoView.cabinet() === "roulette") {
           if (ev.mult >= 8) SFX.rush();
           else if (ev.mult >= 1) SFX.kaching();
           else SFX.donk();
@@ -428,17 +428,17 @@ async function boot(): Promise<void> {
       case "slots-spun":
         break;
       case "slots-reel":
-        if (screen === "casino") SFX.tick();
+        if (screen === "casino" && casinoView.cabinet() === "slots") SFX.tick();
         break;
       case "slots-respin":
-        SFX.perfect();
-        if (screen === "casino") {
+        if (screen === "casino" && casinoView.cabinet() === "slots") {
+          SFX.perfect();
           const p = casinoView.slotPos();
           popups.spawn(p.x, p.y - 90, "FREE RESPIN!", 0x8fe3d0, 15, textures.icons.star);
         }
         break;
       case "slots-stopped": {
-        if (screen === "casino") {
+        if (screen === "casino" && casinoView.cabinet() === "slots") {
           if (ev.run === 3 && ev.mult >= 30) SFX.rush();
           else if (ev.run === 3) SFX.kaching();
           else SFX.donk();
@@ -453,7 +453,7 @@ async function boot(): Promise<void> {
       }
       case "casino-payout": {
         const won = ev.money >= ev.ball.value;
-        if (screen === "casino") {
+        if (screen === "casino" && casinoView.cabinet() === "pachinko") {
           if (won) SFX.kaching();
           else SFX.donk();
           const pos = casinoView.binPos(ev.bin);
