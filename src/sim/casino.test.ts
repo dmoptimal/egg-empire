@@ -9,7 +9,6 @@ import {
   BOUNCY_PER_LVL,
   MAX_BALLS,
   ROULETTE_MULTS,
-  SLOT_PAY2,
   SLOT_PAY3,
   SLOT_REEL_STOPS,
   SPLIT_PER_LVL,
@@ -30,17 +29,17 @@ import type { SimState } from "./types";
 
 /** Exact slots EV from the strip, paytable and live upgrades. */
 function slotsEV(s: SimState): number {
-  const p = [0, 0, 0, 0, 0];
+  const p = [0, 0, 0, 0];
   for (const sym of SLOT_STRIP) p[sym] += 1 / SLOT_STRIP.length;
   let ev = 0;
-  let pWin = 0;
-  for (let sym = 0; sym < 5; sym++) {
-    pWin += p[sym] * p[sym];
-    ev += p[sym] ** 2 * (1 - p[sym]) * SLOT_PAY2[sym] + p[sym] ** 3 * SLOT_PAY3[sym];
+  let pTriple = 0;
+  for (let sym = 0; sym < 4; sym++) {
+    pTriple += p[sym] ** 3;
+    ev += p[sym] ** 3 * SLOT_PAY3[sym]; // triples only
   }
   ev *= slotPayMult(s);
-  // free respins on losses form a geometric series on the same stake
-  const respin = (1 - pWin) * SLUCK_RESPIN_PER_LVL * (s.n.sluck ?? 0);
+  // free respins on non-triples form a geometric series on the same stake
+  const respin = (1 - pTriple) * SLUCK_RESPIN_PER_LVL * (s.n.sluck ?? 0);
   return ev / (1 - respin);
 }
 import { drainEvents } from "./events";

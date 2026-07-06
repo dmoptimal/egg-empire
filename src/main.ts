@@ -439,14 +439,13 @@ async function boot(): Promise<void> {
         break;
       case "slots-stopped": {
         if (screen === "casino") {
-          if (ev.mult >= 30) SFX.rush();
-          else if (ev.run >= 2) SFX.kaching();
+          if (ev.run === 3 && ev.mult >= 30) SFX.rush();
+          else if (ev.run === 3) SFX.kaching();
           else SFX.donk();
-        }
-        if (screen === "casino") {
           const p = casinoView.slotPos();
-          if (ev.run >= 2)
+          if (ev.run === 3)
             popups.spawn(p.x, p.y - 90, `×${Math.round(ev.mult * 10) / 10}  +${fmtMoney(ev.money)}`, ev.mult >= 30 ? 0xffd24a : 0x7ef25d, ev.mult >= 30 ? 22 : 17);
+          else if (ev.run === 2) popups.spawn(p.x, p.y - 90, "So close!", 0xd8c8a0, 14);
           else popups.spawn(p.x, p.y - 90, "No line", 0x9a8f80, 13);
         }
         refreshAll();

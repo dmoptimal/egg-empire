@@ -259,13 +259,12 @@ export function createCasinoView(
   slotTitle.position.set(0, -78);
   quiet(slotTitle);
   slotGroup.addChild(slotFace, slotTitle);
-  // symbol art: egg, feather, chicken, golden egg, star
+  // symbol art: egg, feather, chicken, golden egg (the jackpot)
   const SYMBOLS: { tex: Texture; scale: number }[] = [
     { tex: textures.egg[0], scale: 7 },
     { tex: textures.icons.feather, scale: 5 },
     { tex: textures.bird[0], scale: 3.4 },
     { tex: textures.gold, scale: 7 },
-    { tex: textures.icons.star, scale: 6 },
   ];
   const reelWins: Sprite[] = [];
   for (let r = 0; r < 3; r++) {
@@ -281,7 +280,7 @@ export function createCasinoView(
     reelWins.push(sp);
   }
   const slotHint = new Text({
-    text: "2 in a row from the left pays — 3 pays big",
+    text: "Three of a kind pays — triple GOLD is the jackpot",
     style: { fontFamily: FONT, fontSize: 11, fill: "#e8c8d0" },
   });
   slotHint.anchor.set(0.5);
@@ -429,7 +428,7 @@ export function createCasinoView(
       // slots: unrevealed reels flicker through the symbols; revealed snap
       const sl = sim.casino.slots;
       for (let reel = 0; reel < 3; reel++) {
-        if (sl.bet > 0 && reel >= sl.revealed) setSymbol(reel, Math.floor(now * 14 + reel * 1.7) % 5);
+        if (sl.bet > 0 && reel >= sl.revealed) setSymbol(reel, Math.floor(now * 14 + reel * 1.7) % 4);
         else setSymbol(reel, sl.result[reel]);
       }
       pull.setDisabled(sl.bet > 0 || sim.money < dropCost(sim) * ROULETTE_BETS[chipSel]);

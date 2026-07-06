@@ -62,12 +62,12 @@ export const WHEEL_R = 150; //     design px (render draws it 1:1)
 export const RWHEEL_SLICES = [15, 13, 11];
 
 // --- Slots (the third cabinet, 2026-07-06) -----------------------------------
-// Symbols: 0 egg · 1 feather · 2 chicken · 3 golden egg · 4 star.
-// Wins are left-aligned runs: two of a kind pays SLOT_PAY2, three SLOT_PAY3.
-// Base EV ≈ 0.93 (house edge); Lucky reels + Golden paylines push past 1.
-export const SLOT_STRIP = [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 3, 3, 4];
-export const SLOT_PAY2 = [1, 1.5, 2.5, 5, 12];
-export const SLOT_PAY3 = [5, 8, 16, 32, 120];
+// Symbols: 0 egg · 1 feather · 2 chicken · 3 golden egg.
+// TRIPLES ONLY pay (Dan: "two of a kind winning looks weird") — the ladder
+// climbs to three golden eggs as the jackpot. Hit rate ≈ 1 in 9 pulls,
+// base EV ≈ 0.94; Lucky reels + Golden paylines push past 1.
+export const SLOT_STRIP = [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 3, 3];
+export const SLOT_PAY3 = [4, 12, 30, 110];
 export const SLOT_REEL_STOPS = [0.9, 1.5, 2.1]; // seconds until each reel lands
 export const SLOT_BETS = ROULETTE_BETS; //         same chip rack
 export const SLUCK_RESPIN_PER_LVL = 0.08; // Lucky reels: losing pulls respin free

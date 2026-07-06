@@ -28,7 +28,6 @@ import {
   RESTITUTION,
   ROULETTE_MULTS,
   RWHEEL_SLICES,
-  SLOT_PAY2,
   SLOT_PAY3,
   SLOT_REEL_STOPS,
   SLOT_STRIP,
@@ -221,19 +220,19 @@ function updateSlots(state: SimState, dt: number, rng: () => number): void {
     sl.revealed++;
   }
   if (sl.revealed < 3) return;
-  // settle: left-aligned run of matching symbols
+  // settle: only a full triple pays (run 2 is a near-miss, run 1 a dud)
   const [a, b] = sl.result;
   const c = sl.result[2];
   const run = a === b ? (b === c ? 3 : 2) : 1;
   // Lucky reels: a losing pull can respin free — the stake stays live
-  if (run < 2 && rng() < SLUCK_RESPIN_PER_LVL * lvl(state, "sluck")) {
+  if (run < 3 && rng() < SLUCK_RESPIN_PER_LVL * lvl(state, "sluck")) {
     sl.t = 0;
     sl.revealed = 0;
     sl.result = drawReels(rng);
     emit(state, { type: "slots-respin" });
     return;
   }
-  const mult = run >= 2 ? (run === 3 ? SLOT_PAY3 : SLOT_PAY2)[a] * slotPayMult(state) : 0;
+  const mult = run === 3 ? SLOT_PAY3[a] * slotPayMult(state) : 0;
   const money = Math.round(sl.bet * mult);
   state.money += money;
   if (money > (state.stats.slotsBest ?? 0)) state.stats.slotsBest = money;
