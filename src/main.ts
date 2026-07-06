@@ -22,6 +22,7 @@ import {
   savedTreeView,
   serialize,
   serveCustomer,
+  lungeGuard,
   spinRoulette,
   spinSlots,
   sweepCollect,
@@ -408,6 +409,33 @@ async function boot(): Promise<void> {
           popups.spawn(ev.fox.x, ev.fox.y - 48, `${SPECIES[ev.species].name} taken!`, 0xff8a8a, 16);
         refreshAll(); // flock and bird prices both just changed
         break;
+      case "fox-staggered":
+        if (screen === "farm") {
+          SFX.donk();
+          popups.spawn(ev.fox.x, ev.fox.y - 44, "Grrr!", 0xff8a8a, 13);
+        }
+        break;
+      case "fox-dropped":
+        if (screen === "farm") {
+          SFX.perfect();
+          popups.spawn(ev.fox.x, ev.fox.y - 44, "Dropped it!", 0x8fe3d0, 14);
+        }
+        break;
+      case "fox-dropped-bird":
+        if (screen === "farm") {
+          SFX.cluck();
+          popups.spawn(ev.fox.x, ev.fox.y - 48, `${SPECIES[ev.species].name} saved!`, 0x8fe3d0, 16);
+        }
+        refreshAll(); // the flock just grew back
+        break;
+      case "fox-routed":
+        if (screen === "farm")
+          popups.spawn(ev.fox.x, ev.fox.y - 44, `+${fmt(ev.feathers)}`, 0x8fe3d0, 12, textures.icons.feather);
+        break;
+      case "guard-lunge":
+        if (screen === "farm") SFX.foxYip();
+        foxViews.guardLunge(ev.x);
+        break;
       case "casino-drop":
         if (screen === "casino" && casinoView.cabinet() === "pachinko") SFX.pop(ev.ball.golden);
         break;
@@ -505,6 +533,7 @@ async function boot(): Promise<void> {
     if (screen !== "farm") return; // kitchen taps are buttons only
     const { x, y } = ev.global;
     pointers.set(ev.pointerId, { x, y });
+    lungeGuard(sim, x, y); // tap a charged watchman and he clears his patch
     sweepCollect(sim, x, y, x, y);
   });
   app.stage.on("pointermove", (ev: FederatedPointerEvent) => {

@@ -56,7 +56,7 @@ export {
   type TreeView,
 } from "./save";
 export { checkpointToSave, checkpointSim, moneyRate, featherRate } from "./pacing";
-export { updateClock, updateFoxes, shooFoxesAlong, foxBounty, guardLineY, CYCLE_LENGTH } from "./night";
+export { updateClock, updateFoxes, shooFoxesAlong, foxBounty, guardLineY, guardX, lungeGuard, CYCLE_LENGTH } from "./night";
 export {
   casinoUnlocked,
   dropBall,

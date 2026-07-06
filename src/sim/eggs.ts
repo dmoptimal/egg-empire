@@ -113,6 +113,47 @@ export function layEgg(
   return e;
 }
 
+/**
+ * A rescued egg (fox intercepted mid-escape) drops right where the fox was
+ * and plops back into the hay through the normal falling flow — same cap
+ * rules as a lay. Value is re-priced at today's worth upgrades.
+ */
+export function rescueEgg(
+  state: SimState,
+  species: number,
+  golden: boolean,
+  x: number,
+  y: number,
+): Egg | null {
+  if (state.ground.length + state.falling.length >= eggCap(state)) despawnOldest(state);
+  if (state.ground.length + state.falling.length + state.flying.length >= eggCap(state) + EGG_POOL_EXTRA)
+    return null;
+  const { hayTop, hayBottom } = state.layout;
+  const e: Egg = {
+    id: state.nextEggId++,
+    species,
+    golden,
+    value: Math.round(SPECIES[species].eggValue * worthMult(state, species)) * (golden ? GOLDEN_VALUE_MULT : 1),
+    x,
+    y: y - 20,
+    vy: EGG_INITIAL_VY,
+    targetY: Math.max(hayTop + EGG_TARGET_TOP_INSET, Math.min(hayBottom, y)),
+    age: 0,
+    claimed: false,
+    bounced: false,
+    phase: "falling",
+    flyT: 0,
+    sx: 0,
+    sy: 0,
+    tx: 0,
+    ty: 0,
+    basket: null,
+  };
+  state.falling.push(e);
+  emit(state, { type: "egg-laid", egg: e });
+  return e;
+}
+
 /** Drop the shimmer egg that starts a Golden Rush when swept. */
 export function layRushEgg(state: SimState, hooks: SimHooks): void {
   const p = hooks.spawnPoint ? hooks.spawnPoint(0) : defaultSpawnPoint(state, hooks);

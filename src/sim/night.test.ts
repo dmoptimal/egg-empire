@@ -2,14 +2,23 @@
 // climb/steal/flee, sweep bounties, and the Night guard automation.
 
 import { describe, expect, it } from "vitest";
-import { DAY_LENGTH, FOX_BIRD_CAP, FOX_BIRD_DEPTH, GUARD_INTERVAL, NIGHT_LENGTH } from "../config/night";
+import {
+  DAY_LENGTH,
+  FOX_BIRD_CAP,
+  FOX_BIRD_DEPTH,
+  FOX_KINDS,
+  GUARD_INTERVAL,
+  NIGHT_LENGTH,
+  ROUT_BOUNTY_PCT,
+  SNEAK_DASH,
+} from "../config/night";
 import { sweepCollect } from "./collect";
 import { birdCost } from "./economy";
 import { drainEvents } from "./events";
-import { CYCLE_LENGTH, foxBounty } from "./night";
+import { CYCLE_LENGTH, foxBounty, guardLineY, guardX, lungeGuard } from "./night";
 import { createSim } from "./state";
 import { constHooks, forgeGroundEgg, step } from "./test-helpers";
-import type { Fox, SimState } from "./types";
+import type { Fox, FoxKind, SimState } from "./types";
 
 function quiet() {
   const s = createSim();
@@ -25,8 +34,18 @@ function atNight(s: SimState): void {
   drainEvents(s);
 }
 
-function forgeFox(s: SimState, y: number, x = 200): Fox {
-  const f: Fox = { id: s.foxSeq++, x, y, state: "climb", carrying: false };
+function forgeFox(s: SimState, y: number, x = 200, kind: FoxKind = "fox"): Fox {
+  const f: Fox = {
+    id: s.foxSeq++,
+    x,
+    y,
+    state: "climb",
+    kind,
+    hp: FOX_KINDS[kind].taps,
+    pauseT: 0,
+    moveT: SNEAK_DASH,
+    carrying: false,
+  };
   s.foxes.push(f);
   return f;
 }
@@ -71,7 +90,7 @@ describe("foxes", () => {
   it("slink in on the night cadence and creep upward", () => {
     const s = quiet();
     atNight(s);
-    step(s, 5, constHooks(0.5)); // spawn timer: 4 + 0.5×4 = 6s
+    step(s, 8, constHooks(0.5)); // dusk spawn gap: 7 + 0.5×4 = 9s
     expect(s.foxes).toHaveLength(0);
     step(s, 1.5, constHooks(0.5));
     expect(s.foxes).toHaveLength(1);
@@ -213,5 +232,171 @@ describe("the tutorial farm", () => {
     step(s, DAY_LENGTH + 30, constHooks(0.5));
     expect(s.clock.night).toBe(false);
     expect(s.foxes).toHaveLength(0);
+  });
+});
+
+describe("steal-and-flee rescue", () => {
+  it("tapping the escape drops the egg back into play — no bounty on top", () => {
+    const s = quiet();
+    atNight(s);
+    forgeGroundEgg(s, { x: 100, y: s.layout.hayBottom - 10 });
+    const fox = forgeFox(s, s.layout.hayBottom + 6);
+    step(s, 0.3, constHooks(0.5)); // steals the egg and turns to bolt
+    expect(fox.carrying).toBe(true);
+    expect(fox.loot).toBeDefined();
+    drainEvents(s);
+    sweepCollect(s, fox.x, fox.y, fox.x, fox.y);
+    expect(fox.carrying).toBe(false);
+    expect(fox.state).toBe("flee"); // still legs it, just empty-pawed
+    expect(s.feathers).toBe(0); // the rescue IS the reward
+    expect(drainEvents(s).some((e) => e.type === "fox-dropped")).toBe(true);
+    // the same sweep that tapped the fox caught the dropped egg mid-air —
+    // it's already flying to a basket. One gesture, egg saved AND banked.
+    expect(s.ground.length + s.falling.length + s.flying.length).toBe(1);
+  });
+
+  it("a kidnapped hen can be saved mid-escape", () => {
+    const s = quiet();
+    s.counts = [5, 0, 0, 0, 0];
+    atNight(s);
+    const zone = s.layout.hayTop * FOX_BIRD_DEPTH;
+    const fox = forgeFox(s, zone + 2); // one step from the flock
+    step(s, 0.2, constHooks(0.5));
+    expect(fox.bird).toBe(0);
+    expect(s.counts[0]).toBe(4);
+    drainEvents(s);
+    sweepCollect(s, fox.x, fox.y, fox.x, fox.y);
+    expect(s.counts[0]).toBe(5);
+    expect(fox.bird).toBeUndefined();
+    expect(s.feathers).toBe(0);
+    expect(drainEvents(s).some((e) => e.type === "fox-dropped-bird")).toBe(true);
+    expect(s.stats.birdsSaved).toBe(1);
+  });
+});
+
+describe("the witching hour", () => {
+  it("spawn gaps tighten as the night deepens", () => {
+    const dusk = quiet();
+    atNight(dusk); // progress ≈ 0 → gap ≈ 7 + 0.5×4
+    const early = dusk.nextFoxIn;
+    const late = quiet();
+    late.n.sp1 = 1;
+    late.clock.t = DAY_LENGTH + NIGHT_LENGTH * 0.98;
+    late.clock.night = true;
+    step(late, 0.05, constHooks(0.5)); // progress ≈ 1 → gap ≈ 2.2 + 0.5×1.8
+    expect(early).toBeGreaterThan(8);
+    expect(late.nextFoxIn).toBeLessThan(4);
+  });
+
+  it("dawn routs the stragglers for a token bounty each", () => {
+    const s = quiet();
+    s.n.sp1 = 1;
+    s.clock.t = CYCLE_LENGTH - 0.1;
+    forgeFox(s, 400);
+    forgeFox(s, 420, 300);
+    step(s, 0.2, constHooks(0.5));
+    const each = Math.max(1, Math.round(foxBounty(s) * ROUT_BOUNTY_PCT));
+    expect(s.feathers).toBe(2 * each);
+    expect(drainEvents(s).filter((e) => e.type === "fox-routed")).toHaveLength(2);
+  });
+});
+
+describe("the rogues' gallery", () => {
+  it("a bruiser walks through the patrol line, soaks a tap, and pays 4×", () => {
+    const s = quiet();
+    s.n.guard = 3;
+    atNight(s);
+    const line = guardLineY(s);
+    const b = forgeFox(s, line + 30, 200, "bruiser");
+    step(s, 1.5, constHooks(0.5)); // crosses the line at 34 px/s
+    expect(b.y).toBeLessThan(line);
+    expect(b.state).toBe("climb"); // the watch can't touch him
+    expect(drainEvents(s).some((e) => e.type === "fox-shooed")).toBe(false);
+    sweepCollect(s, b.x, b.y, b.x, b.y); // first tap staggers
+    expect(b.state).toBe("climb");
+    expect(b.pauseT).toBeGreaterThan(0);
+    expect(s.feathers).toBe(0);
+    expect(drainEvents(s).some((e) => e.type === "fox-staggered")).toBe(true);
+    sweepCollect(s, b.x, b.y, b.x, b.y); // second tap sends him off
+    expect(b.state).toBe("flee");
+    expect(s.feathers).toBe(Math.round(foxBounty(s) * FOX_KINDS.bruiser.bounty));
+  });
+
+  it("kits arrive as a pack of three and turn back at the flock line", () => {
+    const s = quiet();
+    s.counts = [5, 0, 0, 0, 0];
+    s.stats.nights = 5; // the gallery is open
+    atNight(s);
+    s.nextFoxIn = 0.01;
+    step(s, 0.05, constHooks(0.85)); // roll 85 ∈ (80, 92] → kit
+    expect(s.foxes).toHaveLength(3);
+    expect(s.foxes.every((f) => f.kind === "kit")).toBe(true);
+    const kit = forgeFox(s, s.layout.hayTop * FOX_BIRD_DEPTH + 2, 100, "kit");
+    step(s, 0.1, constHooks(0.5));
+    expect(kit.state).toBe("flee"); // turned back …
+    expect(kit.bird).toBeUndefined(); // … without a hen
+    expect(s.counts[0]).toBe(5);
+  });
+
+  it("a sneak dashes, then freezes flat in the grass", () => {
+    const s = quiet();
+    atNight(s);
+    const sn = forgeFox(s, 500, 200, "sneak");
+    step(s, 1.05, constHooks(0.5)); // dash spends itself
+    expect(sn.pauseT).toBeGreaterThan(0);
+    const frozen = sn.y;
+    step(s, 0.3, constHooks(0.5));
+    expect(sn.y).toBe(frozen); // hiding — not an inch
+    step(s, 0.6, constHooks(0.5));
+    expect(sn.y).toBeLessThan(frozen); // dashing again
+  });
+
+  it("the first nights are plain foxes only", () => {
+    const s = quiet();
+    atNight(s); // stats.nights = 0
+    s.nextFoxIn = 0.01;
+    step(s, 0.05, constHooks(0.99)); // a roll that would be a bruiser
+    expect(s.foxes).toHaveLength(1);
+    expect(s.foxes[0].kind).toBe("fox");
+  });
+});
+
+describe("tap-to-lunge", () => {
+  it("a tap on a charged watchman clears his patch and spends the charge", () => {
+    const s = quiet();
+    s.n.guard = 1;
+    atNight(s);
+    const gx = guardX(s, 0, 1);
+    const lineY = guardLineY(s) + 20;
+    const near = forgeFox(s, lineY + 40, gx - 50);
+    const far = forgeFox(s, lineY + 40, gx + 300); // outside the lunge
+    const runner = forgeFox(s, lineY - 20, gx + 40);
+    runner.state = "flee";
+    runner.carrying = true;
+    runner.loot = { species: 0, golden: false };
+    drainEvents(s);
+    expect(lungeGuard(s, gx + 10, lineY)).toBe(true);
+    expect(near.state).toBe("flee");
+    expect(far.state).toBe("climb");
+    expect(runner.carrying).toBe(false); // loot intercepted mid-escape
+    expect(s.guardT).toBe(GUARD_INTERVAL[1]);
+    const evs = drainEvents(s);
+    const lunge = evs.find((e) => e.type === "guard-lunge");
+    expect(lunge && "count" in lunge && lunge.count).toBe(2);
+  });
+
+  it("never whiffs, never fires mid-recharge, never touches a bruiser", () => {
+    const s = quiet();
+    s.n.guard = 1;
+    atNight(s);
+    const gx = guardX(s, 0, 1);
+    const lineY = guardLineY(s) + 20;
+    expect(lungeGuard(s, gx, lineY)).toBe(false); // nothing to hit
+    expect(s.guardT).toBeLessThanOrEqual(0); // charge kept
+    forgeFox(s, lineY + 30, gx + 20, "bruiser");
+    expect(lungeGuard(s, gx, lineY)).toBe(false); // bruisers shrug him off
+    forgeFox(s, lineY + 30, gx - 30);
+    s.guardT = 5;
+    expect(lungeGuard(s, gx, lineY)).toBe(false); // still recharging
   });
 });

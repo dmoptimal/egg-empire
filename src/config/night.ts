@@ -12,12 +12,44 @@ export const DAY_LENGTH = 150; //   seconds of daylight per cycle
 export const NIGHT_LENGTH = 150; // seconds of night per cycle
 export const NIGHT_FADE = 5; //     dusk/dawn tint fade (render-side)
 
-export const FOX_SPAWN_MIN = 4; // seconds between foxes at night …
-export const FOX_SPAWN_VAR = 4; // … plus up to this much
-export const FOX_CLIMB_SPEED = 55; //  px/s creeping up the screen
+// The witching hour (Dan's pick 2026-07-06): nights open sparse and build to
+// a flurry before dawn; daybreak routs the stragglers for a token bounty each.
+export const FOX_SPAWN_EARLY_MIN = 7; //  spawn gap at dusk …
+export const FOX_SPAWN_EARLY_VAR = 4;
+export const FOX_SPAWN_LATE_MIN = 2.2; // … tightening to this by dawn
+export const FOX_SPAWN_LATE_VAR = 1.8;
+export const WITCHING_CURVE = 1.6; //   progress^this — the flurry lands late
+export const ROUT_BOUNTY_PCT = 0.25; // of a full bounty, per fox routed at dawn
+
 export const FOX_FLEE_SPEED = 300; //  px/s bolting back down
 export const FOX_TAP_R = 48; //        sweep radius that counts as a shoo
 export const FOX_BOUNTY_MULT = 8; //   feathers = this × featherPerEgg(best bird)
+
+// The rogues' gallery (Dan's pick): after the first couple of nights the
+// ordinary fox brings friends. Weights pick the kind; kits come as a pack.
+export interface FoxKindDef {
+  speed: number; //  climb px/s
+  taps: number; //   player taps to send it off (a bruiser soaks one)
+  bounty: number; // × the standard bounty
+  weight: number; // spawn lottery share
+}
+export const FOX_KINDS: Record<"fox" | "sneak" | "kit" | "bruiser", FoxKindDef> = {
+  fox: { speed: 55, taps: 1, bounty: 1, weight: 66 },
+  sneak: { speed: 80, taps: 1, bounty: 3, weight: 14 }, //  dashes, then hides flat
+  kit: { speed: 90, taps: 1, bounty: 0.5, weight: 12 }, //  tiny, fast, in packs
+  bruiser: { speed: 34, taps: 2, bounty: 4, weight: 8 }, // shrugs off the guards
+};
+export const KIT_PACK = 3; //      kits per spawn
+export const KIT_SPREAD = 42; //   px between pack mates
+export const SNEAK_DASH = 1.0; //  seconds moving …
+export const SNEAK_HIDE = 0.7; //  … then frozen in the grass
+export const STAGGER_TIME = 0.55; // bruiser pause after soaking a tap
+export const ROGUE_NIGHTS = 2; //  plain foxes only until this many nights survived
+
+// Tap-to-lunge guards (Dan's pick): tap a charged watchman and he sweeps
+// every fox around him — spending the same recharge the auto-shoo uses.
+export const GUARD_TAP_R = 46; //   tap this close to a watchman …
+export const GUARD_LUNGE_R = 95; // … and he clears foxes within this
 
 /**
  * Guards hold a visible patrol line just below the roost (Dan 2026-07-05:

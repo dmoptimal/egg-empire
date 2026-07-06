@@ -99,6 +99,8 @@ export interface CasinoBall {
 }
 
 export type FoxState = "climb" | "flee";
+/** The rogues' gallery (Dan's pick 2026-07-06) — see FOX_KINDS in config. */
+export type FoxKind = "fox" | "sneak" | "kit" | "bruiser";
 
 /** A night fox — sim-owned position like eggs/collectors/customers. */
 export interface Fox {
@@ -106,8 +108,17 @@ export interface Fox {
   x: number;
   y: number;
   state: FoxState;
+  kind: FoxKind;
+  /** Player taps still needed — a bruiser soaks the first one. */
+  hp: number;
+  /** Frozen for this long (a sneak hiding, a bruiser staggered). */
+  pauseT: number;
+  /** Sneaks: time left in the current dash before hiding again. */
+  moveT: number;
   /** It reached the hay and made off with an egg (render shows it). */
   carrying: boolean;
+  /** What that egg was — given back if the escape is intercepted. */
+  loot?: { species: number; golden: boolean };
   /** It got through an empty hay line and took a bird of this species. */
   bird?: number;
 }
@@ -235,6 +246,11 @@ export type SimEvent =
   | { type: "nightfall" }
   | { type: "daybreak" }
   | { type: "fox-shooed"; fox: Fox; feathers: number; byGuard: boolean }
+  | { type: "fox-staggered"; fox: Fox }
+  | { type: "fox-dropped"; fox: Fox; egg: Egg }
+  | { type: "fox-dropped-bird"; fox: Fox; species: number }
+  | { type: "fox-routed"; fox: Fox; feathers: number }
+  | { type: "guard-lunge"; x: number; count: number }
   | { type: "fox-stole"; fox: Fox; egg: Egg }
   /** The flock is one bird short — counts (and so bird prices) already updated. */
   | { type: "fox-stole-bird"; fox: Fox; species: number }

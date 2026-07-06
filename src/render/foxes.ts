@@ -5,7 +5,7 @@
 // line at night (one sprite per node level) and lunge when they shoo.
 
 import { Container, Graphics, Sprite, type Texture } from "pixi.js";
-import { guardLineY, lvl, type SimState } from "../sim";
+import { guardLineY, guardX, lvl, type SimState } from "../sim";
 import type { Textures } from "./textures";
 
 const FOX_POOL = 12; // night spawns every 4-8s over a 40s night — 12 is roomy
@@ -93,9 +93,8 @@ export function createFoxViews(layer: Container, textures: Textures): FoxViews {
         const on = sim.clock.night && i < g;
         gv.root.visible = on;
         if (!on) continue;
-        const frac = (i + 1) / (g + 1);
         gv.punch = Math.max(0, gv.punch - 0.05);
-        gv.root.x = sim.layout.w * frac + Math.sin(now * 0.7 + i * 2.1) * 14;
+        gv.root.x = guardX(sim, i, g) + Math.sin(now * 0.7 + i * 2.1) * 14;
         gv.root.y = lineY + Math.sin(now * 1.6 + i) * 2 - gv.punch * 10;
         gv.root.scale.set(1 + gv.punch * 0.25);
         gv.glow.alpha = 0.7 + 0.3 * Math.sin(now * 3 + i);
@@ -135,14 +134,21 @@ export function createFoxViews(layer: Container, textures: Textures): FoxViews {
           v.root.visible = true;
         }
         const fleeing = f.state === "flee";
-        v.root.x = f.x + Math.sin(now * (fleeing ? 14 : 6) + f.id) * (fleeing ? 2 : 5);
+        // the gallery reads at a glance: kits are small, bruisers loom,
+        // sneaks fade into the grass whenever they freeze
+        const base = f.kind === "kit" ? 2.1 : f.kind === "bruiser" ? 3.8 : 3;
+        v.body.tint = f.kind === "sneak" ? 0x9fb0cc : f.kind === "bruiser" ? 0xcc8866 : 0xffffff;
+        v.root.alpha = f.kind === "sneak" && !fleeing && f.pauseT > 0 ? 0.4 : 1;
+        const rattle = f.kind === "bruiser" && !fleeing && f.pauseT > 0 ? Math.sin(now * 40) * 3 : 0;
+        v.root.x = f.x + Math.sin(now * (fleeing ? 14 : 6) + f.id) * (fleeing ? 2 : 5) + rattle;
         v.root.y = f.y;
-        v.body.scale.y = fleeing ? 2.4 : 3; // squashed sprint on the way out
+        v.body.scale.x = base;
+        v.body.scale.y = fleeing ? base * 0.8 : base; // squashed sprint out
         v.egg.visible = f.carrying;
-        if (f.bird !== undefined && !v.bird.visible) {
-          v.bird.texture = textures.bird[f.bird];
-          v.bird.visible = true;
-        }
+        if (f.carrying && f.loot) v.egg.texture = textures.egg[f.loot.species];
+        const hasBird = f.bird !== undefined;
+        if (hasBird) v.bird.texture = textures.bird[f.bird as number];
+        v.bird.visible = hasBird; // re-hidden the moment a rescue frees it
       }
     },
   };
