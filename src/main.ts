@@ -63,6 +63,12 @@ async function boot(): Promise<void> {
     await showGallery();
     return;
   }
+  if (new URLSearchParams(location.search).get("anim") === "1") {
+    // Chicken animation lab (see src/animlab.ts).
+    const { showAnimLab } = await import("./animlab");
+    await showAnimLab();
+    return;
+  }
   const gameDiv = document.getElementById("game")!;
   const app = new Application();
   await app.init({
