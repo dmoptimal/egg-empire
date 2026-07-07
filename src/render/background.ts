@@ -3,6 +3,7 @@
 // backdrop never shimmers across redraws.
 
 import type { Graphics } from "pixi.js";
+import { BIRD_MIN_Y } from "../config/constants";
 import type { Layout } from "../sim";
 
 export function drawBackground(bg: Graphics, layout: Layout): void {
@@ -12,6 +13,20 @@ export function drawBackground(bg: Graphics, layout: Layout): void {
   for (let y = 0; y < hayTop; y += 44)
     for (let x = ((y / 44) % 2) * 22; x < W; x += 44) bg.rect(x, y, 22, 22);
   bg.fill(0x5a9339);
+  // Roost: a perch shelf the flock settles onto at night (birds.ts staggers
+  // three rows starting at BIRD_MIN_Y just below this beam). Dan 2026-07-07:
+  // "maybe there needs to be graphics of like a roost up there."
+  const roostY = BIRD_MIN_Y + 24;
+  bg.rect(0, roostY, W, 5).fill(0x6e4520);
+  for (let x = 20; x < W; x += 70) bg.rect(x, roostY, 5, 16);
+  bg.fill(0x5a3a1e);
+  for (let x = 40; x < W; x += 70) bg.rect(x, roostY - 6, 16, 6);
+  bg.fill(0xd9b45a);
+  for (let x = 40; x < W; x += 70) {
+    bg.rect(x + 2, roostY - 4, 3, 1);
+    bg.rect(x + 9, roostY - 3, 3, 1);
+  }
+  bg.fill(0xc79f45);
   bg.rect(0, hayTop - 4, W, 4).fill(0x6e4520);
   for (let x = 14; x < W; x += 64) bg.rect(x, hayTop - 16, 5, 16);
   bg.fill(0x6e4520);

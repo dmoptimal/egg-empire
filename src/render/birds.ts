@@ -52,7 +52,11 @@ export function createBirds(layer: Container, textures: Textures, getLayout: () 
       x,
       y,
       rx: 14 + ((idx * 37) % Math.max(w - 28, 40)),
-      ry: 56 + (idx % 3) * 11, // roost row sits clear of the HUD chips
+      // Roost row anchors on BIRD_MIN_Y — the same HUD-clearance floor the
+      // daytime wander band uses. A standalone y=56 here (Dan 2026-07-07:
+      // "the taps to pet the birds are too high, in the UI") didn't account
+      // for the notch's safe-area inset pushing the chip row down further.
+      ry: BIRD_MIN_Y + (idx % 3) * 11,
       cx: x,
       cy: y,
       phase: Math.random() * 6.28,

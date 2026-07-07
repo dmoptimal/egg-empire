@@ -74,7 +74,10 @@ export const FIREFLY_TAP_R = 40;
 // Goodnight taps: pet the roost (limited pats per night); tuck the whole
 // flock in and tomorrow's laying wakes up a touch brisker.
 export const PET_CAP = 8; //      pats per night (or the flock size, if smaller)
-export const PET_BAND_Y = 100; // taps above this line are pets
+// Clear of the HUD AND the full 3-row roost stagger below it (roost starts
+// at BIRD_MIN_Y=92 in config/constants.ts; 140 comfortably covers all three
+// rows plus the tallest species' sprite height above its feet).
+export const PET_BAND_Y = 140; // taps above this line are pets
 export const REST_LAY_MULT = 1.05;
 
 /**

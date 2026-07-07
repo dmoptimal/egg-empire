@@ -39,6 +39,12 @@ function makeSwatches(renderer: Renderer): Entry[] {
       g.rect(78, 0, 5, 16).fill(0x6e4520);
     }, "fence", "Fence rail + posts", "posts every 64px"),
     gen((g) => {
+      g.rect(0, 16, 88, 5).fill(0x6e4520);
+      g.rect(6, 16, 5, 16).rect(50, 16, 5, 16).fill(0x5a3a1e);
+      g.rect(20, 10, 16, 6).rect(64, 10, 16, 6).fill(0xd9b45a);
+      g.rect(22, 12, 3, 1).rect(29, 13, 3, 1).rect(66, 12, 3, 1).rect(73, 13, 3, 1).fill(0xc79f45);
+    }, "roost", "Roost perch (where the flock beds down)", "the beam birds settle onto at night"),
+    gen((g) => {
       g.rect(0, 0, 88, 44).fill(0xd9b45a);
       g.rect(6, 8, 7, 2).rect(40, 30, 7, 2).rect(66, 14, 7, 2).rect(22, 36, 7, 2).fill(0xc79f45);
     }, "hay", "Hay (with straw flecks)", "flecks are 7×2"),
